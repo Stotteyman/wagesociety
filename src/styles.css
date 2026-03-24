@@ -1,0 +1,18 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap");
+@import "tailwindcss" source("../");
+
+body {
+  @apply m-0;
+  font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(251, 146, 60, 0.25), transparent 35%),
+    radial-gradient(circle at 85% 15%, rgba(34, 211, 238, 0.18), transparent 30%),
+    linear-gradient(170deg, #06080f 0%, #0f111f 48%, #141726 100%);
+  color: #f4f4f5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: "JetBrains Mono", "Fira Code", Menlo, monospace;
+}
