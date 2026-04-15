@@ -67,11 +67,14 @@ function FAQ() {
 
 function Accordion({ question, answer }: { question: string; answer: string }) {
   const [open, setOpen] = useState(false)
+  const contentId = `faq-${question.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
 
   return (
     <div className="overflow-hidden rounded-lg border border-zinc-200/15 bg-zinc-900/70">
       <button
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-controls={contentId}
         className="flex w-full items-center justify-between px-5 py-4 text-left transition hover:bg-zinc-800/70"
       >
         <span className="text-lg font-semibold text-zinc-100">{question}</span>
@@ -80,7 +83,11 @@ function Accordion({ question, answer }: { question: string; answer: string }) {
           className={`text-zinc-300 transition-transform ${open ? 'rotate-180' : ''}`}
         />
       </button>
-      {open && <div className="px-5 pb-5 leading-relaxed text-zinc-300">{answer}</div>}
+      {open && (
+        <div id={contentId} className="px-5 pb-5 leading-relaxed text-zinc-300">
+          {answer}
+        </div>
+      )}
     </div>
   )
 }

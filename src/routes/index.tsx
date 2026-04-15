@@ -270,9 +270,12 @@ function MembershipCard({
           </li>
         ))}
       </ul>
-      <button className="mt-8 rounded-xl border border-zinc-100/25 py-2.5 font-semibold text-zinc-50 transition hover:border-orange-200/60 hover:text-orange-100">
+      <Link
+        to="/faq"
+        className="mt-8 rounded-xl border border-zinc-100/25 py-2.5 text-center font-semibold text-zinc-50 transition hover:border-orange-200/60 hover:text-orange-100"
+      >
         {name === 'Creator Circle' ? 'Contact Team' : 'Start Membership'}
-      </button>
+      </Link>
     </div>
   )
 }
