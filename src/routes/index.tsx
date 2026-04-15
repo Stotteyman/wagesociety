@@ -113,6 +113,12 @@ function Home() {
                   Join W.A.G.E. Society <ArrowRight size={18} />
                 </a>
                 <Link
+                  to="/dashboard"
+                  className="inline-flex items-center justify-center rounded-xl border border-orange-300/55 px-7 py-3 font-semibold text-orange-100 transition hover:border-orange-200 hover:text-orange-50"
+                >
+                  Member Login
+                </Link>
+                <Link
                   to="/faq"
                   className="inline-flex items-center justify-center rounded-xl border border-zinc-300/40 px-7 py-3 font-semibold text-zinc-100 transition hover:border-zinc-100"
                 >
