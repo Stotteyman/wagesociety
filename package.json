@@ -8,6 +8,9 @@
   },
   "dependencies": {
     "@netlify/identity": "^1.0.0",
+    "@stripe/react-stripe-js": "^6.2.0",
+    "@stripe/stripe-js": "^9.2.0",
+    "@supabase/supabase-js": "^2.103.2",
     "@tailwindcss/vite": "^4.0.6",
     "@tanstack/react-router": "^1.163.3",
     "@tanstack/react-start": "^1.166.1",
@@ -17,6 +20,7 @@
     "lucide-react": "^0.576.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "stripe": "^22.0.1",
     "tailwindcss": "^4.0.6",
     "vite-tsconfig-paths": "^6.0.2"
   },

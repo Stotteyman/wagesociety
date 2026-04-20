@@ -3,6 +3,23 @@ import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 
 export const Route = createFileRoute('/faq')({
+  head: () => ({
+    meta: [
+      { title: 'Organization FAQ — W.A.G.E. Society' },
+      {
+        name: 'description',
+        content:
+          'Answers about W.A.G.E. Society membership tracks, creator resources, marketing systems, and entrepreneur-focused community access.',
+      },
+      { property: 'og:title', content: 'Organization FAQ — W.A.G.E. Society' },
+      {
+        property: 'og:description',
+        content: 'Everything you need to know about joining W.A.G.E. Society as a creator, marketer, or entrepreneur.',
+      },
+      { property: 'og:url', content: 'https://playful-torte-0c9af1.netlify.app/faq' },
+    ],
+    links: [{ rel: 'canonical', href: 'https://playful-torte-0c9af1.netlify.app/faq' }],
+  }),
   component: FAQ,
 })
 
@@ -10,37 +27,37 @@ const faqs = [
   {
     question: 'What is W.A.G.E. Society?',
     answer:
-      'W.A.G.E. Society is a members-only clubhouse platform for live-streaming, online entertainment, and community interaction. It combines secure member access, live events, chat rooms, and link sharing in one experience.',
+      'W.A.G.E. Society is a member-driven organization for content creators, online marketers, and entrepreneurs. It combines strategy resources, community accountability, and execution systems in one environment.',
   },
   {
     question: 'How does member authentication work?',
     answer:
-      'Members sign in through a secure login flow that unlocks private clubhouse areas. Access controls can be configured for different member tiers, moderators, and creators.',
+      'Members sign in through a secure login flow that unlocks private organization areas. Access controls can be configured for different membership tracks, moderators, and leadership groups.',
   },
   {
-    question: 'Is there a dedicated community chat area?',
+    question: 'Do you provide collaboration channels for growth?',
     answer:
-      'Yes. W.A.G.E. Society includes real-time chat channels where members can react during streams, join topic lounges, and participate in hosted conversations.',
+      'Yes. Members get access to collaboration channels for campaign feedback, launch planning, offer testing, and peer accountability sessions.',
   },
   {
-    question: 'Can members share links and content drops?',
+    question: 'Can members share marketing assets and playbooks?',
     answer:
-      'Yes. Members can post and discuss links to clips, playlists, event pages, and other entertainment content in curated channels designed for discovery.',
+      'Yes. Members can share scripts, templates, funnels, swipe files, and curated links in structured channels designed for fast implementation.',
   },
   {
-    question: 'How is live-streaming supported?',
+    question: 'Are there live sessions and trainings?',
     answer:
-      'The platform supports live-stream highlights with featured schedules, countdown windows, and now-live visibility so members can quickly jump into current events.',
+      'Yes. The organization runs live workshops, office hours, and strategy roundtables with schedules and reminders so members can join in real time.',
   },
   {
-    question: 'What types of entertainment content are featured?',
+    question: 'What topics are covered inside the organization?',
     answer:
-      'W.A.G.E. Society is built for broad online entertainment culture including music, creator shows, gaming, sports watch sessions, and aftershow discussions.',
+      'Core topics include content systems, online marketing, offers, audience growth, sales funnels, automation, and entrepreneurship operations.',
   },
   {
     question: 'Who is this platform designed for?',
     answer:
-      'It is designed for online communities that want an energetic, branded clubhouse where audience engagement, live interaction, and content sharing happen together.',
+      'It is designed for creators, marketers, founders, and operators who want a focused organization where learning, implementation, and revenue growth happen together.',
   },
 ]
 
@@ -49,11 +66,11 @@ function FAQ() {
     <div className="min-h-screen px-4 py-20 text-zinc-100">
       <div className="mx-auto max-w-3xl">
         <h1 className="text-center text-4xl font-black md:text-5xl">
-          W.A.G.E. Society FAQ
+          W.A.G.E. Society Organization FAQ
         </h1>
         <p className="mx-auto mt-4 max-w-2xl text-center text-zinc-300">
-          Answers about membership, authentication, chat, live-stream features,
-          and entertainment community tools.
+          Answers about membership tracks, authentication, growth channels,
+          live training, and creator business tools.
         </p>
         <div className="mt-14 space-y-3">
           {faqs.map((faq) => (

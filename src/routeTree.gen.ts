@@ -9,10 +9,47 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as MerchRouteImport } from './routes/merch'
+import { Route as LiveRouteImport } from './routes/live'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as AppealsRouteImport } from './routes/appeals'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
+import { Route as ApiShopRouteImport } from './routes/api/shop'
+import { Route as ApiProfileRouteImport } from './routes/api/profile'
+import { Route as ApiMarketingProofRouteImport } from './routes/api/marketing-proof'
+import { Route as ApiKnowledgeVaultRouteImport } from './routes/api/knowledge-vault'
+import { Route as ApiKickLoginRouteImport } from './routes/api/kick-login'
+import { Route as ApiKickCallbackRouteImport } from './routes/api/kick-callback'
+import { Route as ApiCreatePaymentIntentRouteImport } from './routes/api/create-payment-intent'
+import { Route as ApiCollabRouteImport } from './routes/api/collab'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminShopRouteImport } from './routes/admin.shop'
+import { Route as DashboardToolsToolRouteImport } from './routes/dashboard.tools.$tool'
+import { Route as ApiToolsToolRouteImport } from './routes/api/tools/$tool'
+import { Route as ApiMeProfileRouteImport } from './routes/api/me/profile'
+import { Route as ApiMeAccessRouteImport } from './routes/api/me/access'
+import { Route as ApiLiveStreamsRouteImport } from './routes/api/live/streams'
+import { Route as ApiCollabApplyRouteImport } from './routes/api/collab/apply'
+import { Route as ApiCollabApplicantsRouteImport } from './routes/api/collab/applicants'
+import { Route as ApiAdminRolesRouteImport } from './routes/api/admin/roles'
+import { Route as ApiAdminPermissionsRouteImport } from './routes/api/admin/permissions'
+import { Route as ApiAdminShopPlansRouteImport } from './routes/api/admin/shop/plans'
+import { Route as ApiAdminShopMerchRouteImport } from './routes/api/admin/shop/merch'
 
+const MerchRoute = MerchRouteImport.update({
+  id: '/merch',
+  path: '/merch',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LiveRoute = LiveRouteImport.update({
+  id: '/live',
+  path: '/live',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FaqRoute = FaqRouteImport.update({
   id: '/faq',
   path: '/faq',
@@ -23,44 +60,377 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CheckoutRoute = CheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppealsRoute = AppealsRouteImport.update({
+  id: '/appeals',
+  path: '/appeals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
+  id: '/api/stripe-webhook',
+  path: '/api/stripe-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiShopRoute = ApiShopRouteImport.update({
+  id: '/api/shop',
+  path: '/api/shop',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProfileRoute = ApiProfileRouteImport.update({
+  id: '/api/profile',
+  path: '/api/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMarketingProofRoute = ApiMarketingProofRouteImport.update({
+  id: '/api/marketing-proof',
+  path: '/api/marketing-proof',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiKnowledgeVaultRoute = ApiKnowledgeVaultRouteImport.update({
+  id: '/api/knowledge-vault',
+  path: '/api/knowledge-vault',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiKickLoginRoute = ApiKickLoginRouteImport.update({
+  id: '/api/kick-login',
+  path: '/api/kick-login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiKickCallbackRoute = ApiKickCallbackRouteImport.update({
+  id: '/api/kick-callback',
+  path: '/api/kick-callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCreatePaymentIntentRoute = ApiCreatePaymentIntentRouteImport.update({
+  id: '/api/create-payment-intent',
+  path: '/api/create-payment-intent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCollabRoute = ApiCollabRouteImport.update({
+  id: '/api/collab',
+  path: '/api/collab',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminShopRoute = AdminShopRouteImport.update({
+  id: '/shop',
+  path: '/shop',
+  getParentRoute: () => AdminRoute,
+} as any)
+const DashboardToolsToolRoute = DashboardToolsToolRouteImport.update({
+  id: '/tools/$tool',
+  path: '/tools/$tool',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const ApiToolsToolRoute = ApiToolsToolRouteImport.update({
+  id: '/api/tools/$tool',
+  path: '/api/tools/$tool',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMeProfileRoute = ApiMeProfileRouteImport.update({
+  id: '/api/me/profile',
+  path: '/api/me/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMeAccessRoute = ApiMeAccessRouteImport.update({
+  id: '/api/me/access',
+  path: '/api/me/access',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiLiveStreamsRoute = ApiLiveStreamsRouteImport.update({
+  id: '/api/live/streams',
+  path: '/api/live/streams',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCollabApplyRoute = ApiCollabApplyRouteImport.update({
+  id: '/apply',
+  path: '/apply',
+  getParentRoute: () => ApiCollabRoute,
+} as any)
+const ApiCollabApplicantsRoute = ApiCollabApplicantsRouteImport.update({
+  id: '/applicants',
+  path: '/applicants',
+  getParentRoute: () => ApiCollabRoute,
+} as any)
+const ApiAdminRolesRoute = ApiAdminRolesRouteImport.update({
+  id: '/api/admin/roles',
+  path: '/api/admin/roles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminPermissionsRoute = ApiAdminPermissionsRouteImport.update({
+  id: '/api/admin/permissions',
+  path: '/api/admin/permissions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminShopPlansRoute = ApiAdminShopPlansRouteImport.update({
+  id: '/api/admin/shop/plans',
+  path: '/api/admin/shop/plans',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminShopMerchRoute = ApiAdminShopMerchRouteImport.update({
+  id: '/api/admin/shop/merch',
+  path: '/api/admin/shop/merch',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/appeals': typeof AppealsRoute
+  '/checkout': typeof CheckoutRoute
+  '/dashboard': typeof DashboardRouteWithChildren
   '/faq': typeof FaqRoute
+  '/live': typeof LiveRoute
+  '/merch': typeof MerchRoute
+  '/admin/shop': typeof AdminShopRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/api/collab': typeof ApiCollabRouteWithChildren
+  '/api/create-payment-intent': typeof ApiCreatePaymentIntentRoute
+  '/api/kick-callback': typeof ApiKickCallbackRoute
+  '/api/kick-login': typeof ApiKickLoginRoute
+  '/api/knowledge-vault': typeof ApiKnowledgeVaultRoute
+  '/api/marketing-proof': typeof ApiMarketingProofRoute
+  '/api/profile': typeof ApiProfileRoute
+  '/api/shop': typeof ApiShopRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
+  '/api/admin/permissions': typeof ApiAdminPermissionsRoute
+  '/api/admin/roles': typeof ApiAdminRolesRoute
+  '/api/collab/applicants': typeof ApiCollabApplicantsRoute
+  '/api/collab/apply': typeof ApiCollabApplyRoute
+  '/api/live/streams': typeof ApiLiveStreamsRoute
+  '/api/me/access': typeof ApiMeAccessRoute
+  '/api/me/profile': typeof ApiMeProfileRoute
+  '/api/tools/$tool': typeof ApiToolsToolRoute
+  '/dashboard/tools/$tool': typeof DashboardToolsToolRoute
+  '/api/admin/shop/merch': typeof ApiAdminShopMerchRoute
+  '/api/admin/shop/plans': typeof ApiAdminShopPlansRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/appeals': typeof AppealsRoute
+  '/checkout': typeof CheckoutRoute
+  '/dashboard': typeof DashboardRouteWithChildren
   '/faq': typeof FaqRoute
+  '/live': typeof LiveRoute
+  '/merch': typeof MerchRoute
+  '/admin/shop': typeof AdminShopRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/api/collab': typeof ApiCollabRouteWithChildren
+  '/api/create-payment-intent': typeof ApiCreatePaymentIntentRoute
+  '/api/kick-callback': typeof ApiKickCallbackRoute
+  '/api/kick-login': typeof ApiKickLoginRoute
+  '/api/knowledge-vault': typeof ApiKnowledgeVaultRoute
+  '/api/marketing-proof': typeof ApiMarketingProofRoute
+  '/api/profile': typeof ApiProfileRoute
+  '/api/shop': typeof ApiShopRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
+  '/api/admin/permissions': typeof ApiAdminPermissionsRoute
+  '/api/admin/roles': typeof ApiAdminRolesRoute
+  '/api/collab/applicants': typeof ApiCollabApplicantsRoute
+  '/api/collab/apply': typeof ApiCollabApplyRoute
+  '/api/live/streams': typeof ApiLiveStreamsRoute
+  '/api/me/access': typeof ApiMeAccessRoute
+  '/api/me/profile': typeof ApiMeProfileRoute
+  '/api/tools/$tool': typeof ApiToolsToolRoute
+  '/dashboard/tools/$tool': typeof DashboardToolsToolRoute
+  '/api/admin/shop/merch': typeof ApiAdminShopMerchRoute
+  '/api/admin/shop/plans': typeof ApiAdminShopPlansRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/appeals': typeof AppealsRoute
+  '/checkout': typeof CheckoutRoute
+  '/dashboard': typeof DashboardRouteWithChildren
   '/faq': typeof FaqRoute
+  '/live': typeof LiveRoute
+  '/merch': typeof MerchRoute
+  '/admin/shop': typeof AdminShopRoute
+  '/admin/users': typeof AdminUsersRoute
+  '/api/collab': typeof ApiCollabRouteWithChildren
+  '/api/create-payment-intent': typeof ApiCreatePaymentIntentRoute
+  '/api/kick-callback': typeof ApiKickCallbackRoute
+  '/api/kick-login': typeof ApiKickLoginRoute
+  '/api/knowledge-vault': typeof ApiKnowledgeVaultRoute
+  '/api/marketing-proof': typeof ApiMarketingProofRoute
+  '/api/profile': typeof ApiProfileRoute
+  '/api/shop': typeof ApiShopRoute
+  '/api/stripe-webhook': typeof ApiStripeWebhookRoute
+  '/api/admin/permissions': typeof ApiAdminPermissionsRoute
+  '/api/admin/roles': typeof ApiAdminRolesRoute
+  '/api/collab/applicants': typeof ApiCollabApplicantsRoute
+  '/api/collab/apply': typeof ApiCollabApplyRoute
+  '/api/live/streams': typeof ApiLiveStreamsRoute
+  '/api/me/access': typeof ApiMeAccessRoute
+  '/api/me/profile': typeof ApiMeProfileRoute
+  '/api/tools/$tool': typeof ApiToolsToolRoute
+  '/dashboard/tools/$tool': typeof DashboardToolsToolRoute
+  '/api/admin/shop/merch': typeof ApiAdminShopMerchRoute
+  '/api/admin/shop/plans': typeof ApiAdminShopPlansRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/faq'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/appeals'
+    | '/checkout'
+    | '/dashboard'
+    | '/faq'
+    | '/live'
+    | '/merch'
+    | '/admin/shop'
+    | '/admin/users'
+    | '/api/collab'
+    | '/api/create-payment-intent'
+    | '/api/kick-callback'
+    | '/api/kick-login'
+    | '/api/knowledge-vault'
+    | '/api/marketing-proof'
+    | '/api/profile'
+    | '/api/shop'
+    | '/api/stripe-webhook'
+    | '/api/admin/permissions'
+    | '/api/admin/roles'
+    | '/api/collab/applicants'
+    | '/api/collab/apply'
+    | '/api/live/streams'
+    | '/api/me/access'
+    | '/api/me/profile'
+    | '/api/tools/$tool'
+    | '/dashboard/tools/$tool'
+    | '/api/admin/shop/merch'
+    | '/api/admin/shop/plans'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/faq'
-  id: '__root__' | '/' | '/dashboard' | '/faq'
+  to:
+    | '/'
+    | '/admin'
+    | '/appeals'
+    | '/checkout'
+    | '/dashboard'
+    | '/faq'
+    | '/live'
+    | '/merch'
+    | '/admin/shop'
+    | '/admin/users'
+    | '/api/collab'
+    | '/api/create-payment-intent'
+    | '/api/kick-callback'
+    | '/api/kick-login'
+    | '/api/knowledge-vault'
+    | '/api/marketing-proof'
+    | '/api/profile'
+    | '/api/shop'
+    | '/api/stripe-webhook'
+    | '/api/admin/permissions'
+    | '/api/admin/roles'
+    | '/api/collab/applicants'
+    | '/api/collab/apply'
+    | '/api/live/streams'
+    | '/api/me/access'
+    | '/api/me/profile'
+    | '/api/tools/$tool'
+    | '/dashboard/tools/$tool'
+    | '/api/admin/shop/merch'
+    | '/api/admin/shop/plans'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/appeals'
+    | '/checkout'
+    | '/dashboard'
+    | '/faq'
+    | '/live'
+    | '/merch'
+    | '/admin/shop'
+    | '/admin/users'
+    | '/api/collab'
+    | '/api/create-payment-intent'
+    | '/api/kick-callback'
+    | '/api/kick-login'
+    | '/api/knowledge-vault'
+    | '/api/marketing-proof'
+    | '/api/profile'
+    | '/api/shop'
+    | '/api/stripe-webhook'
+    | '/api/admin/permissions'
+    | '/api/admin/roles'
+    | '/api/collab/applicants'
+    | '/api/collab/apply'
+    | '/api/live/streams'
+    | '/api/me/access'
+    | '/api/me/profile'
+    | '/api/tools/$tool'
+    | '/dashboard/tools/$tool'
+    | '/api/admin/shop/merch'
+    | '/api/admin/shop/plans'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  DashboardRoute: typeof DashboardRoute
+  AdminRoute: typeof AdminRouteWithChildren
+  AppealsRoute: typeof AppealsRoute
+  CheckoutRoute: typeof CheckoutRoute
+  DashboardRoute: typeof DashboardRouteWithChildren
   FaqRoute: typeof FaqRoute
+  LiveRoute: typeof LiveRoute
+  MerchRoute: typeof MerchRoute
+  ApiCollabRoute: typeof ApiCollabRouteWithChildren
+  ApiCreatePaymentIntentRoute: typeof ApiCreatePaymentIntentRoute
+  ApiKickCallbackRoute: typeof ApiKickCallbackRoute
+  ApiKickLoginRoute: typeof ApiKickLoginRoute
+  ApiKnowledgeVaultRoute: typeof ApiKnowledgeVaultRoute
+  ApiMarketingProofRoute: typeof ApiMarketingProofRoute
+  ApiProfileRoute: typeof ApiProfileRoute
+  ApiShopRoute: typeof ApiShopRoute
+  ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
+  ApiAdminPermissionsRoute: typeof ApiAdminPermissionsRoute
+  ApiAdminRolesRoute: typeof ApiAdminRolesRoute
+  ApiLiveStreamsRoute: typeof ApiLiveStreamsRoute
+  ApiMeAccessRoute: typeof ApiMeAccessRoute
+  ApiMeProfileRoute: typeof ApiMeProfileRoute
+  ApiToolsToolRoute: typeof ApiToolsToolRoute
+  ApiAdminShopMerchRoute: typeof ApiAdminShopMerchRoute
+  ApiAdminShopPlansRoute: typeof ApiAdminShopPlansRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/merch': {
+      id: '/merch'
+      path: '/merch'
+      fullPath: '/merch'
+      preLoaderRoute: typeof MerchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/live': {
+      id: '/live'
+      path: '/live'
+      fullPath: '/live'
+      preLoaderRoute: typeof LiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/faq': {
       id: '/faq'
       path: '/faq'
@@ -75,6 +445,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/checkout': {
+      id: '/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/appeals': {
+      id: '/appeals'
+      path: '/appeals'
+      fullPath: '/appeals'
+      preLoaderRoute: typeof AppealsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -82,13 +473,227 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/stripe-webhook': {
+      id: '/api/stripe-webhook'
+      path: '/api/stripe-webhook'
+      fullPath: '/api/stripe-webhook'
+      preLoaderRoute: typeof ApiStripeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/shop': {
+      id: '/api/shop'
+      path: '/api/shop'
+      fullPath: '/api/shop'
+      preLoaderRoute: typeof ApiShopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/profile': {
+      id: '/api/profile'
+      path: '/api/profile'
+      fullPath: '/api/profile'
+      preLoaderRoute: typeof ApiProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/marketing-proof': {
+      id: '/api/marketing-proof'
+      path: '/api/marketing-proof'
+      fullPath: '/api/marketing-proof'
+      preLoaderRoute: typeof ApiMarketingProofRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/knowledge-vault': {
+      id: '/api/knowledge-vault'
+      path: '/api/knowledge-vault'
+      fullPath: '/api/knowledge-vault'
+      preLoaderRoute: typeof ApiKnowledgeVaultRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/kick-login': {
+      id: '/api/kick-login'
+      path: '/api/kick-login'
+      fullPath: '/api/kick-login'
+      preLoaderRoute: typeof ApiKickLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/kick-callback': {
+      id: '/api/kick-callback'
+      path: '/api/kick-callback'
+      fullPath: '/api/kick-callback'
+      preLoaderRoute: typeof ApiKickCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/create-payment-intent': {
+      id: '/api/create-payment-intent'
+      path: '/api/create-payment-intent'
+      fullPath: '/api/create-payment-intent'
+      preLoaderRoute: typeof ApiCreatePaymentIntentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/collab': {
+      id: '/api/collab'
+      path: '/api/collab'
+      fullPath: '/api/collab'
+      preLoaderRoute: typeof ApiCollabRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/shop': {
+      id: '/admin/shop'
+      path: '/shop'
+      fullPath: '/admin/shop'
+      preLoaderRoute: typeof AdminShopRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/dashboard/tools/$tool': {
+      id: '/dashboard/tools/$tool'
+      path: '/tools/$tool'
+      fullPath: '/dashboard/tools/$tool'
+      preLoaderRoute: typeof DashboardToolsToolRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/api/tools/$tool': {
+      id: '/api/tools/$tool'
+      path: '/api/tools/$tool'
+      fullPath: '/api/tools/$tool'
+      preLoaderRoute: typeof ApiToolsToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/me/profile': {
+      id: '/api/me/profile'
+      path: '/api/me/profile'
+      fullPath: '/api/me/profile'
+      preLoaderRoute: typeof ApiMeProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/me/access': {
+      id: '/api/me/access'
+      path: '/api/me/access'
+      fullPath: '/api/me/access'
+      preLoaderRoute: typeof ApiMeAccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/live/streams': {
+      id: '/api/live/streams'
+      path: '/api/live/streams'
+      fullPath: '/api/live/streams'
+      preLoaderRoute: typeof ApiLiveStreamsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/collab/apply': {
+      id: '/api/collab/apply'
+      path: '/apply'
+      fullPath: '/api/collab/apply'
+      preLoaderRoute: typeof ApiCollabApplyRouteImport
+      parentRoute: typeof ApiCollabRoute
+    }
+    '/api/collab/applicants': {
+      id: '/api/collab/applicants'
+      path: '/applicants'
+      fullPath: '/api/collab/applicants'
+      preLoaderRoute: typeof ApiCollabApplicantsRouteImport
+      parentRoute: typeof ApiCollabRoute
+    }
+    '/api/admin/roles': {
+      id: '/api/admin/roles'
+      path: '/api/admin/roles'
+      fullPath: '/api/admin/roles'
+      preLoaderRoute: typeof ApiAdminRolesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/permissions': {
+      id: '/api/admin/permissions'
+      path: '/api/admin/permissions'
+      fullPath: '/api/admin/permissions'
+      preLoaderRoute: typeof ApiAdminPermissionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/shop/plans': {
+      id: '/api/admin/shop/plans'
+      path: '/api/admin/shop/plans'
+      fullPath: '/api/admin/shop/plans'
+      preLoaderRoute: typeof ApiAdminShopPlansRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/shop/merch': {
+      id: '/api/admin/shop/merch'
+      path: '/api/admin/shop/merch'
+      fullPath: '/api/admin/shop/merch'
+      preLoaderRoute: typeof ApiAdminShopMerchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminShopRoute: typeof AdminShopRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminShopRoute: AdminShopRoute,
+  AdminUsersRoute: AdminUsersRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface DashboardRouteChildren {
+  DashboardToolsToolRoute: typeof DashboardToolsToolRoute
+}
+
+const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardToolsToolRoute: DashboardToolsToolRoute,
+}
+
+const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
+  DashboardRouteChildren,
+)
+
+interface ApiCollabRouteChildren {
+  ApiCollabApplicantsRoute: typeof ApiCollabApplicantsRoute
+  ApiCollabApplyRoute: typeof ApiCollabApplyRoute
+}
+
+const ApiCollabRouteChildren: ApiCollabRouteChildren = {
+  ApiCollabApplicantsRoute: ApiCollabApplicantsRoute,
+  ApiCollabApplyRoute: ApiCollabApplyRoute,
+}
+
+const ApiCollabRouteWithChildren = ApiCollabRoute._addFileChildren(
+  ApiCollabRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  DashboardRoute: DashboardRoute,
+  AdminRoute: AdminRouteWithChildren,
+  AppealsRoute: AppealsRoute,
+  CheckoutRoute: CheckoutRoute,
+  DashboardRoute: DashboardRouteWithChildren,
   FaqRoute: FaqRoute,
+  LiveRoute: LiveRoute,
+  MerchRoute: MerchRoute,
+  ApiCollabRoute: ApiCollabRouteWithChildren,
+  ApiCreatePaymentIntentRoute: ApiCreatePaymentIntentRoute,
+  ApiKickCallbackRoute: ApiKickCallbackRoute,
+  ApiKickLoginRoute: ApiKickLoginRoute,
+  ApiKnowledgeVaultRoute: ApiKnowledgeVaultRoute,
+  ApiMarketingProofRoute: ApiMarketingProofRoute,
+  ApiProfileRoute: ApiProfileRoute,
+  ApiShopRoute: ApiShopRoute,
+  ApiStripeWebhookRoute: ApiStripeWebhookRoute,
+  ApiAdminPermissionsRoute: ApiAdminPermissionsRoute,
+  ApiAdminRolesRoute: ApiAdminRolesRoute,
+  ApiLiveStreamsRoute: ApiLiveStreamsRoute,
+  ApiMeAccessRoute: ApiMeAccessRoute,
+  ApiMeProfileRoute: ApiMeProfileRoute,
+  ApiToolsToolRoute: ApiToolsToolRoute,
+  ApiAdminShopMerchRoute: ApiAdminShopMerchRoute,
+  ApiAdminShopPlansRoute: ApiAdminShopPlansRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
