@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 import { NewsPostForm } from '../components/NewsPostForm'
-import { useAccess } from '../routes/dashboard'
+// import { useAccess } from '../routes/dashboard'
 import { createFileRoute } from '@tanstack/react-router'
 
 // News post type
@@ -28,14 +28,13 @@ function NewsSection() {
   }
   useEffect(() => { fetchPosts() }, [])
 
-  // Only staff/admin/manager/superadmin can post
-  const access = useAccess ? useAccess() : { role: 'user' }
-  const canPost = ['superadmin', 'admin', 'manager', 'staff'].includes(access.role)
+  // TODO: Optionally fetch user role from /api/me/access if you want to show the post form only for staff/admin
+  const canPost = false // Hide post form until role logic is re-implemented
 
   return (
     <div className="max-w-2xl mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">News</h1>
-      {canPost && <NewsPostForm onPost={fetchPosts} />}
+      {/* {canPost && <NewsPostForm onPost={fetchPosts} />} */}
       {loading ? (
         <div>Loading...</div>
       ) : posts.length === 0 ? (

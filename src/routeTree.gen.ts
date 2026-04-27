@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as NewsRouteImport } from './routes/news'
 import { Route as MerchRouteImport } from './routes/merch'
 import { Route as LiveRouteImport } from './routes/live'
 import { Route as FaqRouteImport } from './routes/faq'
@@ -40,6 +41,11 @@ import { Route as ApiAdminPermissionsRouteImport } from './routes/api/admin/perm
 import { Route as ApiAdminShopPlansRouteImport } from './routes/api/admin/shop/plans'
 import { Route as ApiAdminShopMerchRouteImport } from './routes/api/admin/shop/merch'
 
+const NewsRoute = NewsRouteImport.update({
+  id: '/news',
+  path: '/news',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MerchRoute = MerchRouteImport.update({
   id: '/merch',
   path: '/merch',
@@ -200,6 +206,7 @@ export interface FileRoutesByFullPath {
   '/faq': typeof FaqRoute
   '/live': typeof LiveRoute
   '/merch': typeof MerchRoute
+  '/news': typeof NewsRoute
   '/admin/shop': typeof AdminShopRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/collab': typeof ApiCollabRouteWithChildren
@@ -232,6 +239,7 @@ export interface FileRoutesByTo {
   '/faq': typeof FaqRoute
   '/live': typeof LiveRoute
   '/merch': typeof MerchRoute
+  '/news': typeof NewsRoute
   '/admin/shop': typeof AdminShopRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/collab': typeof ApiCollabRouteWithChildren
@@ -265,6 +273,7 @@ export interface FileRoutesById {
   '/faq': typeof FaqRoute
   '/live': typeof LiveRoute
   '/merch': typeof MerchRoute
+  '/news': typeof NewsRoute
   '/admin/shop': typeof AdminShopRoute
   '/admin/users': typeof AdminUsersRoute
   '/api/collab': typeof ApiCollabRouteWithChildren
@@ -299,6 +308,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/live'
     | '/merch'
+    | '/news'
     | '/admin/shop'
     | '/admin/users'
     | '/api/collab'
@@ -331,6 +341,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/live'
     | '/merch'
+    | '/news'
     | '/admin/shop'
     | '/admin/users'
     | '/api/collab'
@@ -363,6 +374,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/live'
     | '/merch'
+    | '/news'
     | '/admin/shop'
     | '/admin/users'
     | '/api/collab'
@@ -396,6 +408,7 @@ export interface RootRouteChildren {
   FaqRoute: typeof FaqRoute
   LiveRoute: typeof LiveRoute
   MerchRoute: typeof MerchRoute
+  NewsRoute: typeof NewsRoute
   ApiCollabRoute: typeof ApiCollabRouteWithChildren
   ApiCreatePaymentIntentRoute: typeof ApiCreatePaymentIntentRoute
   ApiKickCallbackRoute: typeof ApiKickCallbackRoute
@@ -417,6 +430,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/news': {
+      id: '/news'
+      path: '/news'
+      fullPath: '/news'
+      preLoaderRoute: typeof NewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/merch': {
       id: '/merch'
       path: '/merch'
@@ -677,6 +697,7 @@ const rootRouteChildren: RootRouteChildren = {
   FaqRoute: FaqRoute,
   LiveRoute: LiveRoute,
   MerchRoute: MerchRoute,
+  NewsRoute: NewsRoute,
   ApiCollabRoute: ApiCollabRouteWithChildren,
   ApiCreatePaymentIntentRoute: ApiCreatePaymentIntentRoute,
   ApiKickCallbackRoute: ApiKickCallbackRoute,
