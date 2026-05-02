@@ -1,30 +1,33 @@
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { z } from 'zod'
 import {
   ArrowLeft,
+  BarChart3,
   BadgeCheck,
   CalendarDays,
   ClipboardList,
   CreditCard,
   DollarSign,
   LayoutDashboard,
+  LogOut,
   Megaphone,
+  Newspaper,
   NotebookPen,
+  Radio,
   Settings,
+  Shield,
   Users,
 } from 'lucide-react'
 import { canManageRole, formatRoleLabel, type BanRecord, type OrgPermission, type OrgRole } from '../lib/orgAccess'
 import { authedFetch, getSupabaseBrowserClient } from '../lib/supabaseBrowser'
+import { requireAuthenticatedRoute } from '../lib/routeAuth'
 import { setStoredViewAsRole } from '../lib/viewAs'
 import { ProfileSettings } from '../components/ProfileSettings'
 
-const DashboardSearchSchema = z.object({
-  view: z.enum(['login', 'signup']).optional(),
-})
-
 export const Route = createFileRoute('/dashboard')({
-  validateSearch: DashboardSearchSchema,
+  beforeLoad: async () => {
+    await requireAuthenticatedRoute('/login')
+  },
   head: () => ({
     meta: [
       { title: 'Organization Dashboard — W.A.G.E. Society' },
@@ -38,7 +41,7 @@ export const Route = createFileRoute('/dashboard')({
   component: DashboardGate,
 })
 
-type PlanName = 'Backstage' | 'All Access' | 'Creator Circle'
+type PlanName = 'FREE' | 'STANDARD' | 'PLUS' | 'UNLIMITED' | 'VIP'
 
 type MembershipPlan = {
   id: string
@@ -61,7 +64,23 @@ type AccessResponse = {
 type AppUser = {
   email?: string | null
   user_metadata?: {
+    username?: string
     full_name?: string
+    membership_plan?: string
+  }
+}
+
+type NewsItem = {
+  id: string
+  title: string
+  body: string
+  created_at: string
+  author: string
+}
+
+type ProfileWithSocialLinks = {
+  profile?: {
+    social_links?: Record<string, string | undefined>
   }
 }
 
@@ -74,37 +93,59 @@ const fallbackMembershipPlans: Array<{
   features: string[]
 }> = [
   {
-    id: 'fallback-backstage',
-    slug: 'backstage',
-    name: 'Backstage',
+    id: 'fallback-free',
+    slug: 'free',
+    name: 'FREE',
     display_price: '$0',
-    description: 'For new builders exploring the organization.',
-    features: ['Public knowledge feed', 'Monthly orientation workshop', 'Limited mastermind preview'],
+    description: 'Very limited access for basic account setup and browsing.',
+    features: ['Log in and account access', 'Connect social/OAuth accounts', 'Browse public sections'],
   },
   {
-    id: 'fallback-all-access',
-    slug: 'all-access',
-    name: 'All Access',
-    display_price: '$19/mo',
-    description: 'For active members building consistent momentum.',
+    id: 'fallback-standard',
+    slug: 'standard',
+    name: 'STANDARD',
+    display_price: '$20/mo',
+    description: 'Core membership plan for regular creator workflows.',
     features: [
-      'Full member authentication',
-      'Mastermind channels + resource library',
-      'Weekly live growth sessions',
-      'Campaign and launch announcements',
+      'Expanded workspace access',
+      'Standard member sections',
+      'Routine creator tools',
     ],
   },
   {
-    id: 'fallback-creator-circle',
-    slug: 'creator-circle',
-    name: 'Creator Circle',
-    display_price: '$49/mo',
-    description: 'For founders and operators scaling online revenue.',
+    id: 'fallback-plus',
+    slug: 'plus',
+    name: 'PLUS',
+    display_price: '$50/mo',
+    description: 'Higher-tier access for serious operators and teams.',
     features: [
-      'Advanced creator and marketing systems',
-      'Priority partner and promotion access',
-      'Private creator war room',
-      'Performance and revenue snapshots',
+      'Broader tool access',
+      'Priority support',
+      'Advanced workspace options',
+    ],
+  },
+  {
+    id: 'fallback-unlimited',
+    slug: 'unlimited',
+    name: 'UNLIMITED',
+    display_price: '$100/mo',
+    description: 'Full platform access for high-output creators and founders.',
+    features: [
+      'Complete creator tool access',
+      'Premium sections and workflows',
+      'Top-tier performance features',
+    ],
+  },
+  {
+    id: 'fallback-vip',
+    slug: 'vip',
+    name: 'VIP',
+    display_price: '$1000/mo',
+    description: 'Elite private tier for highest-priority access and support.',
+    features: [
+      'VIP-level access',
+      'Private insider channels',
+      'Highest support priority',
     ],
   },
 ]
@@ -120,15 +161,6 @@ function DashboardGate() {
   const [permissions, setPermissions] = useState<OrgPermission[]>([])
   const [ban, setBan] = useState<BanRecord | null>(null)
   const [accessLoading, setAccessLoading] = useState(true)
-
-  const search = Route.useSearch()
-  const [authView, setAuthView] = useState<'login' | 'signup'>(search.view === 'signup' ? 'signup' : 'login')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
-  const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>(fallbackMembershipPlans)
-  const [selectedPlan, setSelectedPlan] = useState<string>('all-access')
-  const [busyAction, setBusyAction] = useState<'login' | 'signup' | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -162,24 +194,6 @@ function DashboardGate() {
   }, [])
 
   useEffect(() => {
-    void (async () => {
-      try {
-        const response = await fetch('/api/shop')
-        if (!response.ok) return
-
-        const data = (await response.json()) as { membershipPlans?: MembershipPlan[] }
-        const plans = data.membershipPlans || []
-        if (!plans.length) return
-
-        setMembershipPlans(plans)
-        setSelectedPlan((current) => (plans.some((plan) => plan.slug === current) ? current : plans[0].slug))
-      } catch {
-        // Keep fallback plans.
-      }
-    })()
-  }, [])
-
-  useEffect(() => {
     if (!member) {
       setAccessLoading(false)
       return
@@ -207,75 +221,6 @@ function DashboardGate() {
     })()
   }, [member])
 
-  const handleLogin = async () => {
-    try {
-      setError('')
-      setBusyAction('login')
-
-      if (typeof window !== 'undefined') {
-        const host = window.location.hostname
-        const isLocalhost = host === 'localhost' || host === '127.0.0.1'
-        if (isLocalhost && email.trim().toLowerCase() === 'root' && password === 'root') {
-          setMember({
-            email: 'root-superadmin@localhost',
-            user_metadata: { full_name: 'Local Root Superadmin' },
-          })
-          setReady(true)
-          return
-        }
-      }
-
-      const supabase = getSupabaseBrowserClient()
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) throw error
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not log in. Please try again.')
-    } finally {
-      setBusyAction(null)
-    }
-  }
-
-  const handleOAuth = async (provider: 'google' | 'discord' | 'apple') => {
-    try {
-      setError('')
-      setBusyAction('login')
-      const supabase = getSupabaseBrowserClient()
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-        },
-      })
-      if (error) throw error
-    } catch (err) {
-      setError(err instanceof Error ? err.message : `Could not sign in with ${provider}.`)
-      setBusyAction(null)
-    }
-  }
-
-  const handleSignup = async () => {
-    try {
-      setError('')
-      setBusyAction('signup')
-      const supabase = getSupabaseBrowserClient()
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name,
-            membership_plan: selectedPlan,
-          },
-        },
-      })
-      if (error) throw error
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create account. Please try again.')
-    } finally {
-      setBusyAction(null)
-    }
-  }
-
   const handleLogout = async () => {
     try {
       setStoredViewAsRole(null)
@@ -293,248 +238,6 @@ function DashboardGate() {
         <div className="mx-auto max-w-4xl rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-8 text-center">
           <p className="text-sm uppercase tracking-[0.2em] text-zinc-400">Checking membership status</p>
           <h1 className="mt-4 text-3xl font-bold text-zinc-50">Preparing your access...</h1>
-        </div>
-      </div>
-    )
-  }
-
-  if (!member) {
-    const isSignup = authView === 'signup'
-
-    return (
-      <div className="min-h-screen px-4 py-12 text-zinc-100">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-            <h1 className="text-3xl font-black text-zinc-50 md:text-4xl">
-              {isSignup ? 'Create Your Membership' : 'Member Login'}
-            </h1>
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 rounded-lg border border-zinc-300/35 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:border-zinc-100"
-            >
-              <ArrowLeft size={16} /> Back to Home
-            </Link>
-          </div>
-
-          <div className={`grid gap-8 ${isSignup ? 'lg:grid-cols-[1.25fr_0.75fr]' : 'lg:grid-cols-[1fr_0.6fr]'}`}>
-            {isSignup ? (
-              <section className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6 md:p-8">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Choose Your Plan</p>
-                <h2 className="mt-3 text-3xl font-bold text-zinc-50">Pick the track that matches your growth goals</h2>
-                <div className="mt-8 grid gap-5 md:grid-cols-3">
-                  {membershipPlans.map((plan) => (
-                    <article
-                      key={plan.id}
-                      className={`rounded-xl border p-5 ${
-                        plan.slug === selectedPlan
-                          ? 'border-orange-200/70 bg-orange-200/10'
-                          : 'border-zinc-200/15 bg-zinc-900/50'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <h3 className="text-lg font-semibold text-zinc-50">{plan.name}</h3>
-                        {plan.slug === selectedPlan && <BadgeCheck size={18} className="text-orange-200" />}
-                      </div>
-                      <p className="mt-2 text-2xl font-black text-orange-200">{plan.display_price}</p>
-                      <p className="mt-2 text-sm text-zinc-300">{plan.description}</p>
-                      <ul className="mt-4 space-y-2 text-sm text-zinc-200">
-                        {plan.features.map((item) => (
-                          <li key={item} className="flex items-start gap-2">
-                            <span className="text-orange-200">*</span>
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPlan(plan.slug)}
-                        className="mt-5 w-full rounded-lg border border-zinc-100/25 py-2 text-sm font-semibold text-zinc-50 transition hover:border-orange-200/70 hover:text-orange-100"
-                      >
-                        Select {plan.name}
-                      </button>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            ) : (
-              <section className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6 md:p-8">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Organization Access</p>
-                <h2 className="mt-3 text-2xl font-bold text-zinc-50">Welcome back to W.A.G.E. Society</h2>
-                <p className="mt-2 text-sm text-zinc-400">Sign in to access your creator dashboard, tools, and membership resources.</p>
-                <div className="mt-8 grid gap-4 md:grid-cols-3">
-                  {membershipPlans.map((plan) => (
-                    <article key={plan.id} className="rounded-xl border border-zinc-200/15 bg-zinc-900/50 p-4">
-                      <h3 className="font-semibold text-zinc-50">{plan.name}</h3>
-                      <p className="mt-1 text-xl font-black text-orange-200">{plan.display_price}</p>
-                      <p className="mt-1 text-xs text-zinc-400">{plan.description}</p>
-                    </article>
-                  ))}
-                </div>
-                <p className="mt-6 text-sm text-zinc-400">
-                  Not a member yet?{' '}
-                  <button
-                    type="button"
-                    onClick={() => setAuthView('signup')}
-                    className="font-semibold text-orange-200 underline underline-offset-4 transition hover:text-orange-100"
-                  >
-                    Create your account
-                  </button>
-                </p>
-              </section>
-            )}
-
-            <section className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6 md:p-8">
-              {isSignup ? (
-                <>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">New Account</p>
-                  <h2 className="mt-3 text-2xl font-bold text-zinc-50">Create your organization profile</h2>
-                </>
-              ) : (
-                <>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Already a member?</p>
-                  <h2 className="mt-3 text-2xl font-bold text-zinc-50">Sign in to your dashboard</h2>
-                </>
-              )}
-              <div className="mt-6 space-y-4">
-                {isSignup ? (
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-zinc-200">Full Name</span>
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(event) => setName(event.target.value)}
-                      className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-zinc-100 outline-none transition focus:border-orange-200/70"
-                      placeholder="Your name"
-                    />
-                  </label>
-                ) : null}
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-zinc-200">
-                    {isSignup ? 'Email Address' : 'Email or Username'}
-                  </span>
-                  <input
-                    type="text"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-zinc-100 outline-none transition focus:border-orange-200/70"
-                    placeholder={isSignup ? 'you@email.com' : 'member@email.com (or root on localhost)'}
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-zinc-200">Password</span>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-zinc-100 outline-none transition focus:border-orange-200/70"
-                    placeholder="********"
-                  />
-                </label>
-                {isSignup ? (
-                  <div>
-                    <span className="mb-2 block text-sm font-medium text-zinc-200">Selected plan</span>
-                    <p className="rounded-lg border border-zinc-200/15 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-200">
-                      {membershipPlans.find((plan) => plan.slug === selectedPlan)?.name || selectedPlan}
-                    </p>
-                  </div>
-                ) : null}
-              </div>
-
-              {error ? (
-                <p className="mt-4 rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-                  {error}
-                </p>
-              ) : null}
-
-              <div className="mt-6 grid gap-3">
-                {isSignup ? (
-                  <button
-                    type="button"
-                    onClick={handleSignup}
-                    disabled={busyAction !== null}
-                    className="rounded-lg bg-orange-300 px-4 py-2.5 font-semibold text-zinc-950 transition hover:bg-orange-200 disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {busyAction === 'signup' ? 'Creating account...' : 'Create Account'}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleLogin}
-                    disabled={busyAction !== null}
-                    className="rounded-lg bg-orange-300 px-4 py-2.5 font-semibold text-zinc-950 transition hover:bg-orange-200 disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {busyAction === 'login' ? 'Logging in...' : 'Login to Dashboard'}
-                  </button>
-                )}
-              </div>
-
-              <div className="mt-5">
-                <div className="relative flex items-center gap-3">
-                  <div className="h-px flex-1 bg-zinc-200/15" />
-                  <span className="text-xs text-zinc-500">or continue with</span>
-                  <div className="h-px flex-1 bg-zinc-200/15" />
-                </div>
-                <div className="mt-3 grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleOAuth('google')}
-                    disabled={busyAction !== null}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-zinc-200/20 bg-zinc-950/40 px-3 py-2.5 text-sm font-medium text-zinc-100 transition hover:border-zinc-100/50 disabled:cursor-not-allowed disabled:opacity-60"
-                    aria-label="Sign in with Google"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                    Google
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleOAuth('discord')}
-                    disabled={busyAction !== null}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-zinc-200/20 bg-zinc-950/40 px-3 py-2.5 text-sm font-medium text-zinc-100 transition hover:border-zinc-100/50 disabled:cursor-not-allowed disabled:opacity-60"
-                    aria-label="Sign in with Discord"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#5865F2" aria-hidden="true"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
-                    Discord
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleOAuth('apple')}
-                    disabled={busyAction !== null}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-zinc-200/20 bg-zinc-950/40 px-3 py-2.5 text-sm font-medium text-zinc-100 transition hover:border-zinc-100/50 disabled:cursor-not-allowed disabled:opacity-60"
-                    aria-label="Sign in with Apple"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.56-1.701z"/></svg>
-                    Apple
-                  </button>
-                </div>
-                <div className="mt-2">
-                  <a
-                    href="/api/kick-login"
-                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-200/20 bg-zinc-950/40 px-3 py-2.5 text-sm font-medium text-zinc-100 transition hover:border-zinc-100/50"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="#53FC18" aria-hidden="true"><path d="M2 2h5v8.5l5-8.5h6l-6 10 6 10h-6l-5-8.5V22H2z"/></svg>
-                    Continue with Kick
-                  </a>
-                </div>
-              </div>
-              {isSignup ? (
-                <p className="mt-4 text-xs text-zinc-400">
-                  Already have an account?{' '}
-                  <button
-                    type="button"
-                    onClick={() => setAuthView('login')}
-                    className="font-semibold text-orange-200 underline underline-offset-4 transition hover:text-orange-100"
-                  >
-                    Sign in instead
-                  </button>
-                </p>
-              ) : (
-                <p className="mt-4 text-xs text-zinc-400">
-                  On localhost, use username <code className="text-zinc-300">root</code> and password{' '}
-                  <code className="text-zinc-300">root</code> for local root admin access.
-                </p>
-              )}
-            </section>
-          </div>
         </div>
       </div>
     )
@@ -585,7 +288,11 @@ function CreatorDashboard({
   permissions: OrgPermission[]
   ban: BanRecord | null
 }) {
-  const [dashboardTab, setDashboardTab] = useState<'workspace' | 'settings'>('workspace')
+  const [dashboardTab, setDashboardTab] = useState<'motd' | 'news' | 'workspace' | 'settings'>('motd')
+  const [latestNews, setLatestNews] = useState<NewsItem[]>([])
+  const [newsLoading, setNewsLoading] = useState(false)
+  const [plans, setPlans] = useState<MembershipPlan[]>(fallbackMembershipPlans)
+  const [plansLoading, setPlansLoading] = useState(true)
   const isSuperadmin = role === 'superadmin'
   const canUseViewAs = actorRole === 'superadmin' || canManageRole(actorRole, 'user')
   const selectableRoles: OrgRole[] = [
@@ -615,6 +322,7 @@ function CreatorDashboard({
       | 'creator-task-board'
       | 'collaboration-hub'
       | 'knowledge-vault'
+      | 'promotion-hub'
     title: string
     description: string
     items: string[]
@@ -668,9 +376,49 @@ function CreatorDashboard({
       items: ['Best-performing hooks', 'Marketing scripts', 'Template library'],
       requiredPermission: 'view_creator_tools',
     },
+    {
+      icon: <Radio size={18} />,
+      toolKey: 'promotion-hub',
+      title: 'Promotion Hub',
+      description: 'Compose and schedule posts to Kick, Twitch, X, Instagram, and Threads from one place.',
+      items: ['Write once, post anywhere', 'Schedule your queue', 'Platform-tailored previews'],
+      requiredPermission: 'view_creator_tools',
+    },
   ]
 
   const visibleFunctions = dashboardFunctions.filter((fn) => hasPermission(fn.requiredPermission))
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const response = await fetch('/api/shop')
+        if (!response.ok) return
+        const data = (await response.json()) as { membershipPlans?: MembershipPlan[] }
+        if (data.membershipPlans?.length) setPlans(data.membershipPlans)
+      } catch {
+        // keep fallback plans
+      } finally {
+        setPlansLoading(false)
+      }
+    })()
+  }, [])
+
+  useEffect(() => {
+    void (async () => {
+      setNewsLoading(true)
+      try {
+        const response = await fetch('/api/news')
+        if (!response.ok) return
+
+        const data = (await response.json()) as NewsItem[]
+        setLatestNews(Array.isArray(data) ? data.slice(0, 5) : [])
+      } catch {
+        setLatestNews([])
+      } finally {
+        setNewsLoading(false)
+      }
+    })()
+  }, [])
 
   if (role === 'banned') {
     return <BannedDashboard member={member} onLogout={onLogout} ban={ban} />
@@ -693,7 +441,7 @@ function CreatorDashboard({
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Organization Dashboard</p>
               <h1 className="mt-2 text-3xl font-black text-zinc-50 md:text-4xl">
-                Welcome back, {member.user_metadata?.full_name || member.email || 'Member'}
+                Welcome back, {member.user_metadata?.username || member.user_metadata?.full_name || member.email || 'Member'}
               </h1>
               <p className="mt-3 max-w-2xl text-zinc-300">
                 Run your creator pipeline, marketing campaigns, and entrepreneurial execution with a focused operating system.
@@ -745,7 +493,7 @@ function CreatorDashboard({
             </div>
             <div className="flex gap-3">
               <Link
-                to="/"
+                to="/dashboard"
                 className="rounded-lg border border-zinc-100/25 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:border-orange-200/70 hover:text-orange-100"
               >
                 Home
@@ -774,6 +522,30 @@ function CreatorDashboard({
         <div className="mt-6 flex gap-1 rounded-xl border border-zinc-200/15 bg-zinc-900/60 p-1">
           <button
             type="button"
+            onClick={() => setDashboardTab('motd')}
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+              dashboardTab === 'motd'
+                ? 'bg-orange-300 text-zinc-950'
+                : 'text-zinc-300 hover:text-zinc-50'
+            }`}
+          >
+            <Megaphone size={15} />
+            MOTD
+          </button>
+          <button
+            type="button"
+            onClick={() => setDashboardTab('news')}
+            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+              dashboardTab === 'news'
+                ? 'bg-orange-300 text-zinc-950'
+                : 'text-zinc-300 hover:text-zinc-50'
+            }`}
+          >
+            <Newspaper size={15} />
+            Latest News
+          </button>
+          <button
+            type="button"
             onClick={() => setDashboardTab('workspace')}
             className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
               dashboardTab === 'workspace'
@@ -796,7 +568,75 @@ function CreatorDashboard({
             <Settings size={15} />
             Settings
           </button>
+          {hasPermission('access_admin_dashboard') ? (
+            <Link
+              to="/admin"
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:text-zinc-50"
+            >
+              <Shield size={15} />
+              Admin
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-zinc-500"
+              title="Your role does not currently have admin access"
+            >
+              <Shield size={15} />
+              Admin
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              void onLogout()
+            }}
+            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:text-zinc-50"
+          >
+            <LogOut size={15} />
+            Logout
+          </button>
         </div>
+
+        {dashboardTab === 'motd' ? (
+          <section className="mt-6">
+            <article className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">MOTD</p>
+              <h2 className="mt-2 text-2xl font-bold text-zinc-50">Build momentum today</h2>
+              <p className="mt-3 max-w-3xl text-zinc-300">
+                Ship one meaningful piece of content, complete one revenue task, and check in with one collaborator before your day ends.
+              </p>
+            </article>
+          </section>
+        ) : null}
+
+        {dashboardTab === 'news' ? (
+          <section className="mt-6 space-y-4">
+            <div>
+              <h2 className="text-2xl font-bold text-zinc-50">Latest News</h2>
+              <p className="mt-1 text-sm text-zinc-300">Recent organization announcements and updates.</p>
+            </div>
+            {newsLoading ? <p className="text-sm text-zinc-300">Loading latest news...</p> : null}
+            {!newsLoading && latestNews.length === 0 ? (
+              <article className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-5">
+                <h3 className="text-lg font-semibold text-zinc-50">No news posted yet</h3>
+                <p className="mt-2 text-sm text-zinc-300">Announcements will appear here as soon as staff publishes updates.</p>
+              </article>
+            ) : null}
+            <div className="space-y-3">
+              {latestNews.map((post) => (
+                <article key={post.id} className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-5">
+                  <h3 className="text-lg font-semibold text-zinc-50">{post.title}</h3>
+                  <p className="mt-1 text-xs text-zinc-400">
+                    {post.author ? `By ${post.author}` : 'W.A.G.E. Society'} · {new Date(post.created_at).toLocaleString()}
+                  </p>
+                  <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-zinc-300">{post.body}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {dashboardTab === 'workspace' ? (
           <section className="mt-6">
@@ -804,6 +644,7 @@ function CreatorDashboard({
               <h2 className="text-2xl font-bold text-zinc-50">Workspace</h2>
               <p className="mt-1 text-sm text-zinc-300">Your assigned creator modules are listed below.</p>
             </div>
+            <WorkspaceAnalytics />
             <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
               {visibleFunctions.map((fn) => (
                 <ResourceCard
@@ -826,7 +667,9 @@ function CreatorDashboard({
               ) : null}
             </div>
           </section>
-        ) : (
+        ) : null}
+
+        {dashboardTab === 'settings' ? (
           <section className="mt-6 space-y-6">
             <ProfileSettings member={member} />
             <div className="grid gap-6 md:grid-cols-2">
@@ -840,39 +683,66 @@ function CreatorDashboard({
                     <p className="text-xs text-zinc-400">Manage your membership plan</p>
                   </div>
                 </div>
-              <div className="mt-4 rounded-xl border border-zinc-200/15 bg-zinc-950/60 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Current Plan</p>
-                <p className="mt-2 text-xl font-black text-orange-200">
-                  {formatRoleLabel(role)}
+
+                {plansLoading ? (
+                  <p className="mt-4 text-sm text-zinc-400">Loading plans...</p>
+                ) : (
+                  <div className="mt-4 space-y-2">
+                    {plans.map((plan) => {
+                      const isCurrent =
+                        member.user_metadata?.membership_plan === plan.slug ||
+                        (plan.slug === 'free' && !member.user_metadata?.membership_plan)
+                      return (
+                        <div
+                          key={plan.slug}
+                          className={`rounded-xl border p-4 transition ${
+                            isCurrent
+                              ? 'border-orange-200/60 bg-orange-200/10'
+                              : 'border-zinc-200/15 bg-zinc-950/40'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold text-zinc-50">{plan.name}</p>
+                                {isCurrent ? (
+                                  <span className="rounded-full bg-orange-300 px-2 py-0.5 text-xs font-bold text-zinc-950">
+                                    Current
+                                  </span>
+                                ) : null}
+                              </div>
+                              <p className="text-sm font-black text-orange-200">{plan.display_price}</p>
+                              <p className="mt-0.5 text-xs text-zinc-400">{plan.description}</p>
+                            </div>
+                            {!isCurrent ? (
+                              <Link
+                                to="/checkout"
+                                search={{ plan: plan.slug }}
+                                className="flex-shrink-0 rounded-lg border border-zinc-100/25 px-3 py-1.5 text-xs font-semibold text-zinc-100 transition hover:border-orange-200/70 hover:text-orange-100"
+                              >
+                                {plan.slug === 'free' ? 'Downgrade' : 'Upgrade'}
+                              </Link>
+                            ) : null}
+                          </div>
+                          {plan.features.length > 0 ? (
+                            <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5">
+                              {plan.features.map((feature) => (
+                                <li key={feature} className="flex items-center gap-1 text-xs text-zinc-400">
+                                  <span className="text-orange-300">*</span> {feature}
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                <p className="mt-3 text-xs text-zinc-500">
+                  Payments are processed securely via Stripe. Cancel anytime from your billing settings.
                 </p>
-                <p className="mt-1 text-sm text-zinc-300">
-                  {role === 'user'
-                    ? 'Backstage — free tier. Upgrade for full creator access.'
-                    : role === 'member'
-                    ? 'Active membership. Full creator dashboard access.'
-                    : `Organization role: ${formatRoleLabel(role)}.`}
-                </p>
-              </div>
-              <div className="mt-4 flex flex-col gap-2">
-                <Link
-                  to="/checkout"
-                  search={{ plan: 'all-access' }}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-orange-300 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-orange-200"
-                >
-                  Upgrade to All Access — $19/mo
-                </Link>
-                <Link
-                  to="/checkout"
-                  search={{ plan: 'creator-circle' }}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-zinc-100/25 px-4 py-2.5 text-sm font-semibold text-zinc-100 transition hover:border-orange-200/70 hover:text-orange-100"
-                >
-                  Upgrade to Creator Circle — $49/mo
-                </Link>
-              </div>
-              <p className="mt-3 text-xs text-zinc-500">
-                Payments are processed securely via Stripe. Cancel anytime from your billing settings.
-              </p>
-            </article>
+              </article>
 
             <article className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6">
               <div className="flex items-center gap-3">
@@ -890,8 +760,8 @@ function CreatorDashboard({
                   <p className="mt-0.5 text-sm text-zinc-100">{member.email || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-zinc-400">Name</p>
-                  <p className="mt-0.5 text-sm text-zinc-100">{member.user_metadata?.full_name || '—'}</p>
+                  <p className="text-xs font-medium text-zinc-400">Username</p>
+                  <p className="mt-0.5 text-sm text-zinc-100">{member.user_metadata?.username || member.user_metadata?.full_name || '—'}</p>
                 </div>
                 <div>
                   <p className="text-xs font-medium text-zinc-400">Role</p>
@@ -904,9 +774,83 @@ function CreatorDashboard({
             </article>
             </div>
           </section>
-        )}
+        ) : null}
       </div>
     </div>
+  )
+}
+
+function WorkspaceAnalytics() {
+  const [loading, setLoading] = useState(true)
+  const [linkedProviders, setLinkedProviders] = useState<string[]>([])
+  const [socialLinksCount, setSocialLinksCount] = useState(0)
+
+  useEffect(() => {
+    void (async () => {
+      setLoading(true)
+      try {
+        const supabase = getSupabaseBrowserClient()
+        const [{ data: userData }, profileResponse] = await Promise.all([
+          supabase.auth.getUser(),
+          authedFetch('/api/me/profile'),
+        ])
+
+        const identityProviders = (userData.user?.identities || [])
+          .map((identity) => identity.provider)
+          .filter((provider): provider is string => Boolean(provider))
+
+        setLinkedProviders(Array.from(new Set(identityProviders)).sort())
+
+        if (profileResponse.ok) {
+          const data = (await profileResponse.json()) as ProfileWithSocialLinks
+          const links = data.profile?.social_links || {}
+          const count = Object.values(links).filter((value) => Boolean((value || '').trim())).length
+          setSocialLinksCount(count)
+        } else {
+          setSocialLinksCount(0)
+        }
+      } catch {
+        setLinkedProviders([])
+        setSocialLinksCount(0)
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [])
+
+  const totalLinkedAccounts = linkedProviders.length + socialLinksCount
+
+  return (
+    <article className="mb-5 rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-5">
+      <div className="flex items-center gap-2">
+        <BarChart3 size={16} className="text-orange-200" />
+        <h3 className="text-lg font-semibold text-zinc-50">Workspace Analytics</h3>
+      </div>
+      <p className="mt-1 text-sm text-zinc-300">Track linked accounts connected to your member workspace.</p>
+      {loading ? (
+        <p className="mt-3 text-sm text-zinc-400">Loading analytics...</p>
+      ) : (
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-zinc-200/15 bg-zinc-950/60 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Linked Accounts</p>
+            <p className="mt-2 text-2xl font-black text-orange-200">{totalLinkedAccounts}</p>
+          </div>
+          <div className="rounded-xl border border-zinc-200/15 bg-zinc-950/60 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">OAuth Providers</p>
+            <p className="mt-2 text-2xl font-black text-zinc-50">{linkedProviders.length}</p>
+          </div>
+          <div className="rounded-xl border border-zinc-200/15 bg-zinc-950/60 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Social Profiles</p>
+            <p className="mt-2 text-2xl font-black text-zinc-50">{socialLinksCount}</p>
+          </div>
+        </div>
+      )}
+      {!loading ? (
+        <p className="mt-3 text-xs text-zinc-400">
+          Connected providers: {linkedProviders.length ? linkedProviders.join(', ') : 'None linked yet'}.
+        </p>
+      ) : null}
+    </article>
   )
 }
 
@@ -937,7 +881,7 @@ function BannedDashboard({
 
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
-            to="/"
+            to="/dashboard"
             className="rounded-lg border border-zinc-100/25 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:border-rose-200/70 hover:text-rose-100"
           >
             Return Home
@@ -972,6 +916,7 @@ function ResourceCard({
     | 'creator-task-board'
     | 'collaboration-hub'
     | 'knowledge-vault'
+    | 'promotion-hub'
   title: string
   description: string
   items: string[]

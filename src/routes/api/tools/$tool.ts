@@ -11,6 +11,7 @@ const toolSchema = z.enum([
   'creator-task-board',
   'collaboration-hub',
   'knowledge-vault',
+  'promotion-hub',
 ])
 
 const statusSchema = z.enum(['idea', 'planned', 'active', 'blocked', 'done'])
@@ -39,6 +40,7 @@ const requiredPermissionByTool: Record<z.infer<typeof toolSchema>, OrgPermission
   'creator-task-board': 'view_creator_tools',
   'collaboration-hub': 'view_creator_tools',
   'knowledge-vault': 'view_creator_tools',
+  'promotion-hub': 'view_creator_tools',
 }
 
 function resolveToolAndPermission(rawTool: string) {

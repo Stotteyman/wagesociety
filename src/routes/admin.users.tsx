@@ -3,6 +3,7 @@ import { ArrowLeft, ShieldCheck, UserCog } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { formatRoleLabel, ORG_ROLE_LABELS, ORG_ROLES, type OrgRole } from '../lib/orgAccess'
 import { authedFetch } from '../lib/supabaseBrowser'
+import { requireAuthenticatedRoute } from '../lib/routeAuth'
 
 type RoleRow = {
   email: string
@@ -46,6 +47,9 @@ const permissionRoleKeys = ORG_ROLES.map((role) => ({
 }))
 
 export const Route = createFileRoute('/admin/users')({
+  beforeLoad: async () => {
+    await requireAuthenticatedRoute()
+  },
   head: () => ({
     meta: [
       { title: 'Admin Users — W.A.G.E. Society' },

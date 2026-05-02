@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { getSupabaseAdminClient } from '../../lib/supabaseAdmin'
+import { buildAuthRedirectUrl, normalizeAuthOrigin } from '../../lib/authRedirect'
 
 type KickTokenResponse = {
   access_token: string
@@ -34,12 +35,13 @@ export const Route = createFileRoute('/api/kick-callback')({
     handlers: {
       GET: async ({ request }) => {
         const url = new URL(request.url)
+        const authOrigin = normalizeAuthOrigin(url.origin)
         const code = url.searchParams.get('code')
         const state = url.searchParams.get('state')
         const errorParam = url.searchParams.get('error')
 
         if (errorParam) {
-          return Response.redirect(`${url.origin}/dashboard?error=kick_oauth_denied`, 302)
+          return Response.redirect(buildAuthRedirectUrl(authOrigin, '/dashboard?error=kick_oauth_denied'), 302)
         }
 
         // CSRF state check
@@ -51,20 +53,20 @@ export const Route = createFileRoute('/api/kick-callback')({
           ?.replace('kick_oauth_state=', '')
 
         if (!state || !cookieState || state !== cookieState) {
-          return Response.redirect(`${url.origin}/dashboard?error=kick_oauth_invalid_state`, 302)
+          return Response.redirect(buildAuthRedirectUrl(authOrigin, '/dashboard?error=kick_oauth_invalid_state'), 302)
         }
 
         if (!code) {
-          return Response.redirect(`${url.origin}/dashboard?error=kick_oauth_no_code`, 302)
+          return Response.redirect(buildAuthRedirectUrl(authOrigin, '/dashboard?error=kick_oauth_no_code'), 302)
         }
 
         const clientId = process.env.KICK_CLIENT_ID
         const clientSecret = process.env.KICK_CLIENT_SECRET
         const redirectUri =
-          process.env.KICK_REDIRECT_URI || `${url.origin}/api/kick-callback`
+          process.env.KICK_REDIRECT_URI || buildAuthRedirectUrl(authOrigin, '/api/kick-callback')
 
         if (!clientId || !clientSecret) {
-          return Response.redirect(`${url.origin}/dashboard?error=kick_not_configured`, 302)
+          return Response.redirect(buildAuthRedirectUrl(authOrigin, '/dashboard?error=kick_not_configured'), 302)
         }
 
         try {
@@ -82,7 +84,7 @@ export const Route = createFileRoute('/api/kick-callback')({
           })
 
           if (!tokenResponse.ok) {
-            return Response.redirect(`${url.origin}/dashboard?error=kick_token_exchange_failed`, 302)
+            return Response.redirect(buildAuthRedirectUrl(authOrigin, '/dashboard?error=kick_token_exchange_failed'), 302)
           }
 
           const tokens = (await tokenResponse.json()) as KickTokenResponse
@@ -93,7 +95,7 @@ export const Route = createFileRoute('/api/kick-callback')({
           })
 
           if (!profileResponse.ok) {
-            return Response.redirect(`${url.origin}/dashboard?error=kick_profile_fetch_failed`, 302)
+            return Response.redirect(buildAuthRedirectUrl(authOrigin, '/dashboard?error=kick_profile_fetch_failed'), 302)
           }
 
           const kickUser = (await profileResponse.json()) as KickUserResponse
@@ -110,6 +112,7 @@ export const Route = createFileRoute('/api/kick-callback')({
           if (existing) {
             await admin.auth.admin.updateUserById(existing.id, {
               user_metadata: {
+                username: kickUser.username,
                 full_name: kickUser.name || kickUser.username,
                 avatar_url: kickUser.profile_pic || null,
                 kick_username: kickUser.username,
@@ -121,6 +124,7 @@ export const Route = createFileRoute('/api/kick-callback')({
               email,
               email_confirm: true,
               user_metadata: {
+                username: kickUser.username,
                 full_name: kickUser.name || kickUser.username,
                 avatar_url: kickUser.profile_pic || null,
                 kick_username: kickUser.username,
@@ -129,7 +133,7 @@ export const Route = createFileRoute('/api/kick-callback')({
             })
 
             if (createError || !newUser.user) {
-              return Response.redirect(`${url.origin}/dashboard?error=kick_account_create_failed`, 302)
+              return Response.redirect(buildAuthRedirectUrl(authOrigin, '/dashboard?error=kick_account_create_failed'), 302)
             }
 
             await admin.rpc('ensure_org_member_role', {
@@ -142,11 +146,11 @@ export const Route = createFileRoute('/api/kick-callback')({
           const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
             type: 'magiclink',
             email,
-            options: { redirectTo: `${url.origin}/dashboard` },
+            options: { redirectTo: buildAuthRedirectUrl(authOrigin, '/dashboard') },
           })
 
           if (linkError || !linkData?.properties?.action_link) {
-            return Response.redirect(`${url.origin}/dashboard?error=kick_session_create_failed`, 302)
+            return Response.redirect(buildAuthRedirectUrl(authOrigin, '/dashboard?error=kick_session_create_failed'), 302)
           }
 
           const clearCookie =
@@ -155,7 +159,7 @@ export const Route = createFileRoute('/api/kick-callback')({
           redirect.headers.set('Set-Cookie', clearCookie)
           return redirect
         } catch {
-          return Response.redirect(`${url.origin}/dashboard?error=kick_unexpected_error`, 302)
+          return Response.redirect(buildAuthRedirectUrl(authOrigin, '/dashboard?error=kick_unexpected_error'), 302)
         }
       },
     },

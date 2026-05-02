@@ -154,7 +154,7 @@ function LivePage() {
             </div>
             <div className="flex gap-3">
               <Link
-                to="/"
+                to="/dashboard"
                 className="rounded-lg border border-zinc-100/25 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:border-orange-200/70 hover:text-orange-100"
               >
                 Home

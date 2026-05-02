@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   AlertCircle,
   Check,
@@ -9,6 +9,7 @@ import {
   User,
 } from 'lucide-react'
 import { authedFetch, getSupabaseBrowserClient } from '../lib/supabaseBrowser'
+import { getClientAuthRedirectUrl } from '../lib/authRedirect'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -19,9 +20,12 @@ type SocialLinks = {
   youtube?: string
   twitch?: string
   twitter?: string
+  threads?: string
+  kick?: string
   steam?: string
   linkedin?: string
   facebook?: string
+  discord?: string
 }
 
 type MemberProfile = {
@@ -33,6 +37,7 @@ type MemberProfile = {
   website: string | null
   social_links: SocialLinks
   updated_at: string | null
+  username_changed_at: string | null
 }
 
 type ProfileApiResponse = { profile: MemberProfile }
@@ -46,14 +51,17 @@ const OAUTH_PROVIDERS: { key: OAuthProvider; label: string; description: string 
 ]
 
 const SOCIAL_FIELDS: { key: keyof SocialLinks; label: string; placeholder: string; prefix?: string }[] = [
+  { key: 'kick', label: 'Kick', placeholder: 'yourusername', prefix: 'kick.com/' },
+  { key: 'twitch', label: 'Twitch', placeholder: 'yourusername', prefix: 'twitch.tv/' },
   { key: 'instagram', label: 'Instagram', placeholder: 'yourhandle', prefix: 'instagram.com/' },
+  { key: 'twitter', label: 'X / Twitter', placeholder: '@yourhandle', prefix: 'x.com/' },
+  { key: 'threads', label: 'Threads', placeholder: '@yourhandle', prefix: 'threads.net/@' },
   { key: 'tiktok', label: 'TikTok', placeholder: '@yourhandle', prefix: 'tiktok.com/' },
   { key: 'youtube', label: 'YouTube', placeholder: 'youtube.com/c/yourchannel' },
-  { key: 'twitch', label: 'Twitch', placeholder: 'yourusername', prefix: 'twitch.tv/' },
-  { key: 'twitter', label: 'Twitter / X', placeholder: '@yourhandle', prefix: 'x.com/' },
   { key: 'steam', label: 'Steam', placeholder: 'yourusername', prefix: 'steamcommunity.com/id/' },
   { key: 'linkedin', label: 'LinkedIn', placeholder: 'linkedin.com/in/yourprofile' },
   { key: 'facebook', label: 'Facebook', placeholder: 'facebook.com/yourprofile' },
+  { key: 'discord', label: 'Discord', placeholder: 'username', prefix: 'discord.com/users/' },
 ]
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -61,6 +69,9 @@ const SOCIAL_FIELDS: { key: keyof SocialLinks; label: string; placeholder: strin
 export function ProfileSettings({ member }: { member: { email: string } }) {
   const [profile, setProfile] = useState<MemberProfile | null>(null)
   const [displayName, setDisplayName] = useState('')
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle')
+  const [usernameMessage, setUsernameMessage] = useState('')
+  const usernameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [avatarUrl, setAvatarUrl] = useState('')
   const [bio, setBio] = useState('')
   const [skillsInput, setSkillsInput] = useState('')
@@ -101,10 +112,35 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
     })()
   }, [])
 
+  // 30-day username cooldown
+  const usernameChangedAt = profile?.username_changed_at ? new Date(profile.username_changed_at) : null
+  const daysSinceUsernameChange = usernameChangedAt
+    ? (Date.now() - usernameChangedAt.getTime()) / (1000 * 60 * 60 * 24)
+    : Infinity
+  const canChangeUsername = daysSinceUsernameChange >= 30
+  const daysUntilUsernameChange = canChangeUsername ? 0 : Math.ceil(30 - daysSinceUsernameChange)
+
   const handleSave = async () => {
     setSaving(true)
     setError('')
     setSaved(false)
+    const trimmed = displayName.trim()
+    const isChangingUsername = trimmed && trimmed.toLowerCase() !== (profile?.display_name ?? '').toLowerCase()
+    if (isChangingUsername && !canChangeUsername) {
+      setError(`You can change your username again in ${daysUntilUsernameChange} day${daysUntilUsernameChange === 1 ? '' : 's'}.`)
+      setSaving(false)
+      return
+    }
+    if (trimmed && !/^[a-zA-Z0-9_-]{3,20}$/.test(trimmed)) {
+      setError('Username must be 3–20 characters: letters, numbers, underscores, or hyphens only.')
+      setSaving(false)
+      return
+    }
+    if (usernameStatus === 'taken') {
+      setError('That username is already taken. Please choose another.')
+      setSaving(false)
+      return
+    }
     const response = await authedFetch('/api/me/profile', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -137,7 +173,7 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
       const { error: linkError } = await supabase.auth.linkIdentity({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/dashboard?view=settings&linked=${provider}`,
+          redirectTo: getClientAuthRedirectUrl(`/dashboard?view=settings&linked=${provider}`),
         },
       })
       if (linkError) {
@@ -153,6 +189,42 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
 
   const isLinked = (provider: OAuthProvider) =>
     user?.identities?.some((i) => i.provider === provider) ?? false
+
+  const checkUsername = (value: string) => {
+    if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current)
+    const trimmed = value.trim()
+    // If the value matches current saved name, no check needed
+    if (!trimmed || trimmed === (profile?.display_name ?? '')) {
+      setUsernameStatus('idle')
+      setUsernameMessage('')
+      return
+    }
+    if (!/^[a-zA-Z0-9_-]{3,20}$/.test(trimmed)) {
+      setUsernameStatus('invalid')
+      setUsernameMessage('3–20 characters. Letters, numbers, underscores, hyphens only.')
+      return
+    }
+    setUsernameStatus('checking')
+    setUsernameMessage('')
+    usernameDebounceRef.current = setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await fetch(`/api/check-username?username=${encodeURIComponent(trimmed)}`)
+          const data = (await res.json()) as { available?: boolean; reason?: string }
+          if (data.available === true) {
+            setUsernameStatus('available')
+            setUsernameMessage('Username is available!')
+          } else {
+            setUsernameStatus('taken')
+            setUsernameMessage(data.reason || 'Username is already taken.')
+          }
+        } catch {
+          setUsernameStatus('idle')
+          setUsernameMessage('')
+        }
+      })()
+    }, 500)
+  }
 
   const updateSocialLink = (key: keyof SocialLinks, value: string) => {
     setSocialLinks((prev) => ({ ...prev, [key]: value }))
@@ -177,15 +249,43 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-zinc-400">Display Name</label>
+            <label className="mb-1.5 block text-xs font-medium text-zinc-400">Username</label>
             <input
               type="text"
               value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              maxLength={80}
-              placeholder={member.email.split('@')[0]}
-              className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-orange-200/70"
+              onChange={(e) => {
+                if (!canChangeUsername && e.target.value.toLowerCase() !== (profile?.display_name ?? '').toLowerCase()) return
+                setDisplayName(e.target.value)
+                checkUsername(e.target.value)
+              }}
+              maxLength={20}
+              placeholder={member.email.split('@')[0].slice(0, 20)}
+              autoComplete="username"
+              disabled={!canChangeUsername}
+              className={`w-full rounded-lg border bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100 outline-none transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                !canChangeUsername
+                  ? 'border-zinc-200/10'
+                  : usernameStatus === 'available'
+                  ? 'border-emerald-400/60 focus:border-emerald-300'
+                  : usernameStatus === 'taken' || usernameStatus === 'invalid'
+                  ? 'border-rose-400/60 focus:border-rose-300'
+                  : 'border-zinc-200/20 focus:border-orange-200/70'
+              }`}
             />
+            {!canChangeUsername ? (
+              <p className="mt-0.5 text-xs text-amber-400">
+                Username locked — you can change it again in {daysUntilUsernameChange} day{daysUntilUsernameChange === 1 ? '' : 's'}.
+              </p>
+            ) : (
+              <p className="mt-0.5 text-xs text-zinc-500">3–20 characters. Letters, numbers, _ and - only.</p>
+            )}
+            {canChangeUsername && usernameStatus === 'checking' ? (
+              <p className="mt-0.5 text-xs text-zinc-400">Checking availability...</p>
+            ) : canChangeUsername && usernameMessage ? (
+              <p className={`mt-0.5 text-xs ${usernameStatus === 'available' ? 'text-emerald-300' : 'text-rose-300'}`}>
+                {usernameMessage}
+              </p>
+            ) : null}
           </div>
 
           <div>
@@ -312,6 +412,27 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
           Link your OAuth accounts to enable single sign-on and verify your identities.
         </p>
         <div className="space-y-2">
+          {/* Kick — custom OAuth flow */}
+          <div className="flex items-center justify-between rounded-xl border border-zinc-200/10 bg-zinc-800/40 px-4 py-3">
+            <div>
+              <p className="text-sm font-semibold text-zinc-100">Kick</p>
+              <p className="text-xs text-zinc-500">Link your Kick streaming account</p>
+            </div>
+            {user?.user_metadata?.kick_username ? (
+              <span className="flex items-center gap-1.5 rounded-full border border-emerald-300/40 bg-emerald-300/5 px-3 py-1 text-xs font-semibold text-emerald-300">
+                <Check size={11} /> {user.user_metadata.kick_username as string}
+              </span>
+            ) : (
+              <a
+                href="/api/kick-login"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200/25 px-3 py-1.5 text-xs font-semibold text-zinc-200 transition hover:border-orange-200/50 hover:text-orange-100"
+              >
+                <Link2 size={11} />
+                Link
+              </a>
+            )}
+          </div>
+
           {OAUTH_PROVIDERS.map(({ key, label, description }) => {
             const linked = isLinked(key)
             return (

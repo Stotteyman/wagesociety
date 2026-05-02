@@ -63,31 +63,49 @@ type ShopApiPlan = {
 
 const fallbackPlans: PlanDetails[] = [
   {
-    id: 'fallback-backstage',
-    slug: 'backstage',
-    name: 'Backstage',
+    id: 'fallback-free',
+    slug: 'free',
+    name: 'FREE',
     price: 0,
     displayPrice: '$0',
-    description: 'For new builders exploring the organization.',
-    features: ['Public knowledge feed', 'Monthly orientation workshop', 'Limited mastermind preview'],
+    description: 'Very limited access for basic account setup and browsing.',
+    features: ['Log in and account access', 'Connect social/OAuth accounts', 'Browse public sections'],
   },
   {
-    id: 'fallback-all-access',
-    slug: 'all-access',
-    name: 'All Access',
-    price: 1900,
-    displayPrice: '$19/mo',
-    description: 'For active members building consistent growth momentum.',
-    features: ['Full member authentication', 'Mastermind channels + resource library', 'Weekly live growth sessions'],
+    id: 'fallback-standard',
+    slug: 'standard',
+    name: 'STANDARD',
+    price: 2000,
+    displayPrice: '$20/mo',
+    description: 'Core membership plan for regular creator workflows.',
+    features: ['Expanded workspace access', 'Standard member sections', 'Routine creator tools'],
   },
   {
-    id: 'fallback-creator-circle',
-    slug: 'creator-circle',
-    name: 'Creator Circle',
-    price: 4900,
-    displayPrice: '$49/mo',
-    description: 'For founders and operators scaling online revenue.',
-    features: ['Advanced creator and marketing systems', 'Priority partner and promotion access', 'Private strategy war room'],
+    id: 'fallback-plus',
+    slug: 'plus',
+    name: 'PLUS',
+    price: 5000,
+    displayPrice: '$50/mo',
+    description: 'Higher-tier access for serious operators and teams.',
+    features: ['Broader tool access', 'Priority support', 'Advanced workspace options'],
+  },
+  {
+    id: 'fallback-unlimited',
+    slug: 'unlimited',
+    name: 'UNLIMITED',
+    price: 10000,
+    displayPrice: '$100/mo',
+    description: 'Full platform access for high-output creators and founders.',
+    features: ['Complete creator tool access', 'Premium sections and workflows', 'Top-tier performance features'],
+  },
+  {
+    id: 'fallback-vip',
+    slug: 'vip',
+    name: 'VIP',
+    price: 100000,
+    displayPrice: '$1000/mo',
+    description: 'Elite private tier for highest-priority access and support.',
+    features: ['VIP-level access', 'Private insider channels', 'Highest support priority'],
   },
 ]
 
@@ -127,7 +145,7 @@ function CheckoutPage() {
 
   const selectedPlan =
     plans.find((plan) => plan.slug === search.plan) ||
-    plans.find((plan) => plan.slug === 'all-access') ||
+    plans.find((plan) => plan.slug === 'standard') ||
     plans[0]
 
   if (!selectedPlan) {
@@ -171,10 +189,10 @@ function CheckoutPage() {
               </button>
               <button
                 type="button"
-                onClick={() => navigate({ to: '/' })}
+                onClick={() => navigate({ to: '/dashboard' })}
                 className="rounded-lg border border-zinc-100/30 px-6 py-3 font-semibold text-zinc-100 transition hover:border-orange-200/70"
               >
-                Back to Home
+                Back to Dashboard
               </button>
             </div>
           </div>
@@ -233,7 +251,7 @@ function CheckoutPage() {
             {selectedPlan.price === 0 ? (
               <div className="mt-6 space-y-4">
                 <p className="text-sm text-zinc-300">
-                  Your Backstage membership is free and grants access to public community streams and highlights.
+                  Your FREE membership gives very limited access: account login, linked accounts, and public browsing.
                 </p>
                 <button
                   type="button"

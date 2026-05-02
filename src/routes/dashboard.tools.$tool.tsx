@@ -1,8 +1,9 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
-import { ArrowLeft, BookOpen, ExternalLink, Eye, FileText, GraduationCap, LayoutTemplate, Plus, Save, Search, Tag, TrendingUp, Trash2, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { ArrowLeft, BookOpen, Calendar, Check, Clock, Copy, ExternalLink, Eye, FileText, GraduationCap, LayoutTemplate, Megaphone, Plus, Save, Search, Send, Tag, TrendingUp, Trash2, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { z } from 'zod'
 import { authedFetch } from '../lib/supabaseBrowser'
+import { requireAuthenticatedRoute } from '../lib/routeAuth'
 import { CollaborationHub } from '../components/CollaborationHub'
 
 const toolSchema = z.enum([
@@ -12,6 +13,7 @@ const toolSchema = z.enum([
   'creator-task-board',
   'collaboration-hub',
   'knowledge-vault',
+  'promotion-hub',
 ])
 
 type ToolKey = z.infer<typeof toolSchema>
@@ -95,13 +97,22 @@ const TOOL_CONFIGS: Record<ToolKey, ToolConfig> = {
     showDate: false,
     showAmount: false,
   },
+  'promotion-hub': {
+    key: 'promotion-hub',
+    title: 'Promotion Hub',
+    description: 'Compose and schedule promotional posts across your linked social platforms.',
+    helper: 'Write once and distribute to Kick, Twitch, X, Instagram, and Threads.',
+    showDate: true,
+    showAmount: false,
+  },
 }
 
 const statusOptions: EntryStatus[] = ['idea', 'planned', 'active', 'blocked', 'done']
 
 export const Route = createFileRoute('/dashboard/tools/$tool')({
   component: DashboardToolPage,
-  beforeLoad: ({ params }) => {
+  beforeLoad: async ({ params }) => {
+    await requireAuthenticatedRoute()
     const parsed = toolSchema.safeParse(params.tool)
     if (!parsed.success) {
       throw notFound()
@@ -129,9 +140,14 @@ function DashboardToolPage() {
   }
 
     // Collaboration Hub has its own full UI
-    if (toolKey === 'collaboration-hub') {
-      return <CollaborationHub />
-    }
+  if (toolKey === 'collaboration-hub') {
+    return <CollaborationHub />
+  }
+
+  // Promotion Hub has its own social-media composer UI
+  if (toolKey === 'promotion-hub') {
+    return <PromotionHubPage />
+  }
 
   const config = TOOL_CONFIGS[toolKey]
 
@@ -1600,6 +1616,457 @@ function KnowledgeVaultPage() {
           </aside>
         </div>
       ) : null}
+    </div>
+  )
+}
+
+// ─── Promotion Hub ────────────────────────────────────────────────────────────
+
+type SocialPlatform = {
+  key: string
+  label: string
+  charLimit: number
+  color: string
+  intent: ((text: string) => string) | null
+  prefix: string
+  icon: React.ReactNode
+}
+
+const PLATFORMS: SocialPlatform[] = [
+  {
+    key: 'x',
+    label: 'X / Twitter',
+    charLimit: 280,
+    color: 'text-zinc-100',
+    intent: (text) => `https://x.com/intent/tweet?text=${encodeURIComponent(text)}`,
+    prefix: 'x.com',
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.259 5.632zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+      </svg>
+    ),
+  },
+  {
+    key: 'threads',
+    label: 'Threads',
+    charLimit: 500,
+    color: 'text-zinc-100',
+    intent: null,
+    prefix: 'threads.net',
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 192 192" fill="currentColor" aria-hidden="true">
+        <path d="M141.537 88.988a66.667 66.667 0 0 0-2.518-1.143c-1.482-27.307-16.403-42.94-41.457-43.1h-.462c-14.967 0-27.406 6.396-35.116 18.05l13.678 9.384c5.751-8.734 14.793-10.608 21.459-10.608h.306c8.29.053 14.556 2.464 18.637 7.165 2.95 3.414 4.93 8.138 5.89 14.073-7.348-1.25-15.295-1.636-23.803-1.15-23.956 1.386-39.348 15.403-38.367 34.887.492 9.828 5.42 18.272 13.868 23.76 7.143 4.694 16.364 6.966 25.955 6.45 12.665-.689 22.616-5.529 29.575-14.391 5.29-6.904 8.637-15.831 10.093-27.116 6.05 3.658 10.529 8.493 13.019 14.41 4.276 10.164 4.521 26.867-8.793 40.18-11.813 11.81-26.04 16.923-47.454 17.078-23.786-.177-41.763-7.804-53.433-22.676C33.17 138.003 27.99 120.39 27.81 98c.18-22.39 5.36-40.003 15.385-52.346C54.865 30.83 72.842 23.203 96.628 23.026c23.947.178 42.227 7.84 54.348 22.775 5.958 7.376 10.441 16.365 13.378 26.713l15.919-4.229c-3.579-13.21-9.282-24.617-17.027-34.007C147.533 16.24 124.737 6.145 96.77 5.933h-.32C68.685 6.145 46.23 16.275 30.876 36.025 17.087 53.625 10.02 78.34 9.809 98c.211 19.66 7.278 44.373 21.067 61.974C46.23 179.724 68.684 189.854 96.45 190.067h.32c24.75-.195 42.183-6.693 56.506-21.012 18.798-18.794 18.207-42.306 12.023-56.8-4.386-10.43-12.8-18.931-23.762-23.267z" />
+      </svg>
+    ),
+  },
+  {
+    key: 'instagram',
+    label: 'Instagram',
+    charLimit: 2200,
+    color: 'text-pink-300',
+    intent: null,
+    prefix: 'instagram.com',
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z" />
+      </svg>
+    ),
+  },
+  {
+    key: 'kick',
+    label: 'Kick',
+    charLimit: 500,
+    color: 'text-[#53FC18]',
+    intent: null,
+    prefix: 'kick.com',
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="#53FC18" aria-hidden="true">
+        <path d="M2 2h5v8.5l5-8.5h6l-6 10 6 10h-6l-5-8.5V22H2z" />
+      </svg>
+    ),
+  },
+  {
+    key: 'twitch',
+    label: 'Twitch',
+    charLimit: 500,
+    color: 'text-purple-300',
+    intent: null,
+    prefix: 'twitch.tv',
+    icon: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="#9146FF" aria-hidden="true">
+        <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z" />
+      </svg>
+    ),
+  },
+]
+
+type ScheduledPost = {
+  id: string
+  message: string
+  platforms: string[]
+  scheduled_at: string
+  status: 'queued' | 'sent' | 'failed'
+  created_at: string
+}
+
+type ScheduledPostApiResponse = {
+  entries: Array<{
+    id: string
+    title: string
+    details: string
+    status: string
+    event_date: string | null
+    metadata: Record<string, unknown>
+    created_at: string
+  }>
+}
+
+function platformText(base: string, platform: SocialPlatform): string {
+  const limit = platform.charLimit
+  if (base.length <= limit) return base
+  return base.slice(0, limit - 1) + '…'
+}
+
+function PromotionHubPage() {
+  const [message, setMessage] = useState('')
+  const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(new Set(['x']))
+  const [scheduleDate, setScheduleDate] = useState('')
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
+  const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([])
+  const [postsLoading, setPostsLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const loadPosts = async () => {
+    try {
+      const response = await authedFetch('/api/tools/promotion-hub')
+      if (!response.ok) return
+      const data = (await response.json()) as ScheduledPostApiResponse
+      const parsed: ScheduledPost[] = (data.entries || []).map((e) => ({
+        id: e.id,
+        message: e.title,
+        platforms: Array.isArray(e.metadata?.platforms) ? (e.metadata.platforms as string[]) : [],
+        scheduled_at: e.event_date || e.created_at,
+        status: (e.status === 'done' ? 'sent' : e.status === 'active' ? 'queued' : e.status) as ScheduledPost['status'],
+        created_at: e.created_at,
+      }))
+      setScheduledPosts(parsed.sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()))
+    } catch {
+      // non-fatal
+    } finally {
+      setPostsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadPosts()
+  }, [])
+
+  const togglePlatform = (key: string) => {
+    setSelectedPlatforms((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+      }
+      return next
+    })
+  }
+
+  const copyForPlatform = (platform: SocialPlatform) => {
+    const text = platformText(message, platform)
+    void navigator.clipboard.writeText(text)
+    if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current)
+    setCopiedKey(platform.key)
+    copiedTimerRef.current = setTimeout(() => setCopiedKey(null), 2000)
+  }
+
+  const openXIntent = () => {
+    const platform = PLATFORMS.find((p) => p.key === 'x')!
+    const text = platformText(message, platform)
+    window.open(platform.intent!(text), '_blank', 'noopener,noreferrer')
+  }
+
+  const schedulePost = async () => {
+    if (!message.trim()) {
+      setSaveError('Please write a message first.')
+      return
+    }
+    if (selectedPlatforms.size === 0) {
+      setSaveError('Select at least one platform.')
+      return
+    }
+    setSaving(true)
+    setSaveError('')
+    try {
+      const response = await authedFetch('/api/tools/promotion-hub', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: message.trim().slice(0, 160),
+          details: message.trim(),
+          status: 'planned',
+          eventDate: scheduleDate ? new Date(scheduleDate).toISOString() : new Date().toISOString(),
+          metadata: { platforms: Array.from(selectedPlatforms) },
+        }),
+      })
+      if (!response.ok) {
+        const err = (await response.json()) as { error?: string }
+        setSaveError(err.error || 'Failed to schedule post.')
+        return
+      }
+      setMessage('')
+      setScheduleDate('')
+      await loadPosts()
+    } catch {
+      setSaveError('Unexpected error. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const deletePost = async (id: string) => {
+    setDeletingId(id)
+    try {
+      await authedFetch('/api/tools/promotion-hub', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      setScheduledPosts((prev) => prev.filter((p) => p.id !== id))
+    } catch {
+      // non-fatal
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  return (
+    <div className="min-h-screen px-4 py-12 text-zinc-100">
+      <div className="mx-auto max-w-5xl">
+        {/* Header */}
+        <div className="mb-8 flex items-center justify-between gap-4">
+          <div>
+            <Link
+              to="/dashboard"
+              className="mb-3 inline-flex items-center gap-1.5 text-xs text-zinc-400 transition hover:text-zinc-100"
+            >
+              <ArrowLeft size={13} /> Back to Dashboard
+            </Link>
+            <div className="flex items-center gap-3">
+              <div className="rounded-md border border-zinc-200/20 bg-zinc-900/60 p-2 text-orange-200">
+                <Megaphone size={18} />
+              </div>
+              <div>
+                <h1 className="text-2xl font-black text-zinc-50">Promotion Hub</h1>
+                <p className="text-sm text-zinc-400">Compose, preview, and schedule posts across your linked social platforms</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+          {/* Left: Composer */}
+          <div className="space-y-5">
+            {/* Platform selector */}
+            <section className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-5">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Target Platforms</p>
+              <div className="flex flex-wrap gap-2">
+                {PLATFORMS.map((platform) => {
+                  const selected = selectedPlatforms.has(platform.key)
+                  return (
+                    <button
+                      key={platform.key}
+                      type="button"
+                      onClick={() => togglePlatform(platform.key)}
+                      className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold transition ${
+                        selected
+                          ? 'border-orange-200/60 bg-orange-200/10 text-orange-100'
+                          : 'border-zinc-200/15 bg-zinc-800/40 text-zinc-400 hover:border-zinc-200/40 hover:text-zinc-100'
+                      }`}
+                    >
+                      <span className={platform.color}>{platform.icon}</span>
+                      {platform.label}
+                      {selected ? <Check size={12} className="text-orange-200" /> : null}
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+
+            {/* Composer */}
+            <section className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-5">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Message</p>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                rows={6}
+                placeholder="Write your promotional message here. It will be adapted to each platform's character limit automatically."
+                className="w-full resize-none rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-4 py-3 text-sm text-zinc-100 outline-none transition focus:border-orange-200/70 placeholder:text-zinc-600"
+              />
+              <div className="mt-2 flex flex-wrap gap-3">
+                {PLATFORMS.filter((p) => selectedPlatforms.has(p.key)).map((p) => {
+                  const trimmed = platformText(message, p)
+                  const over = message.length > p.charLimit
+                  return (
+                    <span key={p.key} className={`text-xs ${over ? 'text-rose-300' : 'text-zinc-500'}`}>
+                      {p.label}: {Math.min(message.length, p.charLimit)}/{p.charLimit}
+                      {over ? ' (will trim)' : ''}
+                    </span>
+                  )
+                })}
+              </div>
+            </section>
+
+            {/* Per-platform previews */}
+            {message.trim() && selectedPlatforms.size > 0 ? (
+              <section className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-5">
+                <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Platform Previews</p>
+                <div className="space-y-4">
+                  {PLATFORMS.filter((p) => selectedPlatforms.has(p.key)).map((platform) => {
+                    const text = platformText(message, platform)
+                    const isCopied = copiedKey === platform.key
+                    return (
+                      <div key={platform.key} className="rounded-xl border border-zinc-200/10 bg-zinc-950/60 p-4">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className={platform.color}>{platform.icon}</span>
+                            <span className="text-xs font-semibold text-zinc-300">{platform.label}</span>
+                            <span className="text-xs text-zinc-600">{text.length}/{platform.charLimit}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {platform.intent ? (
+                              <button
+                                type="button"
+                                onClick={openXIntent}
+                                className="flex items-center gap-1.5 rounded-lg border border-zinc-200/20 px-2.5 py-1 text-xs font-semibold text-zinc-200 transition hover:border-orange-200/50 hover:text-orange-100"
+                              >
+                                <Send size={11} /> Post Now
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => copyForPlatform(platform)}
+                              className="flex items-center gap-1.5 rounded-lg border border-zinc-200/20 px-2.5 py-1 text-xs font-semibold text-zinc-200 transition hover:border-orange-200/50 hover:text-orange-100"
+                            >
+                              {isCopied ? <Check size={11} className="text-emerald-300" /> : <Copy size={11} />}
+                              {isCopied ? 'Copied!' : 'Copy'}
+                            </button>
+                          </div>
+                        </div>
+                        <p className="whitespace-pre-wrap text-sm text-zinc-300">{text}</p>
+                        {!platform.intent ? (
+                          <p className="mt-2 text-xs text-zinc-600">
+                            Copy this text and paste it into {platform.prefix} to post.
+                          </p>
+                        ) : null}
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            ) : null}
+
+            {/* Schedule */}
+            <section className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-5">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Schedule</p>
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="flex-1 min-w-[200px]">
+                  <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+                    <span className="flex items-center gap-1.5"><Calendar size={12} /> Post date &amp; time (optional)</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={scheduleDate}
+                    onChange={(e) => setScheduleDate(e.target.value)}
+                    className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-orange-200/70"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void schedulePost()}
+                  disabled={saving || !message.trim()}
+                  className="flex items-center gap-2 rounded-lg bg-orange-300 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-orange-200 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Clock size={14} />
+                  {saving ? 'Saving...' : scheduleDate ? 'Schedule Post' : 'Add to Queue'}
+                </button>
+              </div>
+              {saveError ? (
+                <p className="mt-2 text-xs text-rose-300">{saveError}</p>
+              ) : null}
+              <p className="mt-2 text-xs text-zinc-600">
+                Posts are saved to your queue. X supports one-click posting via the "Post Now" button. For other platforms, use the Copy button and paste into the app.
+              </p>
+            </section>
+          </div>
+
+          {/* Right: Queue */}
+          <div>
+            <section className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-5">
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Post Queue</p>
+              {postsLoading ? (
+                <p className="text-sm text-zinc-400">Loading queue...</p>
+              ) : scheduledPosts.length === 0 ? (
+                <div className="rounded-xl border border-zinc-200/10 bg-zinc-950/40 p-4 text-center">
+                  <p className="text-sm text-zinc-500">No posts queued yet.</p>
+                  <p className="mt-1 text-xs text-zinc-600">Compose a message and click "Add to Queue".</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {scheduledPosts.map((post) => {
+                    const postPlatforms = PLATFORMS.filter((p) => post.platforms.includes(p.key))
+                    const scheduled = new Date(post.scheduled_at)
+                    const isPast = scheduled < new Date()
+                    return (
+                      <div key={post.id} className="rounded-xl border border-zinc-200/10 bg-zinc-950/40 p-3">
+                        <div className="mb-2 flex items-start justify-between gap-2">
+                          <div className="flex flex-wrap gap-1">
+                            {postPlatforms.map((p) => (
+                              <span key={p.key} className={`${p.color} flex items-center gap-1 text-xs`}>
+                                {p.icon}
+                              </span>
+                            ))}
+                            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                              post.status === 'sent'
+                                ? 'bg-emerald-300/10 text-emerald-300'
+                                : post.status === 'failed'
+                                ? 'bg-rose-300/10 text-rose-300'
+                                : isPast
+                                ? 'bg-amber-300/10 text-amber-300'
+                                : 'bg-zinc-200/10 text-zinc-400'
+                            }`}>
+                              {post.status === 'sent' ? 'Sent' : post.status === 'failed' ? 'Failed' : isPast ? 'Past due' : 'Queued'}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => void deletePost(post.id)}
+                            disabled={deletingId === post.id}
+                            className="flex-shrink-0 rounded p-1 text-zinc-600 transition hover:text-rose-300 disabled:opacity-40"
+                            aria-label="Delete post"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                        <p className="line-clamp-3 text-xs text-zinc-300">{post.message}</p>
+                        <p className="mt-1.5 text-xs text-zinc-600">
+                          {scheduleDate
+                            ? scheduled.toLocaleString()
+                            : scheduled.toLocaleDateString()}
+                        </p>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </section>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

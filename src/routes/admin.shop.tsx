@@ -2,6 +2,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { ArrowLeft, CreditCard, RefreshCcw, ShoppingBag, Store, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { authedFetch } from '../lib/supabaseBrowser'
+import { requireAuthenticatedRoute } from '../lib/routeAuth'
 
 type MerchItem = {
   id: string
@@ -50,6 +51,9 @@ const emptyPlanForm = {
 }
 
 export const Route = createFileRoute('/admin/shop')({
+  beforeLoad: async () => {
+    await requireAuthenticatedRoute()
+  },
   head: () => ({
     meta: [
       { title: 'Admin Shop — W.A.G.E. Society' },

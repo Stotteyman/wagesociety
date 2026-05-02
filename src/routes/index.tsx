@@ -43,38 +43,52 @@ type MarketingProofResponse = {
 
 const fallbackMembershipTiers: MembershipTier[] = [
   {
-    id: 'fallback-backstage',
-    slug: 'backstage',
-    name: 'Backstage',
+    id: 'fallback-free',
+    slug: 'free',
+    name: 'FREE',
     price: '$0',
-    description: 'For new builders exploring the organization.',
-    features: ['Public knowledge feed', 'Monthly orientation workshop', 'Limited mastermind preview'],
+    description: 'Very limited access for account login, linking, and browsing.',
+    features: ['Log in and account access', 'Connect social/OAuth accounts', 'Browse public sections'],
   },
   {
-    id: 'fallback-all-access',
-    slug: 'all-access',
-    name: 'All Access',
-    price: '$19/mo',
-    description: 'For active members building weekly momentum.',
+    id: 'fallback-standard',
+    slug: 'standard',
+    name: 'STANDARD',
+    price: '$20/mo',
+    description: 'Core membership plan for regular creator workflows.',
     features: [
-      'Full member authentication',
-      'Mastermind channels + resource library',
-      'Weekly live growth sessions',
-      'Campaign and launch announcements',
+      'Expanded workspace access',
+      'Standard member sections',
+      'Routine creator tools',
     ],
   },
   {
-    id: 'fallback-creator-circle',
-    slug: 'creator-circle',
-    name: 'Creator Circle',
-    price: '$49/mo',
-    description: 'For founders and operators scaling digital revenue.',
+    id: 'fallback-plus',
+    slug: 'plus',
+    name: 'PLUS',
+    price: '$50/mo',
+    description: 'Higher-tier access for serious operators and teams.',
     features: [
-      'Advanced creator and marketing systems',
-      'Priority partner and promotion access',
-      'Private strategy war room',
-      'Performance and revenue snapshots',
+      'Broader tool access',
+      'Priority support',
+      'Advanced workspace options',
     ],
+  },
+  {
+    id: 'fallback-unlimited',
+    slug: 'unlimited',
+    name: 'UNLIMITED',
+    price: '$100/mo',
+    description: 'Full platform access for high-output creators and founders.',
+    features: ['Complete creator tool access', 'Premium sections and workflows', 'Top-tier performance features'],
+  },
+  {
+    id: 'fallback-vip',
+    slug: 'vip',
+    name: 'VIP',
+    price: '$1000/mo',
+    description: 'Elite private tier for highest-priority access and support.',
+    features: ['VIP-level access', 'Private insider channels', 'Highest support priority'],
   },
 ]
 
@@ -145,13 +159,13 @@ function Home() {
         <p className="mb-8 text-zinc-300 text-center">Sign up or log in to access your account.</p>
         <div className="flex flex-col gap-4 w-full">
           <a
-            href="/dashboard?view=signup"
+            href="/signup"
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-300 px-7 py-3 font-semibold text-zinc-950 transition hover:bg-orange-200 w-full"
           >
             Sign Up
           </a>
           <a
-            href="/dashboard?view=login"
+            href="/login"
             className="inline-flex items-center justify-center rounded-xl border border-orange-300/55 px-7 py-3 font-semibold text-orange-100 transition hover:border-orange-200 hover:text-orange-50 w-full"
           >
             Log In

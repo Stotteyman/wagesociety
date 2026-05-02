@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { ArrowLeft, Store, Users, RadioTower, ShoppingBag, CreditCard, CircleHelp } from 'lucide-react'
+import { requireAuthenticatedRoute } from '../lib/routeAuth'
 
 const adminLinks = [
   {
@@ -41,6 +42,9 @@ const adminLinks = [
 ]
 
 export const Route = createFileRoute('/admin')({
+  beforeLoad: async () => {
+    await requireAuthenticatedRoute()
+  },
   head: () => ({
     meta: [
       { title: 'Admin Hub — W.A.G.E. Society' },
