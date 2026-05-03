@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { formatRoleLabel, type OrgRole } from '../lib/orgAccess'
 import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 import { getStoredViewAsRole, setStoredViewAsRole } from '../lib/viewAs'
+import { SiteHeader } from '../components/SiteHeader'
 
 import '../styles.css'
 
@@ -134,7 +135,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         />
       </head>
       <body>
-        {children}
+        <div className="min-h-screen bg-zinc-950 text-zinc-100">
+          <div className="mx-auto flex w-full max-w-6xl flex-col px-4 pb-12 pt-5 sm:px-6 lg:px-8">
+            <SiteHeader />
+            {children}
+          </div>
+        </div>
         {viewingAs ? (
           <div className="fixed right-4 top-4 z-[10000] flex items-center gap-3 rounded-lg border border-rose-300/60 bg-rose-600/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-rose-50 shadow-lg shadow-rose-900/40">
             <span>VIEWING AS ({formatRoleLabel(viewingAs)})</span>

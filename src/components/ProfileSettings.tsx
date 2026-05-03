@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import {
   AlertCircle,
   Check,
-  ExternalLink,
   Link2,
   Loader2,
   Save,
@@ -14,30 +13,13 @@ import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type SocialLinks = {
-  instagram?: string
-  tiktok?: string
-  youtube?: string
-  twitch?: string
-  twitter?: string
-  threads?: string
-  kick?: string
-  steam?: string
-  linkedin?: string
-  facebook?: string
-  discord?: string
-}
-
 type MemberProfile = {
   email: string
   display_name: string | null
   avatar_url: string | null
   bio: string | null
   skills: string[] | null
-  website: string | null
-  social_links: SocialLinks
   updated_at: string | null
-  username_changed_at: string | null
 }
 
 type ProfileApiResponse = { profile: MemberProfile }
@@ -48,20 +30,6 @@ const OAUTH_PROVIDERS: { key: OAuthProvider; label: string; description: string 
   { key: 'discord', label: 'Discord', description: 'Link your Discord account' },
   { key: 'google', label: 'Google / YouTube', description: 'Link your Google account' },
   { key: 'facebook', label: 'Facebook', description: 'Link your Facebook account' },
-]
-
-const SOCIAL_FIELDS: { key: keyof SocialLinks; label: string; placeholder: string; prefix?: string }[] = [
-  { key: 'kick', label: 'Kick', placeholder: 'yourusername', prefix: 'kick.com/' },
-  { key: 'twitch', label: 'Twitch', placeholder: 'yourusername', prefix: 'twitch.tv/' },
-  { key: 'instagram', label: 'Instagram', placeholder: 'yourhandle', prefix: 'instagram.com/' },
-  { key: 'twitter', label: 'X / Twitter', placeholder: '@yourhandle', prefix: 'x.com/' },
-  { key: 'threads', label: 'Threads', placeholder: '@yourhandle', prefix: 'threads.net/@' },
-  { key: 'tiktok', label: 'TikTok', placeholder: '@yourhandle', prefix: 'tiktok.com/' },
-  { key: 'youtube', label: 'YouTube', placeholder: 'youtube.com/c/yourchannel' },
-  { key: 'steam', label: 'Steam', placeholder: 'yourusername', prefix: 'steamcommunity.com/id/' },
-  { key: 'linkedin', label: 'LinkedIn', placeholder: 'linkedin.com/in/yourprofile' },
-  { key: 'facebook', label: 'Facebook', placeholder: 'facebook.com/yourprofile' },
-  { key: 'discord', label: 'Discord', placeholder: 'username', prefix: 'discord.com/users/' },
 ]
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -75,8 +43,6 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
   const [avatarUrl, setAvatarUrl] = useState('')
   const [bio, setBio] = useState('')
   const [skillsInput, setSkillsInput] = useState('')
-  const [website, setWebsite] = useState('')
-  const [socialLinks, setSocialLinks] = useState<SocialLinks>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -100,8 +66,6 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
           setAvatarUrl(p.avatar_url || '')
           setBio(p.bio || '')
           setSkillsInput((p.skills || []).join(', '))
-          setWebsite(p.website || '')
-          setSocialLinks(p.social_links || {})
         }
         setUser(currentUser)
       } catch {
@@ -112,25 +76,11 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
     })()
   }, [])
 
-  // 30-day username cooldown
-  const usernameChangedAt = profile?.username_changed_at ? new Date(profile.username_changed_at) : null
-  const daysSinceUsernameChange = usernameChangedAt
-    ? (Date.now() - usernameChangedAt.getTime()) / (1000 * 60 * 60 * 24)
-    : Infinity
-  const canChangeUsername = daysSinceUsernameChange >= 30
-  const daysUntilUsernameChange = canChangeUsername ? 0 : Math.ceil(30 - daysSinceUsernameChange)
-
   const handleSave = async () => {
     setSaving(true)
     setError('')
     setSaved(false)
     const trimmed = displayName.trim()
-    const isChangingUsername = trimmed && trimmed.toLowerCase() !== (profile?.display_name ?? '').toLowerCase()
-    if (isChangingUsername && !canChangeUsername) {
-      setError(`You can change your username again in ${daysUntilUsernameChange} day${daysUntilUsernameChange === 1 ? '' : 's'}.`)
-      setSaving(false)
-      return
-    }
     if (trimmed && !/^[a-zA-Z0-9_-]{3,20}$/.test(trimmed)) {
       setError('Username must be 3–20 characters: letters, numbers, underscores, or hyphens only.')
       setSaving(false)
@@ -149,8 +99,6 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
         avatarUrl: avatarUrl.trim() || '',
         bio: bio.trim() || undefined,
         skills: skillsInput.split(',').map((s) => s.trim()).filter(Boolean),
-        website: website.trim() || '',
-        socialLinks,
       }),
     })
     if (response.ok) {
@@ -226,10 +174,6 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
     }, 500)
   }
 
-  const updateSocialLink = (key: keyof SocialLinks, value: string) => {
-    setSocialLinks((prev) => ({ ...prev, [key]: value }))
-  }
-
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-zinc-400">
@@ -254,49 +198,28 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
               type="text"
               value={displayName}
               onChange={(e) => {
-                if (!canChangeUsername && e.target.value.toLowerCase() !== (profile?.display_name ?? '').toLowerCase()) return
                 setDisplayName(e.target.value)
                 checkUsername(e.target.value)
               }}
               maxLength={20}
               placeholder={member.email.split('@')[0].slice(0, 20)}
               autoComplete="username"
-              disabled={!canChangeUsername}
-              className={`w-full rounded-lg border bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100 outline-none transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                !canChangeUsername
-                  ? 'border-zinc-200/10'
-                  : usernameStatus === 'available'
+              className={`w-full rounded-lg border bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100 outline-none transition ${
+                usernameStatus === 'available'
                   ? 'border-emerald-400/60 focus:border-emerald-300'
                   : usernameStatus === 'taken' || usernameStatus === 'invalid'
                   ? 'border-rose-400/60 focus:border-rose-300'
                   : 'border-zinc-200/20 focus:border-orange-200/70'
               }`}
             />
-            {!canChangeUsername ? (
-              <p className="mt-0.5 text-xs text-amber-400">
-                Username locked — you can change it again in {daysUntilUsernameChange} day{daysUntilUsernameChange === 1 ? '' : 's'}.
-              </p>
-            ) : (
-              <p className="mt-0.5 text-xs text-zinc-500">3–20 characters. Letters, numbers, _ and - only.</p>
-            )}
-            {canChangeUsername && usernameStatus === 'checking' ? (
+            <p className="mt-0.5 text-xs text-zinc-500">3–20 characters. Letters, numbers, _ and - only.</p>
+            {usernameStatus === 'checking' ? (
               <p className="mt-0.5 text-xs text-zinc-400">Checking availability...</p>
-            ) : canChangeUsername && usernameMessage ? (
+            ) : usernameMessage ? (
               <p className={`mt-0.5 text-xs ${usernameStatus === 'available' ? 'text-emerald-300' : 'text-rose-300'}`}>
                 {usernameMessage}
               </p>
             ) : null}
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-zinc-400">Website</label>
-            <input
-              type="url"
-              value={website}
-              onChange={(e) => setWebsite(e.target.value)}
-              placeholder="https://yoursite.com"
-              className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-orange-200/70"
-            />
           </div>
 
           <div className="sm:col-span-2">
@@ -360,45 +283,6 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
               </div>
             ) : null}
           </div>
-        </div>
-      </section>
-
-      {/* Social Links */}
-      <section className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <Link2 size={16} className="text-orange-200" />
-          <h2 className="font-bold text-zinc-100">Social Links</h2>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {SOCIAL_FIELDS.map(({ key, label, placeholder, prefix }) => (
-            <div key={key}>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-400">{label}</label>
-              <div className="flex items-center rounded-lg border border-zinc-200/20 bg-zinc-950/60 overflow-hidden">
-                {prefix ? (
-                  <span className="flex-shrink-0 border-r border-zinc-200/15 bg-zinc-900 px-2 py-2 text-xs text-zinc-500">
-                    {prefix}
-                  </span>
-                ) : null}
-                <input
-                  type="text"
-                  value={socialLinks[key] || ''}
-                  onChange={(e) => updateSocialLink(key, e.target.value)}
-                  placeholder={placeholder}
-                  className="flex-1 bg-transparent px-3 py-2 text-sm text-zinc-100 outline-none"
-                />
-                {socialLinks[key] ? (
-                  <a
-                    href={prefix ? `https://${prefix}${socialLinks[key]}` : socialLinks[key]}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-2 text-zinc-400 transition hover:text-orange-200"
-                  >
-                    <ExternalLink size={13} />
-                  </a>
-                ) : null}
-              </div>
-            </div>
-          ))}
         </div>
       </section>
 

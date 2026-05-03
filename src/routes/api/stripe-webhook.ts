@@ -8,6 +8,56 @@ function getStripe() {
   return new Stripe(key, { apiVersion: '2026-03-25.dahlia' })
 }
 
+type AuthUserMeta = {
+  membership_plan?: string
+  stripe_customer_id?: string
+  stripe_subscription_id?: string
+}
+
+function extractPlanSlugFromSubscription(subscription: Stripe.Subscription) {
+  const fromMeta = subscription.metadata?.membership_plan?.trim()
+  if (fromMeta) return fromMeta
+
+  const firstItem = subscription.items.data[0]
+  const fromPriceMeta = firstItem?.price?.metadata?.planSlug?.trim()
+  if (fromPriceMeta) return fromPriceMeta
+
+  const fromProductMeta = firstItem?.price?.product
+  if (fromProductMeta && typeof fromProductMeta !== 'string') {
+    const slug = fromProductMeta.metadata?.planSlug?.trim()
+    if (slug) return slug
+  }
+
+  return null
+}
+
+async function updateMembershipMetadataByEmail(email: string, updates: Partial<AuthUserMeta>) {
+  const admin = getSupabaseAdminClient()
+  const { data: users, error: usersError } = await admin
+    .schema('auth')
+    .from('users')
+    .select('id, raw_user_meta_data')
+    .ilike('email', email)
+    .limit(1)
+
+  if (usersError) throw new Error(usersError.message)
+
+  const user = Array.isArray(users) ? users[0] : null
+  if (!user?.id) return
+
+  const currentMeta = ((user.raw_user_meta_data as AuthUserMeta | null | undefined) ?? {})
+  const nextMeta: AuthUserMeta = {
+    ...currentMeta,
+    ...updates,
+  }
+
+  const { error: updateError } = await admin.auth.admin.updateUserById(user.id, {
+    user_metadata: nextMeta,
+  })
+
+  if (updateError) throw new Error(updateError.message)
+}
+
 /**
  * POST /api/stripe-webhook
  *
@@ -18,8 +68,9 @@ function getStripe() {
  *   https://dashboard.stripe.com/webhooks → Add endpoint → https://yourdomain.com/api/stripe-webhook
  *
  * Events handled:
- *   - payment_intent.succeeded  → ensure org role is set to at least "user"
- *   - customer.subscription.deleted → downgrade role if needed (future)
+ *   - checkout.session.completed  → ensure org role is set to at least "user"
+ *   - customer.subscription.updated → sync membership plan metadata
+ *   - customer.subscription.deleted → downgrade to free plan
  */
 export const Route = createFileRoute('/api/stripe-webhook')({
   server: {
@@ -49,34 +100,72 @@ export const Route = createFileRoute('/api/stripe-webhook')({
         }
 
         try {
-          if (event.type === 'payment_intent.succeeded') {
-            const intent = event.data.object as Stripe.PaymentIntent
-            const { customerEmail, planSlug } = intent.metadata
+          if (event.type === 'checkout.session.completed') {
+            const session = event.data.object as Stripe.Checkout.Session
+            const customerEmail =
+              session.metadata?.customerEmail || session.customer_details?.email || undefined
+            const planSlug = session.metadata?.membership_plan || undefined
 
             if (customerEmail) {
+              const normalizedEmail = customerEmail.toLowerCase()
               const admin = getSupabaseAdminClient()
 
-              // Ensure the member exists with at least the "user" role
-              // ensure_org_member_role provisions the role if not present
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              await (admin.rpc as any)('ensure_org_member_role', {
-                p_email: customerEmail,
+              await admin.rpc('ensure_org_member_role', {
+                p_email: normalizedEmail,
               })
 
-              // Log the fulfilled purchase
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              await (admin.from('org_shop_orders') as any).upsert(
-                {
-                  stripe_payment_intent_id: intent.id,
-                  customer_email: customerEmail,
-                  plan_slug: planSlug || null,
-                  amount_cents: intent.amount,
-                  currency: intent.currency,
-                  status: 'paid',
-                  paid_at: new Date().toISOString(),
-                },
-                { onConflict: 'stripe_payment_intent_id', ignoreDuplicates: true }
-              )
+              await updateMembershipMetadataByEmail(normalizedEmail, {
+                membership_plan: planSlug || 'free',
+                stripe_customer_id: typeof session.customer === 'string' ? session.customer : undefined,
+                stripe_subscription_id: typeof session.subscription === 'string' ? session.subscription : undefined,
+              })
+            }
+          }
+
+          if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.created') {
+            const subscription = event.data.object as Stripe.Subscription
+            const customerId = typeof subscription.customer === 'string' ? subscription.customer : ''
+
+            if (customerId) {
+              const customer = await stripe.customers.retrieve(customerId)
+              const customerEmail =
+                typeof customer !== 'string' && !customer.deleted
+                  ? customer.email?.toLowerCase()
+                  : undefined
+
+              if (customerEmail) {
+                const planSlug = extractPlanSlugFromSubscription(subscription) || 'free'
+                const admin = getSupabaseAdminClient()
+                await admin.rpc('ensure_org_member_role', {
+                  p_email: customerEmail,
+                })
+
+                await updateMembershipMetadataByEmail(customerEmail, {
+                  membership_plan: planSlug,
+                  stripe_customer_id: customerId,
+                  stripe_subscription_id: subscription.id,
+                })
+              }
+            }
+          }
+
+          if (event.type === 'customer.subscription.deleted') {
+            const subscription = event.data.object as Stripe.Subscription
+            const customerId = typeof subscription.customer === 'string' ? subscription.customer : ''
+            if (customerId) {
+              const customer = await stripe.customers.retrieve(customerId)
+              const customerEmail =
+                typeof customer !== 'string' && !customer.deleted
+                  ? customer.email?.toLowerCase()
+                  : undefined
+
+              if (customerEmail) {
+                await updateMembershipMetadataByEmail(customerEmail, {
+                  membership_plan: 'free',
+                  stripe_customer_id: customerId,
+                  stripe_subscription_id: undefined,
+                })
+              }
             }
           }
         } catch {

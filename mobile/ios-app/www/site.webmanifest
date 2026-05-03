@@ -1,0 +1,22 @@
+{
+  "name": "W.A.G.E. Society",
+  "short_name": "WAGE Society",
+  "description": "The members-only clubhouse for live-streaming, entertainment, and community energy.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#06080f",
+  "theme_color": "#fb923c",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable any"
+    }
+  ]
+}

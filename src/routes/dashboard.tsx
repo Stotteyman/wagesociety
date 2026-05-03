@@ -78,12 +78,6 @@ type NewsItem = {
   author: string
 }
 
-type ProfileWithSocialLinks = {
-  profile?: {
-    social_links?: Record<string, string | undefined>
-  }
-}
-
 const fallbackMembershipPlans: Array<{
   id: string
   slug: string
@@ -789,42 +783,28 @@ function CreatorDashboard({
 function WorkspaceAnalytics() {
   const [loading, setLoading] = useState(true)
   const [linkedProviders, setLinkedProviders] = useState<string[]>([])
-  const [socialLinksCount, setSocialLinksCount] = useState(0)
 
   useEffect(() => {
     void (async () => {
       setLoading(true)
       try {
         const supabase = getSupabaseBrowserClient()
-        const [{ data: userData }, profileResponse] = await Promise.all([
-          supabase.auth.getUser(),
-          authedFetch('/api/me/profile'),
-        ])
+        const { data: userData } = await supabase.auth.getUser()
 
         const identityProviders = (userData.user?.identities || [])
           .map((identity) => identity.provider)
           .filter((provider): provider is string => Boolean(provider))
 
         setLinkedProviders(Array.from(new Set(identityProviders)).sort())
-
-        if (profileResponse.ok) {
-          const data = (await profileResponse.json()) as ProfileWithSocialLinks
-          const links = data.profile?.social_links || {}
-          const count = Object.values(links).filter((value) => Boolean((value || '').trim())).length
-          setSocialLinksCount(count)
-        } else {
-          setSocialLinksCount(0)
-        }
       } catch {
         setLinkedProviders([])
-        setSocialLinksCount(0)
       } finally {
         setLoading(false)
       }
     })()
   }, [])
 
-  const totalLinkedAccounts = linkedProviders.length + socialLinksCount
+  const totalLinkedAccounts = linkedProviders.length
 
   return (
     <article className="mb-5 rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-5">
@@ -836,7 +816,7 @@ function WorkspaceAnalytics() {
       {loading ? (
         <p className="mt-3 text-sm text-zinc-400">Loading analytics...</p>
       ) : (
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border border-zinc-200/15 bg-zinc-950/60 p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Linked Accounts</p>
             <p className="mt-2 text-2xl font-black text-orange-200">{totalLinkedAccounts}</p>
@@ -844,10 +824,6 @@ function WorkspaceAnalytics() {
           <div className="rounded-xl border border-zinc-200/15 bg-zinc-950/60 p-4">
             <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">OAuth Providers</p>
             <p className="mt-2 text-2xl font-black text-zinc-50">{linkedProviders.length}</p>
-          </div>
-          <div className="rounded-xl border border-zinc-200/15 bg-zinc-950/60 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Social Profiles</p>
-            <p className="mt-2 text-2xl font-black text-zinc-50">{socialLinksCount}</p>
           </div>
         </div>
       )}

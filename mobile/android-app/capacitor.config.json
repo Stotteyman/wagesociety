@@ -1,0 +1,10 @@
+{
+  "appId": "com.wagesociety.android",
+  "appName": "WAGE Society Android",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://wagesociety.com",
+    "androidScheme": "https"
+  }
+}

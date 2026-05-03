@@ -15,13 +15,17 @@ import { Route as MerchRouteImport } from './routes/merch'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LiveRouteImport } from './routes/live'
 import { Route as FaqRouteImport } from './routes/faq'
+import { Route as DirectoryRouteImport } from './routes/directory'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as AppealsRouteImport } from './routes/appeals'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as UsernameRouteImport } from './routes/$username'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
 import { Route as ApiShopRouteImport } from './routes/api/shop'
+import { Route as ApiPublicProfileRouteImport } from './routes/api/public-profile'
+import { Route as ApiPublicDirectoryRouteImport } from './routes/api/public-directory'
 import { Route as ApiProfileRouteImport } from './routes/api/profile'
 import { Route as ApiNewsUploadRouteImport } from './routes/api/news-upload'
 import { Route as ApiNewsRouteImport } from './routes/api/news'
@@ -39,6 +43,7 @@ import { Route as ApiToolsToolRouteImport } from './routes/api/tools/$tool'
 import { Route as ApiMeProfileRouteImport } from './routes/api/me/profile'
 import { Route as ApiMeAccessRouteImport } from './routes/api/me/access'
 import { Route as ApiLiveStreamsRouteImport } from './routes/api/live/streams'
+import { Route as ApiLiveClipsRouteImport } from './routes/api/live/clips'
 import { Route as ApiCollabApplyRouteImport } from './routes/api/collab/apply'
 import { Route as ApiCollabApplicantsRouteImport } from './routes/api/collab/applicants'
 import { Route as ApiAdminRolesRouteImport } from './routes/api/admin/roles'
@@ -76,6 +81,11 @@ const FaqRoute = FaqRouteImport.update({
   path: '/faq',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DirectoryRoute = DirectoryRouteImport.update({
+  id: '/directory',
+  path: '/directory',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -96,6 +106,11 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UsernameRoute = UsernameRouteImport.update({
+  id: '/$username',
+  path: '/$username',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -109,6 +124,16 @@ const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
 const ApiShopRoute = ApiShopRouteImport.update({
   id: '/api/shop',
   path: '/api/shop',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicProfileRoute = ApiPublicProfileRouteImport.update({
+  id: '/api/public-profile',
+  path: '/api/public-profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicDirectoryRoute = ApiPublicDirectoryRouteImport.update({
+  id: '/api/public-directory',
+  path: '/api/public-directory',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiProfileRoute = ApiProfileRouteImport.update({
@@ -196,6 +221,11 @@ const ApiLiveStreamsRoute = ApiLiveStreamsRouteImport.update({
   path: '/api/live/streams',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiLiveClipsRoute = ApiLiveClipsRouteImport.update({
+  id: '/api/live/clips',
+  path: '/api/live/clips',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCollabApplyRoute = ApiCollabApplyRouteImport.update({
   id: '/apply',
   path: '/apply',
@@ -229,10 +259,12 @@ const ApiAdminShopMerchRoute = ApiAdminShopMerchRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$username': typeof UsernameRoute
   '/admin': typeof AdminRouteWithChildren
   '/appeals': typeof AppealsRoute
   '/checkout': typeof CheckoutRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/directory': typeof DirectoryRoute
   '/faq': typeof FaqRoute
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
@@ -251,12 +283,15 @@ export interface FileRoutesByFullPath {
   '/api/news': typeof ApiNewsRoute
   '/api/news-upload': typeof ApiNewsUploadRoute
   '/api/profile': typeof ApiProfileRoute
+  '/api/public-directory': typeof ApiPublicDirectoryRoute
+  '/api/public-profile': typeof ApiPublicProfileRoute
   '/api/shop': typeof ApiShopRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/admin/permissions': typeof ApiAdminPermissionsRoute
   '/api/admin/roles': typeof ApiAdminRolesRoute
   '/api/collab/applicants': typeof ApiCollabApplicantsRoute
   '/api/collab/apply': typeof ApiCollabApplyRoute
+  '/api/live/clips': typeof ApiLiveClipsRoute
   '/api/live/streams': typeof ApiLiveStreamsRoute
   '/api/me/access': typeof ApiMeAccessRoute
   '/api/me/profile': typeof ApiMeProfileRoute
@@ -267,10 +302,12 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$username': typeof UsernameRoute
   '/admin': typeof AdminRouteWithChildren
   '/appeals': typeof AppealsRoute
   '/checkout': typeof CheckoutRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/directory': typeof DirectoryRoute
   '/faq': typeof FaqRoute
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
@@ -289,12 +326,15 @@ export interface FileRoutesByTo {
   '/api/news': typeof ApiNewsRoute
   '/api/news-upload': typeof ApiNewsUploadRoute
   '/api/profile': typeof ApiProfileRoute
+  '/api/public-directory': typeof ApiPublicDirectoryRoute
+  '/api/public-profile': typeof ApiPublicProfileRoute
   '/api/shop': typeof ApiShopRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/admin/permissions': typeof ApiAdminPermissionsRoute
   '/api/admin/roles': typeof ApiAdminRolesRoute
   '/api/collab/applicants': typeof ApiCollabApplicantsRoute
   '/api/collab/apply': typeof ApiCollabApplyRoute
+  '/api/live/clips': typeof ApiLiveClipsRoute
   '/api/live/streams': typeof ApiLiveStreamsRoute
   '/api/me/access': typeof ApiMeAccessRoute
   '/api/me/profile': typeof ApiMeProfileRoute
@@ -306,10 +346,12 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$username': typeof UsernameRoute
   '/admin': typeof AdminRouteWithChildren
   '/appeals': typeof AppealsRoute
   '/checkout': typeof CheckoutRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/directory': typeof DirectoryRoute
   '/faq': typeof FaqRoute
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
@@ -328,12 +370,15 @@ export interface FileRoutesById {
   '/api/news': typeof ApiNewsRoute
   '/api/news-upload': typeof ApiNewsUploadRoute
   '/api/profile': typeof ApiProfileRoute
+  '/api/public-directory': typeof ApiPublicDirectoryRoute
+  '/api/public-profile': typeof ApiPublicProfileRoute
   '/api/shop': typeof ApiShopRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
   '/api/admin/permissions': typeof ApiAdminPermissionsRoute
   '/api/admin/roles': typeof ApiAdminRolesRoute
   '/api/collab/applicants': typeof ApiCollabApplicantsRoute
   '/api/collab/apply': typeof ApiCollabApplyRoute
+  '/api/live/clips': typeof ApiLiveClipsRoute
   '/api/live/streams': typeof ApiLiveStreamsRoute
   '/api/me/access': typeof ApiMeAccessRoute
   '/api/me/profile': typeof ApiMeProfileRoute
@@ -346,10 +391,12 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/$username'
     | '/admin'
     | '/appeals'
     | '/checkout'
     | '/dashboard'
+    | '/directory'
     | '/faq'
     | '/live'
     | '/login'
@@ -368,12 +415,15 @@ export interface FileRouteTypes {
     | '/api/news'
     | '/api/news-upload'
     | '/api/profile'
+    | '/api/public-directory'
+    | '/api/public-profile'
     | '/api/shop'
     | '/api/stripe-webhook'
     | '/api/admin/permissions'
     | '/api/admin/roles'
     | '/api/collab/applicants'
     | '/api/collab/apply'
+    | '/api/live/clips'
     | '/api/live/streams'
     | '/api/me/access'
     | '/api/me/profile'
@@ -384,10 +434,12 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/$username'
     | '/admin'
     | '/appeals'
     | '/checkout'
     | '/dashboard'
+    | '/directory'
     | '/faq'
     | '/live'
     | '/login'
@@ -406,12 +458,15 @@ export interface FileRouteTypes {
     | '/api/news'
     | '/api/news-upload'
     | '/api/profile'
+    | '/api/public-directory'
+    | '/api/public-profile'
     | '/api/shop'
     | '/api/stripe-webhook'
     | '/api/admin/permissions'
     | '/api/admin/roles'
     | '/api/collab/applicants'
     | '/api/collab/apply'
+    | '/api/live/clips'
     | '/api/live/streams'
     | '/api/me/access'
     | '/api/me/profile'
@@ -422,10 +477,12 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/$username'
     | '/admin'
     | '/appeals'
     | '/checkout'
     | '/dashboard'
+    | '/directory'
     | '/faq'
     | '/live'
     | '/login'
@@ -444,12 +501,15 @@ export interface FileRouteTypes {
     | '/api/news'
     | '/api/news-upload'
     | '/api/profile'
+    | '/api/public-directory'
+    | '/api/public-profile'
     | '/api/shop'
     | '/api/stripe-webhook'
     | '/api/admin/permissions'
     | '/api/admin/roles'
     | '/api/collab/applicants'
     | '/api/collab/apply'
+    | '/api/live/clips'
     | '/api/live/streams'
     | '/api/me/access'
     | '/api/me/profile'
@@ -461,10 +521,12 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  UsernameRoute: typeof UsernameRoute
   AdminRoute: typeof AdminRouteWithChildren
   AppealsRoute: typeof AppealsRoute
   CheckoutRoute: typeof CheckoutRoute
   DashboardRoute: typeof DashboardRouteWithChildren
+  DirectoryRoute: typeof DirectoryRoute
   FaqRoute: typeof FaqRoute
   LiveRoute: typeof LiveRoute
   LoginRoute: typeof LoginRoute
@@ -481,10 +543,13 @@ export interface RootRouteChildren {
   ApiNewsRoute: typeof ApiNewsRoute
   ApiNewsUploadRoute: typeof ApiNewsUploadRoute
   ApiProfileRoute: typeof ApiProfileRoute
+  ApiPublicDirectoryRoute: typeof ApiPublicDirectoryRoute
+  ApiPublicProfileRoute: typeof ApiPublicProfileRoute
   ApiShopRoute: typeof ApiShopRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
   ApiAdminPermissionsRoute: typeof ApiAdminPermissionsRoute
   ApiAdminRolesRoute: typeof ApiAdminRolesRoute
+  ApiLiveClipsRoute: typeof ApiLiveClipsRoute
   ApiLiveStreamsRoute: typeof ApiLiveStreamsRoute
   ApiMeAccessRoute: typeof ApiMeAccessRoute
   ApiMeProfileRoute: typeof ApiMeProfileRoute
@@ -537,6 +602,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FaqRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/directory': {
+      id: '/directory'
+      path: '/directory'
+      fullPath: '/directory'
+      preLoaderRoute: typeof DirectoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -565,6 +637,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$username': {
+      id: '/$username'
+      path: '/$username'
+      fullPath: '/$username'
+      preLoaderRoute: typeof UsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -584,6 +663,20 @@ declare module '@tanstack/react-router' {
       path: '/api/shop'
       fullPath: '/api/shop'
       preLoaderRoute: typeof ApiShopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public-profile': {
+      id: '/api/public-profile'
+      path: '/api/public-profile'
+      fullPath: '/api/public-profile'
+      preLoaderRoute: typeof ApiPublicProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public-directory': {
+      id: '/api/public-directory'
+      path: '/api/public-directory'
+      fullPath: '/api/public-directory'
+      preLoaderRoute: typeof ApiPublicDirectoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/profile': {
@@ -705,6 +798,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiLiveStreamsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/live/clips': {
+      id: '/api/live/clips'
+      path: '/api/live/clips'
+      fullPath: '/api/live/clips'
+      preLoaderRoute: typeof ApiLiveClipsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/collab/apply': {
       id: '/api/collab/apply'
       path: '/apply'
@@ -790,10 +890,12 @@ const ApiCollabRouteWithChildren = ApiCollabRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  UsernameRoute: UsernameRoute,
   AdminRoute: AdminRouteWithChildren,
   AppealsRoute: AppealsRoute,
   CheckoutRoute: CheckoutRoute,
   DashboardRoute: DashboardRouteWithChildren,
+  DirectoryRoute: DirectoryRoute,
   FaqRoute: FaqRoute,
   LiveRoute: LiveRoute,
   LoginRoute: LoginRoute,
@@ -810,10 +912,13 @@ const rootRouteChildren: RootRouteChildren = {
   ApiNewsRoute: ApiNewsRoute,
   ApiNewsUploadRoute: ApiNewsUploadRoute,
   ApiProfileRoute: ApiProfileRoute,
+  ApiPublicDirectoryRoute: ApiPublicDirectoryRoute,
+  ApiPublicProfileRoute: ApiPublicProfileRoute,
   ApiShopRoute: ApiShopRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
   ApiAdminPermissionsRoute: ApiAdminPermissionsRoute,
   ApiAdminRolesRoute: ApiAdminRolesRoute,
+  ApiLiveClipsRoute: ApiLiveClipsRoute,
   ApiLiveStreamsRoute: ApiLiveStreamsRoute,
   ApiMeAccessRoute: ApiMeAccessRoute,
   ApiMeProfileRoute: ApiMeProfileRoute,

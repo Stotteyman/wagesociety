@@ -9,13 +9,54 @@ function getStripe() {
   return new Stripe(key, { apiVersion: '2026-03-25.dahlia' })
 }
 
+type AuthUserMeta = {
+  membership_plan?: string
+  stripe_customer_id?: string
+  stripe_subscription_id?: string
+}
+
+function getBaseUrl(request: Request) {
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host')
+  const proto = request.headers.get('x-forwarded-proto') || 'http'
+  if (!host) return 'http://localhost:3000'
+  return `${proto}://${host}`
+}
+
+async function updateUserMembershipMetadata(
+  email: string,
+  updates: Partial<AuthUserMeta>,
+) {
+  const admin = getSupabaseAdminClient()
+  const { data: users, error: usersError } = await admin
+    .schema('auth')
+    .from('users')
+    .select('id, email, raw_user_meta_data')
+    .ilike('email', email)
+    .limit(1)
+
+  if (usersError) throw new Error(usersError.message)
+  const user = Array.isArray(users) ? users[0] : null
+  if (!user?.id) return
+
+  const currentMeta = ((user.raw_user_meta_data as AuthUserMeta | null | undefined) ?? {})
+  const nextMeta: AuthUserMeta = {
+    ...currentMeta,
+    ...updates,
+  }
+
+  const { error: updateError } = await admin.auth.admin.updateUserById(user.id, {
+    user_metadata: nextMeta,
+  })
+  if (updateError) throw new Error(updateError.message)
+}
+
 export const Route = createFileRoute('/api/create-payment-intent')({
   server: {
     handlers: {
       POST: async ({ request }) => {
         try {
-          // Require an authenticated member — prevents anonymous abuse of payment-intent creation
-          await getRequesterAccess(request)
+          // Require an authenticated member — prevents anonymous abuse.
+          const access = await getRequesterAccess(request)
 
           const body = (await request.json()) as {
             planSlug?: string
@@ -35,7 +76,11 @@ export const Route = createFileRoute('/api/create-payment-intent')({
             return Response.json({ error: 'Invalid email address.' }, { status: 400 })
           }
 
-          // Fetch plan price from DB
+          if (email.toLowerCase() !== access.requester.email) {
+            return Response.json({ error: 'Email must match the authenticated user.' }, { status: 403 })
+          }
+
+          // Fetch plan details from DB
           const admin = getSupabaseAdminClient()
           const { data: _plan, error: planError } = await admin
             .from('org_shop_membership_plans')
@@ -56,43 +101,144 @@ export const Route = createFileRoute('/api/create-payment-intent')({
             return Response.json({ error: 'Plan not found.' }, { status: 404 })
           }
 
-          // Free plans don't need a payment intent — return a success token
-          if (plan.price_cents === 0) {
-            return Response.json({ free: true, planSlug: plan.slug })
-          }
-
           const stripe = getStripe()
 
-          // Look up or create Stripe customer
           const existingCustomers = await stripe.customers.list({ email, limit: 1 })
           let customer = existingCustomers.data[0]
-
           if (!customer) {
             customer = await stripe.customers.create({
               email,
               name: name || undefined,
-              metadata: { planSlug },
+              metadata: { membership_plan: plan.slug },
             })
           }
 
-          const paymentIntent = await stripe.paymentIntents.create({
-            amount: plan.price_cents,
-            currency: 'usd',
+          const activeStatuses = ['active', 'trialing', 'past_due', 'incomplete'] as const
+          const subs = await stripe.subscriptions.list({
             customer: customer.id,
-            receipt_email: email,
-            metadata: {
-              planSlug,
-              planName: plan.name,
-              customerEmail: email,
+            status: 'all',
+            limit: 25,
+          })
+          const existingSubscription = subs.data.find((sub) =>
+            activeStatuses.includes(sub.status as (typeof activeStatuses)[number]),
+          )
+
+          const baseUrl = getBaseUrl(request)
+
+          // Free plan = cancel active paid subscription and set plan immediately.
+          if (plan.price_cents === 0) {
+            if (existingSubscription) {
+              await stripe.subscriptions.cancel(existingSubscription.id)
+            }
+
+            await updateUserMembershipMetadata(email.toLowerCase(), {
+              membership_plan: plan.slug,
+              stripe_customer_id: customer.id,
+              stripe_subscription_id: undefined,
+            })
+
+            await admin.rpc('ensure_org_member_role', {
+              p_email: email.toLowerCase(),
+            })
+
+            return Response.json({
+              free: true,
+              planSlug: plan.slug,
+              successUrl: `${baseUrl}/checkout?plan=${encodeURIComponent(plan.slug)}&status=success`,
+            })
+          }
+
+          // Existing paid subscription: perform in-place plan change (upgrade/downgrade).
+          if (existingSubscription) {
+            const createdPrice = await stripe.prices.create({
+              currency: 'usd',
+              unit_amount: plan.price_cents,
+              recurring: { interval: 'month' },
+              product_data: {
+                name: `${plan.name} Membership`,
+                metadata: { planSlug: plan.slug },
+              },
+              metadata: { planSlug: plan.slug },
+            })
+
+            const currentItem = existingSubscription.items.data[0]
+            if (!currentItem) {
+              return Response.json({ error: 'Subscription item not found.' }, { status: 500 })
+            }
+
+            const updatedSubscription = await stripe.subscriptions.update(existingSubscription.id, {
+              items: [
+                {
+                  id: currentItem.id,
+                  price: createdPrice.id,
+                },
+              ],
+              proration_behavior: 'always_invoice',
+              metadata: {
+                ...(existingSubscription.metadata || {}),
+                membership_plan: plan.slug,
+                customerEmail: email.toLowerCase(),
+              },
+            })
+
+            await updateUserMembershipMetadata(email.toLowerCase(), {
+              membership_plan: plan.slug,
+              stripe_customer_id: customer.id,
+              stripe_subscription_id: updatedSubscription.id,
+            })
+
+            await admin.rpc('ensure_org_member_role', {
+              p_email: email.toLowerCase(),
+            })
+
+            return Response.json({
+              updated: true,
+              planSlug: plan.slug,
+              subscriptionId: updatedSubscription.id,
+              successUrl: `${baseUrl}/checkout?plan=${encodeURIComponent(plan.slug)}&status=success`,
+            })
+          }
+
+          // No subscription yet: create Stripe-hosted subscription checkout.
+          const session = await stripe.checkout.sessions.create({
+            mode: 'subscription',
+            customer: customer.id,
+            success_url: `${baseUrl}/checkout?plan=${encodeURIComponent(plan.slug)}&status=success&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${baseUrl}/checkout?plan=${encodeURIComponent(plan.slug)}&status=cancelled`,
+            line_items: [
+              {
+                quantity: 1,
+                price_data: {
+                  currency: 'usd',
+                  unit_amount: plan.price_cents,
+                  recurring: { interval: 'month' },
+                  product_data: {
+                    name: `${plan.name} Membership`,
+                    metadata: {
+                      planSlug: plan.slug,
+                    },
+                  },
+                },
+              },
+            ],
+            subscription_data: {
+              metadata: {
+                membership_plan: plan.slug,
+                customerEmail: email.toLowerCase(),
+              },
             },
-            automatic_payment_methods: { enabled: true },
+            metadata: {
+              membership_plan: plan.slug,
+              customerEmail: email.toLowerCase(),
+            },
           })
 
           return Response.json({
-            clientSecret: paymentIntent.client_secret,
+            checkoutUrl: session.url,
+            sessionId: session.id,
+            customerId: customer.id,
             planName: plan.name,
             displayPrice: plan.display_price,
-            customerId: customer.id,
           })
         } catch (err) {
           const message = err instanceof Error ? err.message : 'Unexpected server error.'

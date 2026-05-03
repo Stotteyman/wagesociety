@@ -1,29 +1,15 @@
 import { createFileRoute, useNavigate, useSearch } from '@tanstack/react-router'
-import { loadStripe } from '@stripe/stripe-js'
-import { Elements } from '@stripe/react-stripe-js'
 import { useEffect, useState } from 'react'
-import { ArrowLeft, CheckCircle } from 'lucide-react'
+import { AlertCircle, ArrowLeft, CheckCircle, Loader2 } from 'lucide-react'
 import { PaymentForm } from '../components/PaymentForm'
 import { z } from 'zod'
-
-// Singleton promise — created once, reused for all renders
-let stripePromiseSingleton: ReturnType<typeof loadStripe> | null = null
-function getStripePromise(): ReturnType<typeof loadStripe> | null {
-  if (typeof window === 'undefined') return null
-  if (!stripePromiseSingleton) {
-    const key = import.meta.env.VITE_STRIPE_PUBLIC_KEY as string | undefined
-    if (!key) {
-      console.warn('VITE_STRIPE_PUBLIC_KEY is not set — Stripe will not load.')
-      return null
-    }
-    stripePromiseSingleton = loadStripe(key)
-  }
-  return stripePromiseSingleton
-}
+import { authedFetch, getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 
 const CheckoutSearchSchema = z.object({
   plan: z.string().optional(),
   redirect: z.string().optional(),
+  status: z.string().optional(),
+  session_id: z.string().optional(),
 })
 
 export const Route = createFileRoute('/checkout')({
@@ -113,9 +99,57 @@ function CheckoutPage() {
   const search = Route.useSearch()
   const navigate = useNavigate()
   const [paymentComplete, setPaymentComplete] = useState(false)
-  const [stripePromise] = useState<ReturnType<typeof loadStripe> | null>(() => getStripePromise())
   const [plans, setPlans] = useState<PlanDetails[]>(fallbackPlans)
   const [plansLoading, setPlansLoading] = useState(true)
+  const [freeLoading, setFreeLoading] = useState(false)
+  const [freeError, setFreeError] = useState('')
+  const [userEmail, setUserEmail] = useState('')
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const supabase = getSupabaseBrowserClient()
+        const { data } = await supabase.auth.getUser()
+        setUserEmail(data.user?.email || '')
+      } catch {
+        setUserEmail('')
+      }
+    })()
+  }, [])
+
+  useEffect(() => {
+    if (search.status === 'success') {
+      setPaymentComplete(true)
+    }
+  }, [search.status])
+
+  const handleActivateFree = async () => {
+    if (!selectedPlan || selectedPlan.price !== 0) return
+    setFreeLoading(true)
+    setFreeError('')
+    try {
+      const response = await authedFetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planSlug: selectedPlan.slug,
+          email: userEmail,
+        }),
+      })
+
+      const data = (await response.json()) as { free?: boolean; error?: string }
+      if (!response.ok || data.error || !data.free) {
+        setFreeError(data.error || 'Could not activate free plan.')
+        return
+      }
+
+      setPaymentComplete(true)
+    } catch (error) {
+      setFreeError(error instanceof Error ? error.message : 'Could not activate free plan.')
+    } finally {
+      setFreeLoading(false)
+    }
+  }
 
   useEffect(() => {
     void (async () => {
@@ -253,34 +287,27 @@ function CheckoutPage() {
                 <p className="text-sm text-zinc-300">
                   Your FREE membership gives very limited access: account login, linked accounts, and public browsing.
                 </p>
+                {freeError ? (
+                  <p className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200 flex items-center gap-2">
+                    <AlertCircle size={14} /> {freeError}
+                  </p>
+                ) : null}
                 <button
                   type="button"
-                  onClick={() => setPaymentComplete(true)}
-                  className="w-full rounded-lg bg-green-600 px-6 py-3 font-semibold text-white transition hover:bg-green-500"
+                  onClick={() => { void handleActivateFree() }}
+                  disabled={freeLoading || !userEmail}
+                  className="w-full rounded-lg bg-green-600 px-6 py-3 font-semibold text-white transition hover:bg-green-500 disabled:opacity-60"
                 >
-                  Activate Free Membership
+                  {freeLoading ? (
+                    <span className="inline-flex items-center gap-2"><Loader2 size={14} className="animate-spin" /> Activating...</span>
+                  ) : 'Activate Free Membership'}
                 </button>
               </div>
             ) : (
-              <Elements
-                stripe={stripePromise}
-                options={{
-                  appearance: {
-                    theme: 'dark',
-                    variables: {
-                      colorPrimary: '#fb923c',
-                      colorBackground: '#18181b',
-                      colorText: '#f4f4f5',
-                    },
-                  },
-                  locale: 'en',
-                }}
-              >
-                <PaymentForm
-                  plan={selectedPlan}
-                  onSuccess={() => setPaymentComplete(true)}
-                />
-              </Elements>
+              <PaymentForm
+                plan={selectedPlan}
+                onSuccess={() => setPaymentComplete(true)}
+              />
             )}
           </section>
         </div>

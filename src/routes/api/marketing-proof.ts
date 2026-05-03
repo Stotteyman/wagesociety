@@ -1,6 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { requirePermission } from '../../lib/orgAuth'
+import { z } from 'zod'
+import { getRequesterAccess, requirePermission } from '../../lib/orgAuth'
 import { getSupabaseAdminClient } from '../../lib/supabaseAdmin'
+
+const SUBSCRIBE_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000
+const SUBSCRIBE_RATE_LIMIT_MAX_REQUESTS = 10
+const subscribeRequestLog = new Map<string, number[]>()
 
 function getQuarterStartIso(now: Date) {
   const quarter = Math.floor(now.getUTCMonth() / 3)
@@ -14,9 +19,102 @@ function average(values: number[]) {
   return total / values.length
 }
 
+function getRequestIp(request: Request) {
+  const forwardedFor = request.headers.get('x-forwarded-for') || ''
+  const firstForwarded = forwardedFor.split(',')[0]?.trim()
+  if (firstForwarded) return firstForwarded
+  return request.headers.get('x-real-ip') || 'unknown'
+}
+
+function isRateLimited(request: Request) {
+  const key = getRequestIp(request)
+  const now = Date.now()
+  const cutoff = now - SUBSCRIBE_RATE_LIMIT_WINDOW_MS
+  const prior = subscribeRequestLog.get(key) || []
+  const active = prior.filter((value) => value >= cutoff)
+
+  if (active.length >= SUBSCRIBE_RATE_LIMIT_MAX_REQUESTS) {
+    subscribeRequestLog.set(key, active)
+    return true
+  }
+
+  active.push(now)
+  subscribeRequestLog.set(key, active)
+  return false
+}
+
+const subscribeSchema = z.object({
+  email: z.string().trim().email().max(200),
+  liveAlerts: z.boolean().default(true),
+  newsletter: z.boolean().default(true),
+  productUpdates: z.boolean().default(false),
+  communityUpdates: z.boolean().default(false),
+  source: z.string().trim().max(60).optional(),
+})
+
 export const Route = createFileRoute('/api/marketing-proof')({
   server: {
     handlers: {
+      POST: async ({ request }) => {
+        try {
+          // Require authentication to subscribe
+          const access = await getRequesterAccess(request)
+
+          if (isRateLimited(request)) {
+            return Response.json(
+              { error: 'Too many requests. Please wait and try again.' },
+              { status: 429 },
+            )
+          }
+
+          const body = await request.json()
+          const parsed = subscribeSchema.safeParse(body)
+
+          if (!parsed.success) {
+            return Response.json({ error: 'Invalid payload' }, { status: 400 })
+          }
+
+          const { email, liveAlerts, newsletter, productUpdates, communityUpdates, source } = parsed.data
+
+          // Enforce that subscription email matches authenticated user's account email
+          const requestedEmail = email.toLowerCase()
+          const accountEmail = access.requester.email.toLowerCase()
+
+          if (requestedEmail !== accountEmail) {
+            return Response.json(
+              { error: 'Subscription email must match your account email.' },
+              { status: 403 },
+            )
+          }
+
+          if (!liveAlerts && !newsletter && !productUpdates && !communityUpdates) {
+            return Response.json({ error: 'Please choose at least one notification type.' }, { status: 400 })
+          }
+
+          const admin = getSupabaseAdminClient()
+          const { error } = await admin.from('notification_subscribers').upsert(
+            {
+              email: requestedEmail,
+              live_alerts: liveAlerts,
+              newsletter,
+              product_updates: productUpdates,
+              community_updates: communityUpdates,
+              source: source || 'app',
+              status: 'active',
+              subscribed_at: new Date().toISOString(),
+              unsubscribed_at: null,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'email' },
+          )
+
+          if (error) return Response.json({ error: 'Could not save subscription right now.' }, { status: 500 })
+          return Response.json({ ok: true, subscribed: true })
+        } catch (error) {
+          if (error instanceof Response) return error
+          return Response.json({ error: 'Unexpected server error' }, { status: 500 })
+        }
+      },
       GET: async ({ request }) => {
         try {
           await requirePermission(request, 'access_admin_dashboard')

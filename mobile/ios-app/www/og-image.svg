@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <!-- Background gradient -->
+  <defs>
+    <radialGradient id="g1" cx="12%" cy="15%" r="45%">
+      <stop offset="0%" stop-color="#fb923c" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <radialGradient id="g2" cx="88%" cy="10%" r="40%">
+      <stop offset="0%" stop-color="#22d3ee" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06080f"/>
+      <stop offset="50%" stop-color="#0f111f"/>
+      <stop offset="100%" stop-color="#141726"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#g1)"/>
+  <rect width="1200" height="630" fill="url(#g2)"/>
+
+  <!-- Badge pill -->
+  <rect x="400" y="130" width="400" height="38" rx="19" fill="none" stroke="#fb923c" stroke-opacity="0.45" stroke-width="1.5"/>
+  <text x="600" y="155" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" font-weight="700" fill="#fed7aa" letter-spacing="3">MEMBERS-ONLY CLUBHOUSE</text>
+
+  <!-- Main title -->
+  <text x="600" y="282" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="96" font-weight="900" fill="#f4f4f5">W.A.G.E.</text>
+  <text x="600" y="374" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="96" font-weight="900" fill="#fb923c">Society</text>
+
+  <!-- Tagline -->
+  <text x="600" y="440" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" fill="#a1a1aa">Live entertainment · Community · Creator tools</text>
+
+  <!-- Bottom domain -->
+  <text x="600" y="570" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#52525b">wagesociety.com</text>
+</svg>

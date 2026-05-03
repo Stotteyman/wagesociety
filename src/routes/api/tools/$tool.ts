@@ -166,7 +166,9 @@ export const Route = createFileRoute('/api/tools/$tool')({
             return Response.json({ error: 'Invalid payload', details: parsed.error.flatten() }, { status: 400 })
           }
 
-          const { data, error } = await admin
+          const isAdmin = access.role === 'admin' || access.role === 'superadmin'
+
+          let updateQuery = admin
             .from('org_dashboard_tool_entries')
             .update({
               title: parsed.data.title,
@@ -180,10 +182,19 @@ export const Route = createFileRoute('/api/tools/$tool')({
             })
             .eq('id', parsed.data.id)
             .eq('tool_key', tool)
+
+          if (!isAdmin) {
+            updateQuery = updateQuery.eq('created_by', access.requester.email)
+          }
+
+          const { data, error } = await updateQuery
             .select('id, tool_key, title, details, status, event_date, amount_cents, metadata, created_by, updated_by, created_at, updated_at')
-            .single()
+            .maybeSingle()
 
           if (error) return Response.json({ error: error.message }, { status: 500 })
+          if (!data) {
+            return Response.json({ error: 'Entry not found or not allowed.' }, { status: 404 })
+          }
 
           return Response.json({ entry: data })
         } catch (error) {
@@ -193,7 +204,7 @@ export const Route = createFileRoute('/api/tools/$tool')({
       },
       DELETE: async ({ request, params }) => {
         try {
-          const { tool } = await authorizeForTool(request, params.tool)
+          const { tool, access } = await authorizeForTool(request, params.tool)
           const admin = getSupabaseAdminClient()
           const body = await request.json()
           const parsed = deleteEntrySchema.safeParse(body)
@@ -202,13 +213,25 @@ export const Route = createFileRoute('/api/tools/$tool')({
             return Response.json({ error: 'Invalid payload', details: parsed.error.flatten() }, { status: 400 })
           }
 
-          const { error } = await admin
+          const isAdmin = access.role === 'admin' || access.role === 'superadmin'
+
+          let deleteQuery = admin
             .from('org_dashboard_tool_entries')
             .delete()
             .eq('id', parsed.data.id)
             .eq('tool_key', tool)
 
+          if (!isAdmin) {
+            deleteQuery = deleteQuery.eq('created_by', access.requester.email)
+          }
+
+          const { error, count } = await deleteQuery
+            .select('id', { count: 'exact', head: true })
+
           if (error) return Response.json({ error: error.message }, { status: 500 })
+          if (!count) {
+            return Response.json({ error: 'Entry not found or not allowed.' }, { status: 404 })
+          }
 
           return Response.json({ deleted: true })
         } catch (error) {

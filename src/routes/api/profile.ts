@@ -19,7 +19,7 @@ export const Route = createFileRoute('/api/profile')({
           const admin = getSupabaseAdminClient()
           const { data, error } = await admin
             .from('org_member_profiles')
-            .select('email, display_name, avatar_url, bio, skills, website, social_links')
+            .select('email, display_name, avatar_url, bio, skills')
             .eq('email', email)
             .maybeSingle()
 
