@@ -84,8 +84,8 @@ function MerchPage() {
 
           {!loading && items.length === 0 ? (
             <article className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-5 md:col-span-2 xl:col-span-4">
-              <h2 className="text-xl font-bold text-zinc-50">No merch listed yet</h2>
-              <p className="mt-2 text-sm text-zinc-300">An admin can add merch items in /admin/shop.</p>
+              <h2 className="text-xl font-bold text-zinc-50">Coming soon</h2>
+              <p className="mt-2 text-sm text-zinc-300">Merch drops are on the way. Check back soon.</p>
             </article>
           ) : null}
         </section>

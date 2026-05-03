@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as NewsRouteImport } from './routes/news'
+import { Route as MerchStudioRouteImport } from './routes/merch-studio'
 import { Route as MerchRouteImport } from './routes/merch'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LiveRouteImport } from './routes/live'
@@ -39,6 +41,9 @@ import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminShopRouteImport } from './routes/admin.shop'
 import { Route as DashboardToolsToolRouteImport } from './routes/dashboard.tools.$tool'
 import { Route as ApiToolsToolRouteImport } from './routes/api/tools/$tool'
+import { Route as ApiMerchStudioUploadRouteImport } from './routes/api/merch-studio/upload'
+import { Route as ApiMerchStudioSubmissionsRouteImport } from './routes/api/merch-studio/submissions'
+import { Route as ApiMerchStudioEarningsRouteImport } from './routes/api/merch-studio/earnings'
 import { Route as ApiMeProfileRouteImport } from './routes/api/me/profile'
 import { Route as ApiMeAccessRouteImport } from './routes/api/me/access'
 import { Route as ApiLiveStreamsRouteImport } from './routes/api/live/streams'
@@ -55,9 +60,19 @@ const SignupRoute = SignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NewsRoute = NewsRouteImport.update({
   id: '/news',
   path: '/news',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MerchStudioRoute = MerchStudioRouteImport.update({
+  id: '/merch-studio',
+  path: '/merch-studio',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MerchRoute = MerchRouteImport.update({
@@ -200,6 +215,22 @@ const ApiToolsToolRoute = ApiToolsToolRouteImport.update({
   path: '/api/tools/$tool',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMerchStudioUploadRoute = ApiMerchStudioUploadRouteImport.update({
+  id: '/api/merch-studio/upload',
+  path: '/api/merch-studio/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMerchStudioSubmissionsRoute =
+  ApiMerchStudioSubmissionsRouteImport.update({
+    id: '/api/merch-studio/submissions',
+    path: '/api/merch-studio/submissions',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiMerchStudioEarningsRoute = ApiMerchStudioEarningsRouteImport.update({
+  id: '/api/merch-studio/earnings',
+  path: '/api/merch-studio/earnings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMeProfileRoute = ApiMeProfileRouteImport.update({
   id: '/api/me/profile',
   path: '/api/me/profile',
@@ -262,7 +293,9 @@ export interface FileRoutesByFullPath {
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
   '/merch': typeof MerchRoute
+  '/merch-studio': typeof MerchStudioRoute
   '/news': typeof NewsRoute
+  '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
   '/admin/shop': typeof AdminShopRoute
   '/admin/users': typeof AdminUsersRoute
@@ -288,6 +321,9 @@ export interface FileRoutesByFullPath {
   '/api/live/streams': typeof ApiLiveStreamsRoute
   '/api/me/access': typeof ApiMeAccessRoute
   '/api/me/profile': typeof ApiMeProfileRoute
+  '/api/merch-studio/earnings': typeof ApiMerchStudioEarningsRoute
+  '/api/merch-studio/submissions': typeof ApiMerchStudioSubmissionsRoute
+  '/api/merch-studio/upload': typeof ApiMerchStudioUploadRoute
   '/api/tools/$tool': typeof ApiToolsToolRoute
   '/dashboard/tools/$tool': typeof DashboardToolsToolRoute
   '/api/admin/shop/merch': typeof ApiAdminShopMerchRoute
@@ -304,7 +340,9 @@ export interface FileRoutesByTo {
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
   '/merch': typeof MerchRoute
+  '/merch-studio': typeof MerchStudioRoute
   '/news': typeof NewsRoute
+  '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
   '/admin/shop': typeof AdminShopRoute
   '/admin/users': typeof AdminUsersRoute
@@ -330,6 +368,9 @@ export interface FileRoutesByTo {
   '/api/live/streams': typeof ApiLiveStreamsRoute
   '/api/me/access': typeof ApiMeAccessRoute
   '/api/me/profile': typeof ApiMeProfileRoute
+  '/api/merch-studio/earnings': typeof ApiMerchStudioEarningsRoute
+  '/api/merch-studio/submissions': typeof ApiMerchStudioSubmissionsRoute
+  '/api/merch-studio/upload': typeof ApiMerchStudioUploadRoute
   '/api/tools/$tool': typeof ApiToolsToolRoute
   '/dashboard/tools/$tool': typeof DashboardToolsToolRoute
   '/api/admin/shop/merch': typeof ApiAdminShopMerchRoute
@@ -347,7 +388,9 @@ export interface FileRoutesById {
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
   '/merch': typeof MerchRoute
+  '/merch-studio': typeof MerchStudioRoute
   '/news': typeof NewsRoute
+  '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
   '/admin/shop': typeof AdminShopRoute
   '/admin/users': typeof AdminUsersRoute
@@ -373,6 +416,9 @@ export interface FileRoutesById {
   '/api/live/streams': typeof ApiLiveStreamsRoute
   '/api/me/access': typeof ApiMeAccessRoute
   '/api/me/profile': typeof ApiMeProfileRoute
+  '/api/merch-studio/earnings': typeof ApiMerchStudioEarningsRoute
+  '/api/merch-studio/submissions': typeof ApiMerchStudioSubmissionsRoute
+  '/api/merch-studio/upload': typeof ApiMerchStudioUploadRoute
   '/api/tools/$tool': typeof ApiToolsToolRoute
   '/dashboard/tools/$tool': typeof DashboardToolsToolRoute
   '/api/admin/shop/merch': typeof ApiAdminShopMerchRoute
@@ -391,7 +437,9 @@ export interface FileRouteTypes {
     | '/live'
     | '/login'
     | '/merch'
+    | '/merch-studio'
     | '/news'
+    | '/onboarding'
     | '/signup'
     | '/admin/shop'
     | '/admin/users'
@@ -417,6 +465,9 @@ export interface FileRouteTypes {
     | '/api/live/streams'
     | '/api/me/access'
     | '/api/me/profile'
+    | '/api/merch-studio/earnings'
+    | '/api/merch-studio/submissions'
+    | '/api/merch-studio/upload'
     | '/api/tools/$tool'
     | '/dashboard/tools/$tool'
     | '/api/admin/shop/merch'
@@ -433,7 +484,9 @@ export interface FileRouteTypes {
     | '/live'
     | '/login'
     | '/merch'
+    | '/merch-studio'
     | '/news'
+    | '/onboarding'
     | '/signup'
     | '/admin/shop'
     | '/admin/users'
@@ -459,6 +512,9 @@ export interface FileRouteTypes {
     | '/api/live/streams'
     | '/api/me/access'
     | '/api/me/profile'
+    | '/api/merch-studio/earnings'
+    | '/api/merch-studio/submissions'
+    | '/api/merch-studio/upload'
     | '/api/tools/$tool'
     | '/dashboard/tools/$tool'
     | '/api/admin/shop/merch'
@@ -475,7 +531,9 @@ export interface FileRouteTypes {
     | '/live'
     | '/login'
     | '/merch'
+    | '/merch-studio'
     | '/news'
+    | '/onboarding'
     | '/signup'
     | '/admin/shop'
     | '/admin/users'
@@ -501,6 +559,9 @@ export interface FileRouteTypes {
     | '/api/live/streams'
     | '/api/me/access'
     | '/api/me/profile'
+    | '/api/merch-studio/earnings'
+    | '/api/merch-studio/submissions'
+    | '/api/merch-studio/upload'
     | '/api/tools/$tool'
     | '/dashboard/tools/$tool'
     | '/api/admin/shop/merch'
@@ -518,7 +579,9 @@ export interface RootRouteChildren {
   LiveRoute: typeof LiveRoute
   LoginRoute: typeof LoginRoute
   MerchRoute: typeof MerchRoute
+  MerchStudioRoute: typeof MerchStudioRoute
   NewsRoute: typeof NewsRoute
+  OnboardingRoute: typeof OnboardingRoute
   SignupRoute: typeof SignupRoute
   ApiCheckUsernameRoute: typeof ApiCheckUsernameRoute
   ApiCollabRoute: typeof ApiCollabRouteWithChildren
@@ -540,6 +603,9 @@ export interface RootRouteChildren {
   ApiLiveStreamsRoute: typeof ApiLiveStreamsRoute
   ApiMeAccessRoute: typeof ApiMeAccessRoute
   ApiMeProfileRoute: typeof ApiMeProfileRoute
+  ApiMerchStudioEarningsRoute: typeof ApiMerchStudioEarningsRoute
+  ApiMerchStudioSubmissionsRoute: typeof ApiMerchStudioSubmissionsRoute
+  ApiMerchStudioUploadRoute: typeof ApiMerchStudioUploadRoute
   ApiToolsToolRoute: typeof ApiToolsToolRoute
   ApiAdminShopMerchRoute: typeof ApiAdminShopMerchRoute
   ApiAdminShopPlansRoute: typeof ApiAdminShopPlansRoute
@@ -554,11 +620,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/news': {
       id: '/news'
       path: '/news'
       fullPath: '/news'
       preLoaderRoute: typeof NewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/merch-studio': {
+      id: '/merch-studio'
+      path: '/merch-studio'
+      fullPath: '/merch-studio'
+      preLoaderRoute: typeof MerchStudioRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/merch': {
@@ -757,6 +837,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiToolsToolRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/merch-studio/upload': {
+      id: '/api/merch-studio/upload'
+      path: '/api/merch-studio/upload'
+      fullPath: '/api/merch-studio/upload'
+      preLoaderRoute: typeof ApiMerchStudioUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/merch-studio/submissions': {
+      id: '/api/merch-studio/submissions'
+      path: '/api/merch-studio/submissions'
+      fullPath: '/api/merch-studio/submissions'
+      preLoaderRoute: typeof ApiMerchStudioSubmissionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/merch-studio/earnings': {
+      id: '/api/merch-studio/earnings'
+      path: '/api/merch-studio/earnings'
+      fullPath: '/api/merch-studio/earnings'
+      preLoaderRoute: typeof ApiMerchStudioEarningsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/me/profile': {
       id: '/api/me/profile'
       path: '/api/me/profile'
@@ -879,7 +980,9 @@ const rootRouteChildren: RootRouteChildren = {
   LiveRoute: LiveRoute,
   LoginRoute: LoginRoute,
   MerchRoute: MerchRoute,
+  MerchStudioRoute: MerchStudioRoute,
   NewsRoute: NewsRoute,
+  OnboardingRoute: OnboardingRoute,
   SignupRoute: SignupRoute,
   ApiCheckUsernameRoute: ApiCheckUsernameRoute,
   ApiCollabRoute: ApiCollabRouteWithChildren,
@@ -901,6 +1004,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLiveStreamsRoute: ApiLiveStreamsRoute,
   ApiMeAccessRoute: ApiMeAccessRoute,
   ApiMeProfileRoute: ApiMeProfileRoute,
+  ApiMerchStudioEarningsRoute: ApiMerchStudioEarningsRoute,
+  ApiMerchStudioSubmissionsRoute: ApiMerchStudioSubmissionsRoute,
+  ApiMerchStudioUploadRoute: ApiMerchStudioUploadRoute,
   ApiToolsToolRoute: ApiToolsToolRoute,
   ApiAdminShopMerchRoute: ApiAdminShopMerchRoute,
   ApiAdminShopPlansRoute: ApiAdminShopPlansRoute,

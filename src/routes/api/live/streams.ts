@@ -60,7 +60,7 @@ export const Route = createFileRoute('/api/live/streams')({
             if (useLocalRoot) {
               requesterEmail = 'root-superadmin@localhost'
               requesterSource = 'localhost-bypass'
-              canManage = false
+              canManage = true
               canUseAutoclipper = false
             } else {
               const authHeader = request.headers.get('authorization') || ''
@@ -88,10 +88,8 @@ export const Route = createFileRoute('/api/live/streams')({
               requesterSource = 'supabase-session'
             }
 
-            const { data, error } = await client
-              .from('org_livestreams')
-              .select('id, url, title, platform, stream_key, created_by, created_at, updated_at')
-              .order('updated_at', { ascending: false })
+            // @ts-expect-error RPC typing can lag behind DB migrations in local development.
+            const { data, error } = await client.rpc('list_org_livestreams')
 
             if (error) {
               return Response.json({ error: error.message }, { status: 500 })
@@ -144,8 +142,6 @@ export const Route = createFileRoute('/api/live/streams')({
       },
       POST: async ({ request }) => {
         try {
-          const { requester } = await requirePermission(request, 'manage_livestreams')
-          const admin = getSupabaseAdminClient()
           const body = await request.json()
           const parsed = addStreamSchema.safeParse(body)
 
@@ -154,6 +150,35 @@ export const Route = createFileRoute('/api/live/streams')({
           }
 
           const stream = parseLivestreamLink(parsed.data.url)
+
+          if (!hasSupabaseAdminConfig()) {
+            const useLocalRoot = request.headers.get('x-local-root-session') === 'true' && isLocalRequest(request)
+            if (!useLocalRoot) {
+              return Response.json(
+                { error: 'Admin livestream management requires SUPABASE_SERVICE_ROLE_KEY in this environment.' },
+                { status: 503 },
+              )
+            }
+
+            const client = getSupabaseServerPublicClient()
+            // @ts-expect-error RPC typing can lag behind DB migrations in local development.
+            const { data, error } = await client.rpc('add_org_livestream', {
+              p_url: parsed.data.url,
+              p_title: parsed.data.title || null,
+              p_platform: stream.platform,
+              p_stream_key: stream.streamKey,
+              p_created_by: 'root-superadmin@localhost',
+            })
+
+            if (error) {
+              return Response.json({ error: error.message }, { status: 500 })
+            }
+
+            return Response.json({ stream: data?.[0] || null })
+          }
+
+          const { requester } = await requirePermission(request, 'manage_livestreams')
+          const admin = getSupabaseAdminClient()
 
           const { data, error } = await admin.rpc('add_org_livestream', {
             p_url: parsed.data.url,
@@ -180,14 +205,37 @@ export const Route = createFileRoute('/api/live/streams')({
       },
       DELETE: async ({ request }) => {
         try {
-          await requirePermission(request, 'manage_livestreams')
-          const admin = getSupabaseAdminClient()
           const body = await request.json()
           const parsed = removeStreamSchema.safeParse(body)
 
           if (!parsed.success) {
             return Response.json({ error: 'Invalid payload', details: parsed.error.flatten() }, { status: 400 })
           }
+
+          if (!hasSupabaseAdminConfig()) {
+            const useLocalRoot = request.headers.get('x-local-root-session') === 'true' && isLocalRequest(request)
+            if (!useLocalRoot) {
+              return Response.json(
+                { error: 'Admin livestream management requires SUPABASE_SERVICE_ROLE_KEY in this environment.' },
+                { status: 503 },
+              )
+            }
+
+            const client = getSupabaseServerPublicClient()
+            // @ts-expect-error RPC typing can lag behind DB migrations in local development.
+            const { data, error } = await client.rpc('delete_org_livestream', {
+              p_id: parsed.data.id,
+            })
+
+            if (error) {
+              return Response.json({ error: error.message }, { status: 500 })
+            }
+
+            return Response.json({ deleted: !!data })
+          }
+
+          await requirePermission(request, 'manage_livestreams')
+          const admin = getSupabaseAdminClient()
 
           const { data, error } = await admin.rpc('delete_org_livestream', {
             p_id: parsed.data.id,

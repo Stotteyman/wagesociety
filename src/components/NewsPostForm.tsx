@@ -6,8 +6,9 @@ export function NewsPostForm({ onPost }: { onPost?: () => void }) {
   const [body, setBody] = useState('')
   const [imageUrl, setImageUrl] = useState('')
   const [videoUrl, setVideoUrl] = useState('')
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [videoFile, setVideoFile] = useState<File | null>(null)
+  const [embedLinks, setEmbedLinks] = useState('')
+  const [imageFiles, setImageFiles] = useState<File[]>([])
+  const [videoFiles, setVideoFiles] = useState<File[]>([])
   const imageInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(false)
@@ -29,36 +30,64 @@ export function NewsPostForm({ onPost }: { onPost?: () => void }) {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    let finalImageUrl = imageUrl
-    let finalVideoUrl = videoUrl
+
+    const finalImageUrls = imageUrl
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+
+    const finalVideoUrls = videoUrl
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean)
+
+    const finalEmbedLinks = embedLinks
+      .split('\n')
+      .map((item) => item.trim())
+      .filter(Boolean)
+
     try {
-      if (imageFile) {
-        finalImageUrl = await uploadFile(imageFile)
+      for (const file of imageFiles) {
+        const uploadedUrl = await uploadFile(file)
+        finalImageUrls.push(uploadedUrl)
       }
-      if (videoFile) {
-        finalVideoUrl = await uploadFile(videoFile)
+
+      for (const file of videoFiles) {
+        const uploadedUrl = await uploadFile(file)
+        finalVideoUrls.push(uploadedUrl)
       }
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Upload failed.'
+      setError(message)
       setLoading(false)
       return
     }
-    const formData = new FormData()
-    formData.append('title', title)
-    formData.append('body', body)
-    if (finalImageUrl) formData.append('image_url', finalImageUrl)
-    if (finalVideoUrl) formData.append('video_url', finalVideoUrl)
-    const res = await authedFetch('/api/news', { method: 'POST', body: formData })
+
+    const res = await authedFetch('/api/news', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title,
+        body,
+        image_urls: finalImageUrls,
+        video_urls: finalVideoUrls,
+        embed_links: finalEmbedLinks,
+      }),
+    })
+
     if (!res.ok) {
       const data = await res.json()
-      setError(data.error || 'Failed to post news')
+      setError(data.error || 'Failed to publish blog post')
     } else {
       setTitle('')
       setBody('')
       setImageUrl('')
       setVideoUrl('')
-      setImageFile(null)
-      setVideoFile(null)
+      setEmbedLinks('')
+      setImageFiles([])
+      setVideoFiles([])
       if (imageInputRef.current) imageInputRef.current.value = ''
       if (videoInputRef.current) videoInputRef.current.value = ''
       if (onPost) onPost()
@@ -68,7 +97,7 @@ export function NewsPostForm({ onPost }: { onPost?: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="bg-zinc-800 p-6 rounded-lg mb-8">
-      <h2 className="text-lg font-semibold mb-4">Create News Post</h2>
+      <h2 className="text-lg font-semibold mb-4">Write a Blog Post</h2>
       {error && <div className="text-red-400 mb-2">{error}</div>}
       <input
         className="block w-full mb-2 p-2 rounded bg-zinc-900 text-zinc-100"
@@ -86,51 +115,65 @@ export function NewsPostForm({ onPost }: { onPost?: () => void }) {
         required
       />
       <div className="mb-2">
-        <label className="block text-zinc-400 mb-1">Image (optional):</label>
+        <label className="block text-zinc-400 mb-1">Photo files (optional):</label>
         <input
           type="file"
           accept="image/*"
+          multiple
           ref={imageInputRef}
           onChange={e => {
-            const file = e.target.files?.[0]
-            setImageFile(file || null)
-            setImageUrl('')
+            const files = Array.from(e.target.files || [])
+            setImageFiles(files)
           }}
           className="block w-full mb-1 p-2 rounded bg-zinc-900 text-zinc-100"
         />
+        {imageFiles.length > 0 ? (
+          <p className="mb-2 text-xs text-zinc-400">{imageFiles.length} image file(s) selected</p>
+        ) : null}
         <input
           className="block w-full p-2 rounded bg-zinc-900 text-zinc-100"
-          placeholder="Image URL (optional)"
+          placeholder="Additional image URLs (comma-separated)"
           value={imageUrl}
           onChange={e => {
             setImageUrl(e.target.value)
-            setImageFile(null)
           }}
-          type="url"
+          type="text"
         />
       </div>
       <div className="mb-2">
-        <label className="block text-zinc-400 mb-1">Video (optional):</label>
+        <label className="block text-zinc-400 mb-1">Video files (optional):</label>
         <input
           type="file"
           accept="video/*"
+          multiple
           ref={videoInputRef}
           onChange={e => {
-            const file = e.target.files?.[0]
-            setVideoFile(file || null)
-            setVideoUrl('')
+            const files = Array.from(e.target.files || [])
+            setVideoFiles(files)
           }}
           className="block w-full mb-1 p-2 rounded bg-zinc-900 text-zinc-100"
         />
+        {videoFiles.length > 0 ? (
+          <p className="mb-2 text-xs text-zinc-400">{videoFiles.length} video file(s) selected</p>
+        ) : null}
         <input
           className="block w-full p-2 rounded bg-zinc-900 text-zinc-100"
-          placeholder="Video URL (optional)"
+          placeholder="Additional video URLs (comma-separated)"
           value={videoUrl}
           onChange={e => {
             setVideoUrl(e.target.value)
-            setVideoFile(null)
           }}
-          type="url"
+          type="text"
+        />
+      </div>
+      <div className="mb-4">
+        <label className="block text-zinc-400 mb-1">Links to embed (one URL per line)</label>
+        <textarea
+          className="block w-full p-2 rounded bg-zinc-900 text-zinc-100"
+          rows={3}
+          placeholder="https://youtube.com/...\nhttps://x.com/..."
+          value={embedLinks}
+          onChange={(e) => setEmbedLinks(e.target.value)}
         />
       </div>
       <button
@@ -138,7 +181,7 @@ export function NewsPostForm({ onPost }: { onPost?: () => void }) {
         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-50"
         disabled={loading}
       >
-        {loading ? 'Posting...' : 'Post News'}
+        {loading ? 'Publishing...' : 'Publish Post'}
       </button>
     </form>
   )

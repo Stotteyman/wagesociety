@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { authedFetch } from '../lib/supabaseBrowser'
 import { requireAuthenticatedRoute } from '../lib/routeAuth'
 import { CollaborationHub } from '../components/CollaborationHub'
+import { MerchStudioPage } from './merch-studio'
 
 const toolSchema = z.enum([
   'bulletin-board',
@@ -14,6 +15,7 @@ const toolSchema = z.enum([
   'collaboration-hub',
   'knowledge-vault',
   'promotion-hub',
+  'merch-studio',
 ])
 
 type ToolKey = z.infer<typeof toolSchema>
@@ -105,6 +107,14 @@ const TOOL_CONFIGS: Record<ToolKey, ToolConfig> = {
     showDate: true,
     showAmount: false,
   },
+  'merch-studio': {
+    key: 'merch-studio',
+    title: 'Merch Studio',
+    description: 'Submit mockups for review, track split percentages, and monitor your earnings.',
+    helper: 'Upload your designs, wait for admin approval, and track your payout history.',
+    showDate: false,
+    showAmount: false,
+  },
 }
 
 const statusOptions: EntryStatus[] = ['idea', 'planned', 'active', 'blocked', 'done']
@@ -147,6 +157,11 @@ function DashboardToolPage() {
   // Promotion Hub has its own social-media composer UI
   if (toolKey === 'promotion-hub') {
     return <PromotionHubPage />
+  }
+
+  // Merch Studio has its own full UI
+  if (toolKey === 'merch-studio') {
+    return <MerchStudioPage />
   }
 
   const config = TOOL_CONFIGS[toolKey]

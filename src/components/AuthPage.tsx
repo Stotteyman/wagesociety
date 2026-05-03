@@ -7,57 +7,9 @@ import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 
 type AuthView = 'login' | 'signup'
 
-type MembershipPlan = {
-  id: string
-  slug: string
-  name: 'FREE' | 'STANDARD' | 'PLUS' | 'UNLIMITED' | 'VIP'
-  display_price: string
-  description: string
-  features: string[]
+function getPostAuthPath(metadata: Record<string, unknown> | undefined) {
+  return metadata?.onboarding_completed === true ? '/dashboard' : '/onboarding'
 }
-
-const fallbackMembershipPlans: MembershipPlan[] = [
-  {
-    id: 'fallback-free',
-    slug: 'free',
-    name: 'FREE',
-    display_price: '$0',
-    description: 'Very limited access for basic account setup and browsing.',
-    features: ['Log in and account access', 'Connect social/OAuth accounts', 'Browse public sections'],
-  },
-  {
-    id: 'fallback-standard',
-    slug: 'standard',
-    name: 'STANDARD',
-    display_price: '$20/mo',
-    description: 'Core membership plan for regular creator workflows.',
-    features: ['Expanded workspace access', 'Standard member sections', 'Routine creator tools'],
-  },
-  {
-    id: 'fallback-plus',
-    slug: 'plus',
-    name: 'PLUS',
-    display_price: '$50/mo',
-    description: 'Higher-tier access for serious operators and teams.',
-    features: ['Broader tool access', 'Priority support', 'Advanced workspace options'],
-  },
-  {
-    id: 'fallback-unlimited',
-    slug: 'unlimited',
-    name: 'UNLIMITED',
-    display_price: '$100/mo',
-    description: 'Full platform access for high-output creators and founders.',
-    features: ['Complete creator tool access', 'Premium sections and workflows', 'Top-tier performance features'],
-  },
-  {
-    id: 'fallback-vip',
-    slug: 'vip',
-    name: 'VIP',
-    display_price: '$1000/mo',
-    description: 'Elite private tier for highest-priority access and support.',
-    features: ['VIP-level access', 'Private insider channels', 'Highest support priority'],
-  },
-]
 
 export function AuthPage({ view }: { view: AuthView }) {
   const navigate = useNavigate()
@@ -65,11 +17,10 @@ export function AuthPage({ view }: { view: AuthView }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
+  const [notice, setNotice] = useState('')
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle')
   const [usernameMessage, setUsernameMessage] = useState('')
   const usernameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>(fallbackMembershipPlans)
-  const [selectedPlan, setSelectedPlan] = useState<string>('standard')
   const [busyAction, setBusyAction] = useState<'login' | 'signup' | null>(null)
 
   const isSignup = view === 'signup'
@@ -86,33 +37,14 @@ export function AuthPage({ view }: { view: AuthView }) {
         const supabase = getSupabaseBrowserClient()
         const { data } = await supabase.auth.getSession()
         if (data.session?.user) {
-          void navigate({ to: '/dashboard' })
+          const userMeta = (data.session.user.user_metadata as Record<string, unknown> | undefined) || undefined
+          void navigate({ to: getPostAuthPath(userMeta) as '/dashboard' | '/onboarding' })
         }
       } catch {
         // Ignore and stay on auth screen.
       }
     })()
   }, [navigate, view])
-
-  useEffect(() => {
-    if (!isSignup) return
-
-    void (async () => {
-      try {
-        const response = await fetch('/api/shop')
-        if (!response.ok) return
-
-        const data = (await response.json()) as { membershipPlans?: MembershipPlan[] }
-        const plans = data.membershipPlans || []
-        if (!plans.length) return
-
-        setMembershipPlans(plans)
-        setSelectedPlan((current) => (plans.some((plan) => plan.slug === current) ? current : plans[0].slug))
-      } catch {
-        // Keep fallback plans.
-      }
-    })()
-  }, [isSignup])
 
   const handleOAuth = async (provider: 'google' | 'discord' | 'apple') => {
     try {
@@ -171,6 +103,7 @@ export function AuthPage({ view }: { view: AuthView }) {
   const handleSignup = async () => {
     try {
       setError('')
+      setNotice('')
       if (!name.trim()) {
         setError('Please enter a username.')
         return
@@ -193,18 +126,25 @@ export function AuthPage({ view }: { view: AuthView }) {
       }
       setBusyAction('signup')
       const supabase = getSupabaseBrowserClient()
-      const { error: authError } = await supabase.auth.signUp({
+      const { data, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             username: name.trim(),
             full_name: name.trim(),
-            membership_plan: selectedPlan,
+            membership_plan: 'free',
+            onboarding_completed: false,
           },
         },
       })
       if (authError) throw authError
+
+      if (data.session?.user) {
+        await navigate({ to: '/onboarding' })
+      } else {
+        setNotice('Account created. Check your email to confirm, then sign in to continue onboarding.')
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create account. Please try again.')
     } finally {
@@ -230,41 +170,13 @@ export function AuthPage({ view }: { view: AuthView }) {
         <div className={`grid gap-8 ${isSignup ? 'lg:grid-cols-[1.25fr_0.75fr]' : ''}`}>
           {isSignup ? (
             <section className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6 md:p-8">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Choose Your Plan</p>
-              <h2 className="mt-3 text-3xl font-bold text-zinc-50">Pick the track that matches your growth goals</h2>
-              <div className="mt-8 grid gap-5 md:grid-cols-3">
-                {membershipPlans.map((plan) => (
-                  <article
-                    key={plan.id}
-                    className={`rounded-xl border p-5 ${
-                      plan.slug === selectedPlan
-                        ? 'border-orange-200/70 bg-orange-200/10'
-                        : 'border-zinc-200/15 bg-zinc-900/50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <h3 className="text-lg font-semibold text-zinc-50">{plan.name}</h3>
-                      {plan.slug === selectedPlan && <BadgeCheck size={18} className="text-orange-200" />}
-                    </div>
-                    <p className="mt-2 text-2xl font-black text-orange-200">{plan.display_price}</p>
-                    <p className="mt-2 text-sm text-zinc-300">{plan.description}</p>
-                    <ul className="mt-4 space-y-2 text-sm text-zinc-200">
-                      {plan.features.map((item) => (
-                        <li key={item} className="flex items-start gap-2">
-                          <span className="text-orange-200">*</span>
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPlan(plan.slug)}
-                      className="mt-5 w-full rounded-lg border border-zinc-100/25 py-2 text-sm font-semibold text-zinc-50 transition hover:border-orange-200/70 hover:text-orange-100"
-                    >
-                      Select {plan.name}
-                    </button>
-                  </article>
-                ))}
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">How Signup Works</p>
+              <h2 className="mt-3 text-3xl font-bold text-zinc-50">Every new account starts on FREE</h2>
+              <div className="mt-6 space-y-3 rounded-2xl border border-zinc-200/15 bg-zinc-950/40 p-5 text-sm text-zinc-300">
+                <p className="flex items-start gap-2"><BadgeCheck size={14} className="mt-0.5 text-orange-200" /> Create your account or connect OAuth.</p>
+                <p className="flex items-start gap-2"><BadgeCheck size={14} className="mt-0.5 text-orange-200" /> Get instant FREE access by default.</p>
+                <p className="flex items-start gap-2"><BadgeCheck size={14} className="mt-0.5 text-orange-200" /> Complete onboarding: username + profile setup.</p>
+                <p className="flex items-start gap-2"><BadgeCheck size={14} className="mt-0.5 text-orange-200" /> Choose to upgrade during onboarding if you want paid access.</p>
               </div>
             </section>
           ) : null}
@@ -336,19 +248,17 @@ export function AuthPage({ view }: { view: AuthView }) {
                   />
                 </label>
               ) : null}
-              {isSignup ? (
-                <div>
-                  <span className="mb-2 block text-sm font-medium text-zinc-200">Selected plan</span>
-                  <p className="rounded-lg border border-zinc-200/15 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-200">
-                    {membershipPlans.find((plan) => plan.slug === selectedPlan)?.name || selectedPlan}
-                  </p>
-                </div>
-              ) : null}
             </div>
 
             {error ? (
               <p className="mt-4 rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
                 {error}
+              </p>
+            ) : null}
+
+            {notice ? (
+              <p className="mt-4 rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+                {notice}
               </p>
             ) : null}
 

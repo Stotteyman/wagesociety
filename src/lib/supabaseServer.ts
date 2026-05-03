@@ -8,7 +8,23 @@ const publishableKey =
 
 let serverPublicClient: ReturnType<typeof createClient> | null = null
 
-export function getSupabaseServerPublicClient() {
+function createServerClient(accessToken?: string) {
+  return createClient(supabaseUrl!, publishableKey!, {
+    global: accessToken
+      ? {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      : undefined,
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  })
+}
+
+export function getSupabaseServerPublicClient(): ReturnType<typeof createClient> {
   if (!supabaseUrl) {
     throw new Error('Missing Supabase URL. Set SUPABASE_URL or VITE_SUPABASE_URL.')
   }
@@ -18,13 +34,20 @@ export function getSupabaseServerPublicClient() {
   }
 
   if (!serverPublicClient) {
-    serverPublicClient = createClient(supabaseUrl, publishableKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    })
+    serverPublicClient = createServerClient()
   }
 
   return serverPublicClient
+}
+
+export function getSupabaseServerClientForToken(accessToken?: string): ReturnType<typeof createClient> {
+  if (!supabaseUrl) {
+    throw new Error('Missing Supabase URL. Set SUPABASE_URL or VITE_SUPABASE_URL.')
+  }
+
+  if (!publishableKey) {
+    throw new Error('Missing Supabase publishable key. Set VITE_SUPABASE_PUBLISHABLE_KEY.')
+  }
+
+  return createServerClient(accessToken)
 }

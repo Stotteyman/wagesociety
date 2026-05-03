@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react'
 import {
   ArrowLeft,
   BarChart3,
-  BadgeCheck,
   CalendarDays,
   ClipboardList,
   CreditCard,
@@ -16,6 +15,7 @@ import {
   Radio,
   Settings,
   Shield,
+  Store,
   Users,
 } from 'lucide-react'
 import { canManageRole, formatRoleLabel, type BanRecord, type OrgPermission, type OrgRole } from '../lib/orgAccess'
@@ -361,6 +361,7 @@ function CreatorDashboard({
       | 'collaboration-hub'
       | 'knowledge-vault'
       | 'promotion-hub'
+      | 'merch-studio'
     title: string
     description: string
     items: string[]
@@ -421,6 +422,14 @@ function CreatorDashboard({
       description: 'Compose and schedule posts to Kick, Twitch, X, Instagram, and Threads from one place.',
       items: ['Write once, post anywhere', 'Schedule your queue', 'Platform-tailored previews'],
       requiredPermission: 'view_creator_tools',
+    },
+    {
+      icon: <Store size={18} />,
+      toolKey: 'merch-studio',
+      title: 'Merch Studio',
+      description: 'Submit your merch mockups, track admin review status, and monitor your earnings splits.',
+      items: ['Design submissions', 'Approval status', 'Earnings & payouts'],
+      requiredPermission: 'view_merch',
     },
   ]
 
@@ -544,103 +553,73 @@ function CreatorDashboard({
                 </div>
               ) : null}
             </div>
-            <div className="flex gap-3">
-              <Link
-                to="/dashboard"
-                className="rounded-lg border border-zinc-100/25 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:border-orange-200/70 hover:text-orange-100"
-              >
-                Home
-              </Link>
-              {hasPermission('access_admin_dashboard') ? (
-                <Link
-                  to="/admin"
-                  className="rounded-lg border border-orange-300/45 px-4 py-2 text-sm font-semibold text-orange-100 transition hover:border-orange-200 hover:text-orange-50"
+          </div>
+
+          <div className="mt-6 border-t border-zinc-200/10 pt-4">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Dashboard Sections</p>
+            <div className="-mx-1 overflow-x-auto px-1">
+              <div className="flex min-w-max gap-1 rounded-xl border border-zinc-200/15 bg-zinc-900/60 p-1">
+                <button
+                  type="button"
+                  onClick={() => setDashboardTab('motd')}
+                  className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                    dashboardTab === 'motd'
+                      ? 'bg-orange-300 text-zinc-950'
+                      : 'text-zinc-300 hover:text-zinc-50'
+                  }`}
                 >
-                  Admin
-                </Link>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => {
-                  void onLogout()
-                }}
-                className="rounded-lg border border-zinc-100/25 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:border-orange-200/70 hover:text-orange-100"
-              >
-                Logout
-              </button>
+                  <Megaphone size={15} />
+                  MOTD
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDashboardTab('news')}
+                  className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                    dashboardTab === 'news'
+                      ? 'bg-orange-300 text-zinc-950'
+                      : 'text-zinc-300 hover:text-zinc-50'
+                  }`}
+                >
+                  <Newspaper size={15} />
+                  Latest News
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDashboardTab('workspace')}
+                  className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                    dashboardTab === 'workspace'
+                      ? 'bg-orange-300 text-zinc-950'
+                      : 'text-zinc-300 hover:text-zinc-50'
+                  }`}
+                >
+                  <LayoutDashboard size={15} />
+                  Workspace
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDashboardTab('settings')}
+                  className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
+                    dashboardTab === 'settings'
+                      ? 'bg-orange-300 text-zinc-950'
+                      : 'text-zinc-300 hover:text-zinc-50'
+                  }`}
+                >
+                  <Settings size={15} />
+                  Settings
+                </button>
+                {hasPermission('access_admin_dashboard') && (
+                  <Link
+                    to="/admin"
+                    className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:text-zinc-50"
+                  >
+                    <Shield size={15} />
+                    Admin
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         </header>
-
-        <div className="mt-6 flex gap-1 rounded-xl border border-zinc-200/15 bg-zinc-900/60 p-1">
-          <button
-            type="button"
-            onClick={() => setDashboardTab('motd')}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              dashboardTab === 'motd'
-                ? 'bg-orange-300 text-zinc-950'
-                : 'text-zinc-300 hover:text-zinc-50'
-            }`}
-          >
-            <Megaphone size={15} />
-            MOTD
-          </button>
-          <button
-            type="button"
-            onClick={() => setDashboardTab('news')}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              dashboardTab === 'news'
-                ? 'bg-orange-300 text-zinc-950'
-                : 'text-zinc-300 hover:text-zinc-50'
-            }`}
-          >
-            <Newspaper size={15} />
-            Latest News
-          </button>
-          <button
-            type="button"
-            onClick={() => setDashboardTab('workspace')}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              dashboardTab === 'workspace'
-                ? 'bg-orange-300 text-zinc-950'
-                : 'text-zinc-300 hover:text-zinc-50'
-            }`}
-          >
-            <LayoutDashboard size={15} />
-            Workspace
-          </button>
-          <button
-            type="button"
-            onClick={() => setDashboardTab('settings')}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
-              dashboardTab === 'settings'
-                ? 'bg-orange-300 text-zinc-950'
-                : 'text-zinc-300 hover:text-zinc-50'
-            }`}
-          >
-            <Settings size={15} />
-            Settings
-          </button>
-          {hasPermission('access_admin_dashboard') && (
-            <Link
-              to="/admin"
-              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:text-zinc-50"
-            >
-              <Shield size={15} />
-              Admin
-            </Link>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              void onLogout()
-            }}
-            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:text-zinc-50"
-          >
-            <LogOut size={15} />
-            Logout
-          </button>
-        </div>
 
         {dashboardTab === 'motd' ? (
           <section className="mt-6">
@@ -938,6 +917,7 @@ function ResourceCard({
     | 'collaboration-hub'
     | 'knowledge-vault'
     | 'promotion-hub'
+    | 'merch-studio'
   title: string
   description: string
   items: string[]
