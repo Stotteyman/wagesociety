@@ -58,14 +58,23 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
           authedFetch('/api/me/profile'),
           supabase.auth.getUser(),
         ])
+
+        const metadataName =
+          String(currentUser?.user_metadata?.username || '').trim() ||
+          String(currentUser?.user_metadata?.full_name || '').trim() ||
+          String(currentUser?.email || '').split('@')[0] ||
+          ''
+
         if (profileResponse.ok) {
           const data = (await profileResponse.json()) as ProfileApiResponse
           const p = data.profile
           setProfile(p)
-          setDisplayName(p.display_name || '')
+          setDisplayName(p.display_name || metadataName)
           setAvatarUrl(p.avatar_url || '')
           setBio(p.bio || '')
           setSkillsInput((p.skills || []).join(', '))
+        } else {
+          setDisplayName(metadataName)
         }
         setUser(currentUser)
       } catch {
@@ -157,7 +166,9 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
     usernameDebounceRef.current = setTimeout(() => {
       void (async () => {
         try {
-          const res = await fetch(`/api/check-username?username=${encodeURIComponent(trimmed)}`)
+          const res = await fetch(
+            `/api/check-username?username=${encodeURIComponent(trimmed)}&currentEmail=${encodeURIComponent(member.email)}`,
+          )
           const data = (await res.json()) as { available?: boolean; reason?: string }
           if (data.available === true) {
             setUsernameStatus('available')

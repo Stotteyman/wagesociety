@@ -10,15 +10,26 @@ const serverKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 // Singleton — avoids creating a new TCP connection on every request
 let adminClient: ReturnType<typeof createClient> | null = null
 
-export function getSupabaseAdminClient() {
-  if (!supabaseUrl) {
-    throw new Error('Missing Supabase URL. Set SUPABASE_URL, VITE_SUPABASE_URL, or NEXT_PUBLIC_SUPABASE_URL.')
-  }
+export function hasSupabaseAdminConfig() {
+  return Boolean(supabaseUrl && serverKey)
+}
 
+export function getSupabaseAdminConfigIssues() {
+  const issues: string[] = []
+  if (!supabaseUrl) {
+    issues.push('Missing Supabase URL. Set SUPABASE_URL, VITE_SUPABASE_URL, or NEXT_PUBLIC_SUPABASE_URL.')
+  }
   if (!serverKey) {
-    throw new Error(
-      'Missing SUPABASE_SERVICE_ROLE_KEY. The admin client requires the service role key — do not use anon/publishable keys here.'
+    issues.push(
+      'Missing SUPABASE_SERVICE_ROLE_KEY. The admin client requires the service role key — do not use anon/publishable keys here.',
     )
+  }
+  return issues
+}
+
+export function getSupabaseAdminClient() {
+  if (!hasSupabaseAdminConfig()) {
+    throw new Error(getSupabaseAdminConfigIssues().join(' '))
   }
 
   if (!adminClient) {

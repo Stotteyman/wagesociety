@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { ArrowLeft, Store, Users, RadioTower, ShoppingBag, CreditCard, CircleHelp } from 'lucide-react'
+import { ArrowLeft, Store, Users, RadioTower, ShoppingBag, CircleHelp } from 'lucide-react'
 import { requireAuthenticatedRoute } from '../lib/routeAuth'
 
 const adminLinks = [
@@ -26,12 +26,6 @@ const adminLinks = [
     description: 'Open the public merch storefront.',
     to: '/merch' as const,
     icon: ShoppingBag,
-  },
-  {
-    title: 'Checkout Page',
-    description: 'Open the membership checkout experience.',
-    to: '/checkout' as const,
-    icon: CreditCard,
   },
   {
     title: 'FAQ Page',

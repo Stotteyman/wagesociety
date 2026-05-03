@@ -24,6 +24,7 @@ type LiveApiResponse = {
     source: string
   }
   canManage: boolean
+  canUseAutoclipper: boolean
   streams: StreamRow[]
 }
 
@@ -69,6 +70,7 @@ function LivePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [canManage, setCanManage] = useState(false)
+  const [canUseAutoclipper, setCanUseAutoclipper] = useState(false)
 
   const [url, setUrl] = useState('')
   const [title, setTitle] = useState('')
@@ -97,8 +99,11 @@ function LivePage() {
       const liveData = data as LiveApiResponse
       setStreams(liveData.streams || [])
       setCanManage(liveData.canManage)
+      setCanUseAutoclipper(Boolean(liveData.canUseAutoclipper))
+      return Boolean(liveData.canUseAutoclipper)
     } catch {
       setError('Failed to load livestreams')
+      return false
     }
   }
 
@@ -121,7 +126,13 @@ function LivePage() {
   useEffect(() => {
     void (async () => {
       setLoading(true)
-      await Promise.all([loadStreams(), loadAutoclipperJobs()])
+      const hasAutoclipperAccess = await loadStreams()
+      if (hasAutoclipperAccess) {
+        await loadAutoclipperJobs()
+      } else {
+        setAutoJobs([])
+        setAutoLoading(false)
+      }
       setLoading(false)
     })()
   }, [])
@@ -309,7 +320,8 @@ function LivePage() {
           <p className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{error}</p>
         ) : null}
 
-        <section className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6">
+        {canUseAutoclipper ? (
+          <section className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-xl font-bold text-zinc-50">Autoclipper</h2>
@@ -391,7 +403,8 @@ function LivePage() {
               </div>
             )}
           </div>
-        </section>
+          </section>
+        ) : null}
 
         <section className="space-y-3">
           {loading ? <p className="text-zinc-300">Loading livestreams...</p> : null}

@@ -38,6 +38,7 @@ export type OrgPermission =
   | 'view_creator_tools'
   | 'view_revenue_tracker'
   | 'view_live_streams'
+  | 'use_autoclipper'
   | 'manage_livestreams'
   | 'view_merch'
   | 'manage_users'

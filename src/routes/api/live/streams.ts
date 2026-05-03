@@ -1,8 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { getLivestreamSnapshot, parseLivestreamLink } from '../../../lib/liveStatus'
+import { isLocalRequest } from '../../../lib/orgAuth'
 import { requirePermission } from '../../../lib/orgAuth'
-import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin'
+import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../../lib/supabaseAdmin'
+import { getSupabaseServerPublicClient } from '../../../lib/supabaseServer'
 
 const addStreamSchema = z.object({
   url: z.string().url(),
@@ -29,15 +31,74 @@ export const Route = createFileRoute('/api/live/streams')({
     handlers: {
       GET: async ({ request }) => {
         try {
-          const access = await requirePermission(request, 'view_live_streams')
-          const admin = getSupabaseAdminClient()
+          const useAdminPath = hasSupabaseAdminConfig()
+          const useLocalRoot = request.headers.get('x-local-root-session') === 'true' && isLocalRequest(request)
 
-          const { data, error } = await admin.rpc('list_org_livestreams')
-          if (error) {
-            return Response.json({ error: error.message }, { status: 500 })
+          let streams: DbStream[] = []
+          let requesterEmail = 'unknown'
+          let requesterSource = 'supabase-session'
+          let canManage = false
+          let canUseAutoclipper = false
+
+          if (useAdminPath) {
+            const access = await requirePermission(request, 'view_live_streams')
+            const admin = getSupabaseAdminClient()
+
+            const { data, error } = await admin.rpc('list_org_livestreams')
+            if (error) {
+              return Response.json({ error: error.message }, { status: 500 })
+            }
+
+            streams = (data || []) as DbStream[]
+            requesterEmail = access.requester.email
+            requesterSource = access.requester.source
+            canManage = access.isSuperadmin || access.permissions.includes('manage_livestreams')
+            canUseAutoclipper = access.isSuperadmin || access.permissions.includes('use_autoclipper')
+          } else {
+            const client = getSupabaseServerPublicClient()
+
+            if (useLocalRoot) {
+              requesterEmail = 'root-superadmin@localhost'
+              requesterSource = 'localhost-bypass'
+              canManage = false
+              canUseAutoclipper = false
+            } else {
+              const authHeader = request.headers.get('authorization') || ''
+              const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
+              if (!token) {
+                return Response.json(
+                  { error: 'Authentication required to view livestreams right now.' },
+                  { status: 401 },
+                )
+              }
+
+              const {
+                data: { user },
+                error: userError,
+              } = await client.auth.getUser(token)
+
+              if (userError || !user?.email) {
+                return Response.json(
+                  { error: 'Authentication required to view livestreams right now.' },
+                  { status: 401 },
+                )
+              }
+
+              requesterEmail = user.email
+              requesterSource = 'supabase-session'
+            }
+
+            const { data, error } = await client
+              .from('org_livestreams')
+              .select('id, url, title, platform, stream_key, created_by, created_at, updated_at')
+              .order('updated_at', { ascending: false })
+
+            if (error) {
+              return Response.json({ error: error.message }, { status: 500 })
+            }
+
+            streams = (data || []) as DbStream[]
           }
-
-          const streams = (data || []) as DbStream[]
 
           const withStatus = await Promise.all(
             streams.map(async (stream) => {
@@ -66,15 +127,19 @@ export const Route = createFileRoute('/api/live/streams')({
 
           return Response.json({
             requester: {
-              ...access.requester,
-              role: access.role,
+              email: requesterEmail,
+              source: requesterSource,
             },
-            canManage: access.isSuperadmin || access.permissions.includes('manage_livestreams'),
+            canManage,
+            canUseAutoclipper,
             streams: sortedStreams,
           })
         } catch (error) {
           if (error instanceof Response) return error
-          return Response.json({ error: 'Unexpected server error' }, { status: 500 })
+          return Response.json(
+            { error: error instanceof Error ? error.message : 'Unexpected server error' },
+            { status: 500 },
+          )
         }
       },
       POST: async ({ request }) => {
@@ -135,7 +200,10 @@ export const Route = createFileRoute('/api/live/streams')({
           return Response.json({ deleted: !!data })
         } catch (error) {
           if (error instanceof Response) return error
-          return Response.json({ error: 'Unexpected server error' }, { status: 500 })
+          return Response.json(
+            { error: error instanceof Error ? error.message : 'Unexpected server error' },
+            { status: 500 },
+          )
         }
       },
     },

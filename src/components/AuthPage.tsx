@@ -2,6 +2,7 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { ArrowLeft, BadgeCheck } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { getClientAuthRedirectUrl } from '../lib/authRedirect'
+import { isLocalhostClient, startLocalRootSession } from '../lib/localRootSession'
 import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 
 type AuthView = 'login' | 'signup'
@@ -75,6 +76,12 @@ export function AuthPage({ view }: { view: AuthView }) {
 
   useEffect(() => {
     void (async () => {
+      if (view === 'login' && isLocalhostClient()) {
+        startLocalRootSession()
+        void navigate({ to: '/dashboard' })
+        return
+      }
+
       try {
         const supabase = getSupabaseBrowserClient()
         const { data } = await supabase.auth.getSession()
@@ -85,7 +92,7 @@ export function AuthPage({ view }: { view: AuthView }) {
         // Ignore and stay on auth screen.
       }
     })()
-  }, [navigate])
+  }, [navigate, view])
 
   useEffect(() => {
     if (!isSignup) return

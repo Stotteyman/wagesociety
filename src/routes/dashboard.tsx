@@ -19,6 +19,7 @@ import {
   Users,
 } from 'lucide-react'
 import { canManageRole, formatRoleLabel, type BanRecord, type OrgPermission, type OrgRole } from '../lib/orgAccess'
+import { endLocalRootSession, getLocalRootUser, isLocalRootSessionActive } from '../lib/localRootSession'
 import { authedFetch, getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 import { requireAuthenticatedRoute } from '../lib/routeAuth'
 import { setStoredViewAsRole } from '../lib/viewAs'
@@ -77,6 +78,19 @@ type NewsItem = {
   created_at: string
   author: string
 }
+
+const LOCAL_ROOT_PERMISSIONS: OrgPermission[] = [
+  'view_dashboard',
+  'view_creator_tools',
+  'view_revenue_tracker',
+  'view_live_streams',
+  'use_autoclipper',
+  'manage_livestreams',
+  'view_merch',
+  'manage_users',
+  'manage_permissions',
+  'access_admin_dashboard',
+]
 
 const fallbackMembershipPlans: Array<{
   id: string
@@ -160,6 +174,18 @@ function DashboardGate() {
   useEffect(() => {
     let mounted = true
 
+    if (isLocalRootSessionActive()) {
+      setMember(getLocalRootUser() as AppUser)
+      setRole('superadmin')
+      setActorRole('superadmin')
+      setPermissions(LOCAL_ROOT_PERMISSIONS)
+      setAccessLoading(false)
+      setReady(true)
+      return () => {
+        mounted = false
+      }
+    }
+
     const supabase = getSupabaseBrowserClient()
 
     supabase.auth
@@ -189,6 +215,11 @@ function DashboardGate() {
   }, [])
 
   useEffect(() => {
+    if (isLocalRootSessionActive()) {
+      setAccessLoading(false)
+      return
+    }
+
     if (!member) {
       setAccessLoading(false)
       return
@@ -219,6 +250,13 @@ function DashboardGate() {
   const handleLogout = async () => {
     try {
       setStoredViewAsRole(null)
+
+      if (isLocalRootSessionActive()) {
+        endLocalRootSession()
+        void navigate({ to: '/login' })
+        return
+      }
+
       const supabase = getSupabaseBrowserClient()
       const { error } = await supabase.auth.signOut()
       if (error) throw error
@@ -387,8 +425,17 @@ function CreatorDashboard({
   ]
 
   const visibleFunctions = dashboardFunctions.filter((fn) => hasPermission(fn.requiredPermission))
+  const dashboardDisplayName =
+    member?.email?.toLowerCase() === 'stotteyman@gmail.com'
+      ? 'stotteyman'
+      : member?.user_metadata?.username || member?.email?.split('@')[0] || 'Member'
 
   useEffect(() => {
+    if (isLocalRootSessionActive()) {
+      setPlansLoading(false)
+      return
+    }
+
     void (async () => {
       try {
         const response = await fetch('/api/shop')
@@ -404,6 +451,12 @@ function CreatorDashboard({
   }, [])
 
   useEffect(() => {
+    if (isLocalRootSessionActive()) {
+      setLatestNews([])
+      setNewsLoading(false)
+      return
+    }
+
     void (async () => {
       setNewsLoading(true)
       try {
@@ -441,7 +494,7 @@ function CreatorDashboard({
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Organization Dashboard</p>
               <h1 className="mt-2 text-3xl font-black text-zinc-50 md:text-4xl">
-                Welcome back, {member.user_metadata?.username || member.user_metadata?.full_name || member.email || 'Member'}
+                Welcome back, {dashboardDisplayName}
               </h1>
               <p className="mt-3 max-w-2xl text-zinc-300">
                 Run your creator pipeline, marketing campaigns, and entrepreneurial execution with a focused operating system.
@@ -568,7 +621,7 @@ function CreatorDashboard({
             <Settings size={15} />
             Settings
           </button>
-          {hasPermission('access_admin_dashboard') ? (
+          {hasPermission('access_admin_dashboard') && (
             <Link
               to="/admin"
               className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:text-zinc-50"
@@ -576,16 +629,6 @@ function CreatorDashboard({
               <Shield size={15} />
               Admin
             </Link>
-          ) : (
-            <button
-              type="button"
-              disabled
-              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-zinc-500"
-              title="Your role does not currently have admin access"
-            >
-              <Shield size={15} />
-              Admin
-            </button>
           )}
           <button
             type="button"
@@ -715,13 +758,9 @@ function CreatorDashboard({
                               <p className="mt-0.5 text-xs text-zinc-400">{plan.description}</p>
                             </div>
                             {!isCurrent ? (
-                              <Link
-                                to="/checkout"
-                                search={{ plan: plan.slug }}
-                                className="flex-shrink-0 rounded-lg border border-zinc-100/25 px-3 py-1.5 text-xs font-semibold text-zinc-100 transition hover:border-orange-200/70 hover:text-orange-100"
-                              >
-                                {plan.slug === 'free' ? 'Downgrade' : 'Upgrade'}
-                              </Link>
+                              <span className="flex-shrink-0 rounded-lg border border-zinc-100/25 px-3 py-1.5 text-xs font-semibold text-zinc-300">
+                                {plan.slug === 'free' ? 'Downgrade via admin' : 'Upgrade via admin'}
+                              </span>
                             ) : null}
                           </div>
                           {plan.features.length > 0 ? (

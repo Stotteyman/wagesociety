@@ -17,7 +17,6 @@ import { Route as LiveRouteImport } from './routes/live'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as DirectoryRouteImport } from './routes/directory'
 import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as AppealsRouteImport } from './routes/appeals'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as UsernameRouteImport } from './routes/$username'
@@ -89,11 +88,6 @@ const DirectoryRoute = DirectoryRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CheckoutRoute = CheckoutRouteImport.update({
-  id: '/checkout',
-  path: '/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppealsRoute = AppealsRouteImport.update({
@@ -262,7 +256,6 @@ export interface FileRoutesByFullPath {
   '/$username': typeof UsernameRoute
   '/admin': typeof AdminRouteWithChildren
   '/appeals': typeof AppealsRoute
-  '/checkout': typeof CheckoutRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/directory': typeof DirectoryRoute
   '/faq': typeof FaqRoute
@@ -305,7 +298,6 @@ export interface FileRoutesByTo {
   '/$username': typeof UsernameRoute
   '/admin': typeof AdminRouteWithChildren
   '/appeals': typeof AppealsRoute
-  '/checkout': typeof CheckoutRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/directory': typeof DirectoryRoute
   '/faq': typeof FaqRoute
@@ -349,7 +341,6 @@ export interface FileRoutesById {
   '/$username': typeof UsernameRoute
   '/admin': typeof AdminRouteWithChildren
   '/appeals': typeof AppealsRoute
-  '/checkout': typeof CheckoutRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/directory': typeof DirectoryRoute
   '/faq': typeof FaqRoute
@@ -394,7 +385,6 @@ export interface FileRouteTypes {
     | '/$username'
     | '/admin'
     | '/appeals'
-    | '/checkout'
     | '/dashboard'
     | '/directory'
     | '/faq'
@@ -437,7 +427,6 @@ export interface FileRouteTypes {
     | '/$username'
     | '/admin'
     | '/appeals'
-    | '/checkout'
     | '/dashboard'
     | '/directory'
     | '/faq'
@@ -480,7 +469,6 @@ export interface FileRouteTypes {
     | '/$username'
     | '/admin'
     | '/appeals'
-    | '/checkout'
     | '/dashboard'
     | '/directory'
     | '/faq'
@@ -524,7 +512,6 @@ export interface RootRouteChildren {
   UsernameRoute: typeof UsernameRoute
   AdminRoute: typeof AdminRouteWithChildren
   AppealsRoute: typeof AppealsRoute
-  CheckoutRoute: typeof CheckoutRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   DirectoryRoute: typeof DirectoryRoute
   FaqRoute: typeof FaqRoute
@@ -614,13 +601,6 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/checkout': {
-      id: '/checkout'
-      path: '/checkout'
-      fullPath: '/checkout'
-      preLoaderRoute: typeof CheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/appeals': {
@@ -893,7 +873,6 @@ const rootRouteChildren: RootRouteChildren = {
   UsernameRoute: UsernameRoute,
   AdminRoute: AdminRouteWithChildren,
   AppealsRoute: AppealsRoute,
-  CheckoutRoute: CheckoutRoute,
   DashboardRoute: DashboardRouteWithChildren,
   DirectoryRoute: DirectoryRoute,
   FaqRoute: FaqRoute,

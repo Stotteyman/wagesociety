@@ -158,7 +158,7 @@ export const Route = createFileRoute('/api/live/clips')({
             return Response.json({ jobs })
           }
 
-          const access = await requirePermission(request, 'view_live_streams')
+          const access = await requirePermission(request, 'use_autoclipper')
           const rows = await fetchAutoclipRows(100)
           const jobs = mapRowsToJobs(rows)
 
@@ -204,7 +204,7 @@ export const Route = createFileRoute('/api/live/clips')({
             return Response.json({ ok: true, ...result })
           }
 
-          const access = await requirePermission(request, 'view_live_streams')
+          const access = await requirePermission(request, 'use_autoclipper')
           const parsed = createSchema.safeParse(body)
           if (!parsed.success) {
             return Response.json({ error: 'Invalid payload', details: parsed.error.flatten() }, { status: 400 })

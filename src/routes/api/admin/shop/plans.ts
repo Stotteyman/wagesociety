@@ -48,7 +48,10 @@ export const Route = createFileRoute('/api/admin/shop/plans')({
           })
         } catch (error) {
           if (error instanceof Response) return error
-          return Response.json({ error: 'Unexpected server error' }, { status: 500 })
+          return Response.json(
+            { error: error instanceof Error ? error.message : 'Unexpected server error' },
+            { status: 500 },
+          )
         }
       },
       POST: async ({ request }) => {
@@ -82,7 +85,10 @@ export const Route = createFileRoute('/api/admin/shop/plans')({
           return Response.json({ plan: data })
         } catch (error) {
           if (error instanceof Response) return error
-          return Response.json({ error: 'Unexpected server error' }, { status: 500 })
+          return Response.json(
+            { error: error instanceof Error ? error.message : 'Unexpected server error' },
+            { status: 500 },
+          )
         }
       },
       PUT: async ({ request }) => {
@@ -118,7 +124,10 @@ export const Route = createFileRoute('/api/admin/shop/plans')({
           return Response.json({ plan: data })
         } catch (error) {
           if (error instanceof Response) return error
-          return Response.json({ error: 'Unexpected server error' }, { status: 500 })
+          return Response.json(
+            { error: error instanceof Error ? error.message : 'Unexpected server error' },
+            { status: 500 },
+          )
         }
       },
       DELETE: async ({ request }) => {
@@ -142,7 +151,10 @@ export const Route = createFileRoute('/api/admin/shop/plans')({
           return Response.json({ deleted: true })
         } catch (error) {
           if (error instanceof Response) return error
-          return Response.json({ error: 'Unexpected server error' }, { status: 500 })
+          return Response.json(
+            { error: error instanceof Error ? error.message : 'Unexpected server error' },
+            { status: 500 },
+          )
         }
       },
     },

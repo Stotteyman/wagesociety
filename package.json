@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev --port 3000",
-    "build": "vite build"
+    "build": "vite build",
+    "check:env": "node ./scripts/check-env.mjs"
   },
   "dependencies": {
     "@netlify/identity": "^1.0.0",

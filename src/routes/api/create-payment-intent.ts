@@ -144,7 +144,7 @@ export const Route = createFileRoute('/api/create-payment-intent')({
             return Response.json({
               free: true,
               planSlug: plan.slug,
-              successUrl: `${baseUrl}/checkout?plan=${encodeURIComponent(plan.slug)}&status=success`,
+              successUrl: `${baseUrl}/dashboard?membership=${encodeURIComponent(plan.slug)}&status=success`,
             })
           }
 
@@ -195,7 +195,7 @@ export const Route = createFileRoute('/api/create-payment-intent')({
               updated: true,
               planSlug: plan.slug,
               subscriptionId: updatedSubscription.id,
-              successUrl: `${baseUrl}/checkout?plan=${encodeURIComponent(plan.slug)}&status=success`,
+              successUrl: `${baseUrl}/dashboard?membership=${encodeURIComponent(plan.slug)}&status=success`,
             })
           }
 
@@ -203,8 +203,8 @@ export const Route = createFileRoute('/api/create-payment-intent')({
           const session = await stripe.checkout.sessions.create({
             mode: 'subscription',
             customer: customer.id,
-            success_url: `${baseUrl}/checkout?plan=${encodeURIComponent(plan.slug)}&status=success&session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${baseUrl}/checkout?plan=${encodeURIComponent(plan.slug)}&status=cancelled`,
+            success_url: `${baseUrl}/dashboard?membership=${encodeURIComponent(plan.slug)}&status=success&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${baseUrl}/dashboard?membership=${encodeURIComponent(plan.slug)}&status=cancelled`,
             line_items: [
               {
                 quantity: 1,

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { isLocalRootSessionActive } from './localRootSession'
 import { getStoredViewAsRole } from './viewAs'
 
 let supabaseBrowserClient: ReturnType<typeof createClient> | null = null
@@ -37,6 +38,10 @@ export async function authedFetch(input: string, init?: RequestInit) {
 
   if (viewAsRole) {
     headers.set('x-view-as-role', viewAsRole)
+  }
+
+  if (isLocalRootSessionActive()) {
+    headers.set('x-local-root-session', 'true')
   }
 
   return fetch(input, {

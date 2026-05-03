@@ -27,6 +27,7 @@ export const Route = createFileRoute('/api/check-username')({
       GET: async ({ request }) => {
         const url = new URL(request.url)
         const username = (url.searchParams.get('username') ?? '').trim()
+        const currentEmail = (url.searchParams.get('currentEmail') ?? '').trim().toLowerCase()
 
         if (!USERNAME_REGEX.test(username)) {
           return Response.json(
@@ -43,7 +44,7 @@ export const Route = createFileRoute('/api/check-username')({
           const admin = getSupabaseAdminClient()
           const { data, error } = await admin
             .from('org_member_profiles')
-            .select('email')
+            .select('email, display_name')
             .ilike('display_name', username)
             .limit(1)
 
@@ -52,23 +53,31 @@ export const Route = createFileRoute('/api/check-username')({
             return Response.json({ error: 'Could not check username availability.' }, { status: 500 })
           }
 
-          const { data: authUsers, error: authUsersError } = await admin
-            .schema('auth')
-            .from('users')
-            .select('raw_user_meta_data')
+          const { data: authUsersPage, error: authUsersError } = await admin.auth.admin.listUsers({
+            page: 1,
+            perPage: 1000,
+          })
 
           if (authUsersError) {
             return Response.json({ error: 'Could not check username availability.' }, { status: 500 })
           }
 
           const normalized = username.toLowerCase()
-          const takenInMetadata = (Array.isArray(authUsers) ? authUsers : []).some((row) => {
-            const meta = (row.raw_user_meta_data as AuthUserMeta | null | undefined) ?? null
+          const takenInMetadata = (authUsersPage?.users || []).some((row) => {
+            const rowEmail = String(row.email || '').toLowerCase()
+            if (currentEmail && rowEmail === currentEmail) return false
+            const meta = (row.user_metadata as AuthUserMeta | null | undefined) ?? null
             const candidates = [meta?.username, meta?.full_name, meta?.name, meta?.preferred_username]
             return candidates.some((candidate) => candidate?.trim().toLowerCase() === normalized)
           })
 
-          const taken = (Array.isArray(data) && data.length > 0) || takenInMetadata
+          const takenInProfiles = (Array.isArray(data) ? data : []).some((row) => {
+            const rowEmail = String((row as { email?: string | null }).email || '').toLowerCase()
+            if (currentEmail && rowEmail === currentEmail) return false
+            return true
+          })
+
+          const taken = takenInProfiles || takenInMetadata
           return Response.json({ available: !taken, username })
         } catch {
           return Response.json({ error: 'Unexpected server error' }, { status: 500 })

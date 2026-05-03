@@ -1,40 +1,28 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { getSupabaseAdminClient } from '../../lib/supabaseAdmin'
+import { getSupabaseServerPublicClient } from '../../lib/supabaseServer'
 
-type AuthUserMeta = {
-  username?: string
-  full_name?: string
-  name?: string
-  preferred_username?: string
-  picture?: string
-  avatar_url?: string
+type DirectoryRow = {
+  username: string
+  display_name: string
+  avatar_url: string | null
+  bio: string | null
+  connected_count: number
 }
 
-type DirectoryIdentityRow = {
-  user_id: string
-  provider: string
+type DirectoryProfileRow = {
+  email: string
+  display_name: string | null
+  avatar_url: string | null
+  bio: string | null
 }
 
 function normalizeUsername(value: string) {
-  return value.trim().toLowerCase()
-}
-
-function readUsernameFromMeta(meta: AuthUserMeta | null | undefined) {
-  const candidates = [meta?.username, meta?.preferred_username, meta?.full_name, meta?.name]
-  for (const candidate of candidates) {
-    const trimmed = candidate?.trim()
-    if (trimmed) return trimmed
-  }
-  return null
-}
-
-function readAvatarFromMeta(meta: AuthUserMeta | null | undefined) {
-  const candidates = [meta?.avatar_url, meta?.picture]
-  for (const candidate of candidates) {
-    const trimmed = candidate?.trim()
-    if (trimmed) return trimmed
-  }
-  return null
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
 
 export const Route = createFileRoute('/api/public-directory')({
@@ -47,76 +35,50 @@ export const Route = createFileRoute('/api/public-directory')({
           const limitParam = Number(url.searchParams.get('limit') || '200')
           const limit = Number.isFinite(limitParam) ? Math.max(1, Math.min(500, Math.floor(limitParam))) : 200
 
-          const admin = getSupabaseAdminClient()
-          const [{ data: users, error: usersError }, { data: profiles, error: profilesError }, { data: identities, error: identitiesError }] = await Promise.all([
-            admin
-              .schema('auth')
-              .from('users')
-              .select('id, email, raw_user_meta_data')
-              .limit(5000),
-            admin
-              .from('org_member_profiles')
-              .select('email, display_name, avatar_url, bio')
-              .limit(5000),
-            admin
-              .schema('auth')
-              .from('identities')
-              .select('user_id, provider')
-              .limit(10000),
-          ])
+          const client = getSupabaseServerPublicClient()
+          // @ts-expect-error New RPC may exist before generated DB types are refreshed.
+          const { data, error } = await client.rpc('list_public_directory', {
+            p_limit: limit,
+            p_query: q || null,
+          })
 
-          if (usersError) {
-            return Response.json({ error: usersError.message }, { status: 500 })
+          if (!error) {
+            const entries = (Array.isArray(data) ? (data as DirectoryRow[]) : []).map((row) => ({
+              username: row.username,
+              displayName: row.display_name,
+              avatarUrl: row.avatar_url,
+              bio: row.bio,
+              connectedCount: row.connected_count,
+            }))
+
+            return Response.json({ entries })
           }
-          if (profilesError && profilesError.code !== '42P01') {
+
+          const { data: profiles, error: profilesError } = await client
+            .from('org_member_profiles')
+            .select('email, display_name, avatar_url, bio')
+            .order('updated_at', { ascending: false })
+            .limit(5000)
+
+          if (profilesError) {
             return Response.json({ error: profilesError.message }, { status: 500 })
           }
-          if (identitiesError) {
-            return Response.json({ error: identitiesError.message }, { status: 500 })
-          }
 
-          const profileByEmail = new Map<string, { display_name: string | null; avatar_url: string | null; bio: string | null }>()
-          for (const row of Array.isArray(profiles) ? profiles : []) {
-            const email = String(row.email || '').toLowerCase()
-            if (!email) continue
-            profileByEmail.set(email, {
-              display_name: row.display_name,
-              avatar_url: row.avatar_url,
-              bio: row.bio,
-            })
-          }
-
-          const identityCountByUserId = new Map<string, number>()
-          for (const row of Array.isArray(identities) ? (identities as DirectoryIdentityRow[]) : []) {
-            identityCountByUserId.set(row.user_id, (identityCountByUserId.get(row.user_id) || 0) + 1)
-          }
-
-          const entries = (Array.isArray(users) ? users : [])
+          const entries = (Array.isArray(profiles) ? (profiles as DirectoryProfileRow[]) : [])
             .map((row) => {
-              const userId = String(row.id || '')
-              const email = String(row.email || '').toLowerCase()
-              if (!userId || !email) return null
+              const email = String(row.email || '').trim().toLowerCase()
+              if (!email) return null
 
-              const meta = (row.raw_user_meta_data as AuthUserMeta | null | undefined) ?? null
-              const username = readUsernameFromMeta(meta)
+              const rawUsername = row.display_name?.trim() || email.split('@')[0] || ''
+              const username = normalizeUsername(rawUsername)
               if (!username) return null
 
-              const normalized = normalizeUsername(username)
-              const profile = profileByEmail.get(email)
-
-              const displayName =
-                profile?.display_name || username
-
-              const bio = profile?.bio || null
-              const avatarUrl = profile?.avatar_url || readAvatarFromMeta(meta)
-              const connectedCount = identityCountByUserId.get(userId) || 0
-
               return {
-                username: normalized,
-                displayName,
-                avatarUrl,
-                bio,
-                connectedCount,
+                username,
+                displayName: row.display_name?.trim() || username,
+                avatarUrl: row.avatar_url,
+                bio: row.bio,
+                connectedCount: 0,
               }
             })
             .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
@@ -133,7 +95,10 @@ export const Route = createFileRoute('/api/public-directory')({
           if (error instanceof Error) {
             console.error('[public-directory] failed to load directory', error.message)
           }
-          return Response.json({ error: 'Could not load directory right now.' }, { status: 500 })
+          return Response.json(
+            { error: error instanceof Error ? error.message : 'Could not load directory right now.' },
+            { status: 500 },
+          )
         }
       },
     },

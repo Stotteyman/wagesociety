@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { ArrowLeft, CreditCard, RefreshCcw, ShoppingBag, Store, Trash2 } from 'lucide-react'
+import { ArrowLeft, RefreshCcw, ShoppingBag, Store, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { authedFetch } from '../lib/supabaseBrowser'
 import { requireAuthenticatedRoute } from '../lib/routeAuth'
@@ -528,7 +528,7 @@ function AdminShopPage() {
           </article>
         </section>
 
-        <section className="grid gap-5 md:grid-cols-2">
+        <section className="grid gap-5">
           <Link
             to="/merch"
             className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-5 transition hover:border-orange-300/40"
@@ -538,17 +538,6 @@ function AdminShopPage() {
             </div>
             <h2 className="text-xl font-bold text-zinc-50">Open Merch Page</h2>
             <p className="mt-2 text-sm text-zinc-300">Preview public merch items after saving changes.</p>
-          </Link>
-
-          <Link
-            to="/checkout"
-            className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-5 transition hover:border-orange-300/40"
-          >
-            <div className="mb-3 inline-flex rounded-md border border-zinc-200/20 bg-zinc-950/70 p-2 text-orange-200">
-              <CreditCard size={18} />
-            </div>
-            <h2 className="text-xl font-bold text-zinc-50">Open Checkout</h2>
-            <p className="mt-2 text-sm text-zinc-300">Preview live plan data used in membership checkout.</p>
           </Link>
         </section>
       </div>

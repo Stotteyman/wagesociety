@@ -64,7 +64,7 @@ export const Route = createFileRoute('/api/me/profile')({
     handlers: {
       GET: async ({ request }) => {
         try {
-          const access = await requirePermission(request, 'view_creator_tools')
+          const access = await requirePermission(request, 'view_dashboard')
           const admin = getSupabaseAdminClient()
 
           const [{ data: profile, error: profileError }, { data: authUser, error: authUserError }] = await Promise.all([
@@ -102,13 +102,16 @@ export const Route = createFileRoute('/api/me/profile')({
           })
         } catch (error) {
           if (error instanceof Response) return error
-          return Response.json({ error: 'Unexpected server error' }, { status: 500 })
+          return Response.json(
+            { error: error instanceof Error ? error.message : 'Unexpected server error' },
+            { status: 500 },
+          )
         }
       },
 
       PUT: async ({ request }) => {
         try {
-          const access = await requirePermission(request, 'view_creator_tools')
+          const access = await requirePermission(request, 'view_dashboard')
           const body = await request.json()
           const parsed = updateSchema.safeParse(body)
           if (!parsed.success) {
@@ -228,7 +231,10 @@ export const Route = createFileRoute('/api/me/profile')({
           })
         } catch (error) {
           if (error instanceof Response) return error
-          return Response.json({ error: 'Unexpected server error' }, { status: 500 })
+          return Response.json(
+            { error: error instanceof Error ? error.message : 'Unexpected server error' },
+            { status: 500 },
+          )
         }
       },
     },

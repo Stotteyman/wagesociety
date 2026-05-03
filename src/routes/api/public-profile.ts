@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { getSupabaseAdminClient } from '../../lib/supabaseAdmin'
+import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../lib/supabaseAdmin'
+import { getSupabaseServerPublicClient } from '../../lib/supabaseServer'
 
 type AuthUserMeta = {
   username?: string
@@ -98,6 +99,45 @@ export const Route = createFileRoute('/api/public-profile')({
 
           if (!normalizedRequestedUsername) {
             return Response.json({ error: 'username is required.' }, { status: 400 })
+          }
+
+          if (!hasSupabaseAdminConfig()) {
+            const client = getSupabaseServerPublicClient()
+            const { data: profiles, error: profilesError } = await client
+              .from('org_member_profiles')
+              .select('email, display_name, avatar_url, bio, skills, updated_at')
+              .limit(5000)
+
+            if (profilesError) {
+              return Response.json({ error: profilesError.message }, { status: 500 })
+            }
+
+            const match = (Array.isArray(profiles) ? profiles : []).find((row) => {
+              const email = String(row.email || '').toLowerCase().trim()
+              const emailUsername = email.split('@')[0] || ''
+              const display = String(row.display_name || '').trim()
+              const candidate = normalizeUsername(display || emailUsername)
+              return candidate === normalizedRequestedUsername
+            })
+
+            if (!match) {
+              return Response.json({ error: 'Profile not found.' }, { status: 404 })
+            }
+
+            const email = String(match.email || '').toLowerCase().trim()
+            const emailUsername = email.split('@')[0] || normalizedRequestedUsername
+
+            return Response.json({
+              profile: {
+                username: normalizeUsername(String(match.display_name || '').trim() || emailUsername),
+                displayName: String(match.display_name || '').trim() || emailUsername,
+                avatarUrl: match.avatar_url || null,
+                bio: match.bio || null,
+                skills: Array.isArray(match.skills) ? match.skills : [],
+                connectedAccounts: [],
+                updatedAt: match.updated_at || null,
+              },
+            })
           }
 
           const admin = getSupabaseAdminClient()

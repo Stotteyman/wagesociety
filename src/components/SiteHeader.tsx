@@ -1,6 +1,7 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import { LogIn, LogOut, Menu, UserCircle, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { endLocalRootSession, getLocalRootUser, isLocalRootSessionActive } from '../lib/localRootSession'
 import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 
 const navLinks = [
@@ -18,6 +19,12 @@ export function SiteHeader() {
 
   useEffect(() => {
     const checkAuth = async () => {
+      if (isLocalRootSessionActive()) {
+        setUser(getLocalRootUser())
+        setAuthLoading(false)
+        return
+      }
+
       try {
         const supabase = getSupabaseBrowserClient()
         const { data } = await supabase.auth.getSession()
@@ -34,6 +41,14 @@ export function SiteHeader() {
 
   const handleLogout = async () => {
     try {
+      if (isLocalRootSessionActive()) {
+        endLocalRootSession()
+        setUser(null)
+        setMobileMenuOpen(false)
+        await navigate({ to: '/' })
+        return
+      }
+
       const supabase = getSupabaseBrowserClient()
       await supabase.auth.signOut()
       setUser(null)
