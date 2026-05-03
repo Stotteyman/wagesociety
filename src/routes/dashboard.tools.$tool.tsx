@@ -6,6 +6,7 @@ import { authedFetch } from '../lib/supabaseBrowser'
 import { requireAuthenticatedRoute } from '../lib/routeAuth'
 import { CollaborationHub } from '../components/CollaborationHub'
 import { MerchStudioPage } from './merch-studio'
+import { CreatorGrowthSystem } from '../components/CreatorGrowthSystem'
 
 const toolSchema = z.enum([
   'bulletin-board',
@@ -16,6 +17,7 @@ const toolSchema = z.enum([
   'knowledge-vault',
   'promotion-hub',
   'merch-studio',
+  'creator-growth-system',
 ])
 
 type ToolKey = z.infer<typeof toolSchema>
@@ -115,6 +117,14 @@ const TOOL_CONFIGS: Record<ToolKey, ToolConfig> = {
     showDate: false,
     showAmount: false,
   },
+  'creator-growth-system': {
+    key: 'creator-growth-system',
+    title: 'Creator Growth System',
+    description: 'Track your creator operating system across 5 core modules.',
+    helper: 'Complete each module checklist to build a fully operational creator brand.',
+    showDate: false,
+    showAmount: false,
+  },
 }
 
 const statusOptions: EntryStatus[] = ['idea', 'planned', 'active', 'blocked', 'done']
@@ -162,6 +172,11 @@ function DashboardToolPage() {
   // Merch Studio has its own full UI
   if (toolKey === 'merch-studio') {
     return <MerchStudioPage />
+
+    // Creator Growth System has its own full UI
+    if (toolKey === 'creator-growth-system') {
+      return <CreatorGrowthSystem />
+    }
   }
 
   const config = TOOL_CONFIGS[toolKey]

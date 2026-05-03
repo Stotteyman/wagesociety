@@ -34,22 +34,45 @@ function isHostMatch(hostname: string, domain: string) {
   return normalizedHost === normalizedDomain || normalizedHost.endsWith(`.${normalizedDomain}`)
 }
 
+function extractYouTubeChannelRef(url: URL): string | null {
+  const segments = url.pathname.split('/').filter(Boolean)
+  if (segments.length === 0) return null
+
+  const [first, second] = segments
+
+  if (first.startsWith('@')) {
+    return `handle:${first.toLowerCase()}`
+  }
+
+  if (first === 'channel' && second) {
+    return `channel:${second}`
+  }
+
+  if (first === 'user' && second) {
+    return `user:${second}`
+  }
+
+  if (first === 'c' && second) {
+    return `custom:${second}`
+  }
+
+  return null
+}
+
 function extractYouTubeVideoId(url: URL): string | null {
   if (url.hostname.includes('youtube.com')) {
     if (url.pathname === '/watch') {
       const id = url.searchParams.get('v')
-      return id ? id.toLowerCase() : null
+      return id || null
     }
 
     if (url.pathname.startsWith('/live/')) {
-      const id = url.pathname.split('/').filter(Boolean)[1]
-      return id ? id.toLowerCase() : null
+      return url.pathname.split('/').filter(Boolean)[1] || null
     }
   }
 
   if (url.hostname === 'youtu.be') {
-    const id = url.pathname.split('/').filter(Boolean)[0]
-    return id ? id.toLowerCase() : null
+    return url.pathname.split('/').filter(Boolean)[0] || null
   }
 
   return null
@@ -101,12 +124,14 @@ export function parseLivestreamLink(rawUrl: string): ParsedStreamLink {
   }
 
   if (isHostMatch(host, 'youtube.com') || host === 'youtu.be') {
-    const videoId = extractYouTubeVideoId(url)
-    if (!videoId) throw new Error('Could not parse YouTube live video ID from link')
+    const channelRef = extractYouTubeChannelRef(url)
+    if (!channelRef) {
+      throw new Error('Could not parse YouTube channel from link. Use a channel URL like /@handle or /channel/UC....')
+    }
 
     return {
       platform: 'youtube',
-      streamKey: videoId,
+      streamKey: channelRef,
     }
   }
 
@@ -123,15 +148,177 @@ export function parseLivestreamLink(rawUrl: string): ParsedStreamLink {
   throw new Error('Unsupported platform. Only Twitch, YouTube, and Kick are currently supported.')
 }
 
+function parseStoredYouTubeKey(streamKey: string) {
+  if (streamKey.startsWith('handle:')) {
+    return { kind: 'handle' as const, value: streamKey.slice('handle:'.length) }
+  }
+
+  if (streamKey.startsWith('channel:')) {
+    return { kind: 'channel' as const, value: streamKey.slice('channel:'.length) }
+  }
+
+  if (streamKey.startsWith('user:')) {
+    return { kind: 'user' as const, value: streamKey.slice('user:'.length) }
+  }
+
+  if (streamKey.startsWith('custom:')) {
+    return { kind: 'custom' as const, value: streamKey.slice('custom:'.length) }
+  }
+
+  return { kind: 'video' as const, value: streamKey }
+}
+
+async function fetchYouTubeChannelById(channelId: string, apiKey: string) {
+  const channelUrl = new URL('https://www.googleapis.com/youtube/v3/channels')
+  channelUrl.searchParams.set('part', 'snippet,statistics')
+  channelUrl.searchParams.set('id', channelId)
+  channelUrl.searchParams.set('key', apiKey)
+
+  const response = await fetch(channelUrl.toString(), { method: 'GET' })
+  if (!response.ok) return null
+
+  const data = (await response.json()) as {
+    items?: Array<{
+      id?: string
+      snippet?: { publishedAt?: string; customUrl?: string; title?: string }
+      statistics?: { subscriberCount?: string }
+    }>
+  }
+
+  return data.items?.[0] || null
+}
+
+async function resolveYouTubeChannel(streamKey: string, apiKey: string) {
+  const parsed = parseStoredYouTubeKey(streamKey)
+
+  if (parsed.kind === 'channel') {
+    const channel = await fetchYouTubeChannelById(parsed.value, apiKey)
+    if (!channel?.id) return null
+    return channel
+  }
+
+  if (parsed.kind === 'handle') {
+    const handle = parsed.value.startsWith('@') ? parsed.value : `@${parsed.value}`
+    const searchUrl = new URL('https://www.googleapis.com/youtube/v3/search')
+    searchUrl.searchParams.set('part', 'snippet')
+    searchUrl.searchParams.set('type', 'channel')
+    searchUrl.searchParams.set('q', handle)
+    searchUrl.searchParams.set('maxResults', '5')
+    searchUrl.searchParams.set('key', apiKey)
+
+    const response = await fetch(searchUrl.toString(), { method: 'GET' })
+    if (!response.ok) return null
+
+    const data = (await response.json()) as {
+      items?: Array<{
+        id?: { channelId?: string }
+        snippet?: { channelTitle?: string; customUrl?: string }
+      }>
+    }
+
+    const matched = data.items?.find((item) => {
+      const customUrl = item.snippet?.customUrl?.toLowerCase()
+      return customUrl === handle.toLowerCase()
+    }) || data.items?.[0]
+
+    const channelId = matched?.id?.channelId
+    if (!channelId) return null
+    return fetchYouTubeChannelById(channelId, apiKey)
+  }
+
+  if (parsed.kind === 'user' || parsed.kind === 'custom') {
+    const searchUrl = new URL('https://www.googleapis.com/youtube/v3/search')
+    searchUrl.searchParams.set('part', 'snippet')
+    searchUrl.searchParams.set('type', 'channel')
+    searchUrl.searchParams.set('q', parsed.value)
+    searchUrl.searchParams.set('maxResults', '5')
+    searchUrl.searchParams.set('key', apiKey)
+
+    const response = await fetch(searchUrl.toString(), { method: 'GET' })
+    if (!response.ok) return null
+
+    const data = (await response.json()) as {
+      items?: Array<{
+        id?: { channelId?: string }
+        snippet?: { channelTitle?: string; customUrl?: string }
+      }>
+    }
+
+    const query = parsed.value.toLowerCase()
+    const matched = data.items?.find((item) => {
+      const title = item.snippet?.channelTitle?.toLowerCase()
+      const customUrl = item.snippet?.customUrl?.replace(/^@/, '').toLowerCase()
+      return title === query || customUrl === query
+    }) || data.items?.[0]
+
+    const channelId = matched?.id?.channelId
+    if (!channelId) return null
+    return fetchYouTubeChannelById(channelId, apiKey)
+  }
+
+  return null
+}
+
 async function getYouTubeSnapshot(videoId: string): Promise<LivestreamSnapshot> {
   const apiKey = process.env.YOUTUBE_API_KEY
   if (!apiKey) {
     return OFFLINE_SNAPSHOT
   }
 
+  const parsed = parseStoredYouTubeKey(videoId)
+
+  if (parsed.kind !== 'video') {
+    const channel = await resolveYouTubeChannel(videoId, apiKey)
+    if (!channel?.id) {
+      return OFFLINE_SNAPSHOT
+    }
+
+    const searchUrl = new URL('https://www.googleapis.com/youtube/v3/search')
+    searchUrl.searchParams.set('part', 'snippet')
+    searchUrl.searchParams.set('channelId', channel.id)
+    searchUrl.searchParams.set('eventType', 'live')
+    searchUrl.searchParams.set('type', 'video')
+    searchUrl.searchParams.set('maxResults', '1')
+    searchUrl.searchParams.set('key', apiKey)
+
+    const searchResponse = await fetch(searchUrl.toString(), {
+      method: 'GET',
+    })
+
+    let liveVideoId: string | null = null
+    if (searchResponse.ok) {
+      const searchData = (await searchResponse.json()) as {
+        items?: Array<{
+          id?: { videoId?: string }
+        }>
+      }
+      liveVideoId = searchData.items?.[0]?.id?.videoId || null
+    }
+
+    if (!liveVideoId) {
+      return {
+        status: 'offline',
+        viewerCount: null,
+        followerCount: channel.statistics?.subscriberCount
+          ? Number.parseInt(channel.statistics.subscriberCount, 10)
+          : null,
+        accountCreatedAt: channel.snippet?.publishedAt || null,
+      }
+    }
+
+    const liveSnapshot = await getYouTubeSnapshot(liveVideoId)
+    return {
+      ...liveSnapshot,
+      followerCount: channel.statistics?.subscriberCount
+        ? Number.parseInt(channel.statistics.subscriberCount, 10)
+        : liveSnapshot.followerCount,
+      accountCreatedAt: channel.snippet?.publishedAt || liveSnapshot.accountCreatedAt,
+    }
+  }
+
   const apiUrl = new URL('https://www.googleapis.com/youtube/v3/videos')
   apiUrl.searchParams.set('part', 'snippet,liveStreamingDetails')
-  apiUrl.searchParams.set('id', videoId)
+  apiUrl.searchParams.set('id', parsed.value)
   apiUrl.searchParams.set('key', apiKey)
 
   const response = await fetch(apiUrl.toString(), {

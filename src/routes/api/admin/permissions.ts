@@ -1,8 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { canManageRole, ORG_ROLES, type OrgRole } from '../../../lib/orgAccess'
-import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin'
+import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../../lib/supabaseAdmin'
 import { getRequesterAccess, requirePermission } from '../../../lib/orgAuth'
+import { getSupabaseServerPublicClient } from '../../../lib/supabaseServer'
+
+function getAdminOrPublicClient() {
+  return hasSupabaseAdminConfig() ? getSupabaseAdminClient() : getSupabaseServerPublicClient()
+}
 
 const updatePermissionSchema = z.object({
   role: z.enum(ORG_ROLES),
@@ -21,7 +26,7 @@ export const Route = createFileRoute('/api/admin/permissions')({
             return Response.json({ error: 'Manage permissions permission required' }, { status: 403 })
           }
 
-          const admin = getSupabaseAdminClient()
+          const admin = getAdminOrPublicClient()
           const { data, error } = await admin.rpc('list_org_permission_matrix')
 
           if (error) {
@@ -47,7 +52,7 @@ export const Route = createFileRoute('/api/admin/permissions')({
       POST: async ({ request }) => {
         try {
           const access = await requirePermission(request, 'manage_permissions')
-          const admin = getSupabaseAdminClient()
+          const admin = getAdminOrPublicClient()
           const body = await request.json()
           const parsed = updatePermissionSchema.safeParse(body)
 

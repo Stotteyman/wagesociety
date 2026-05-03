@@ -1,6 +1,7 @@
-import { Link, createFileRoute } from '@tanstack/react-router'
-import { ArrowRight, LogIn, Newspaper, Store, Tv, UserPlus, Users } from 'lucide-react'
+import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
+import { ArrowRight, LogIn, LogOut, Newspaper, Store, Tv, User, UserPlus, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { getLocalRootUser, isLocalRootSessionActive } from '../lib/localRootSession'
 import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 
 export const Route = createFileRoute('/')({
@@ -63,9 +64,19 @@ function Home() {
   const [subscribeSuccess, setSubscribeSuccess] = useState('')
   const [user, setUser] = useState<{ email?: string } | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
     const checkAuth = async () => {
+      // Check local root session first (dev bypass)
+      if (isLocalRootSessionActive()) {
+        const localUser = getLocalRootUser()
+        setUser(localUser)
+        setEmail(localUser.email)
+        setAuthLoading(false)
+        return
+      }
+
       try {
         const supabase = getSupabaseBrowserClient()
         const { data } = await supabase.auth.getSession()
@@ -82,6 +93,13 @@ function Home() {
 
     checkAuth()
   }, [])
+
+  const handleLogout = async () => {
+    const supabase = getSupabaseBrowserClient()
+    await supabase.auth.signOut()
+    setUser(null)
+    await router.navigate({ to: '/' })
+  }
 
   const handleSubscribe = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -142,18 +160,38 @@ function Home() {
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              to="/signup"
-              className="inline-flex items-center gap-2 rounded-xl bg-orange-300 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-orange-200"
-            >
-              <UserPlus size={15} /> Create Account
-            </Link>
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 rounded-xl border border-zinc-100/25 px-4 py-2.5 text-sm font-semibold text-zinc-100 transition hover:border-orange-200/60"
-            >
-              <LogIn size={15} /> Login
-            </Link>
+            {!authLoading && user ? (
+              <>
+                <Link
+                  to="/dashboard"
+                  className="inline-flex items-center gap-2 rounded-xl bg-orange-300 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-orange-200"
+                >
+                  <User size={15} /> Profile
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => { void handleLogout() }}
+                  className="inline-flex items-center gap-2 rounded-xl border border-zinc-100/25 px-4 py-2.5 text-sm font-semibold text-zinc-100 transition hover:border-orange-200/60"
+                >
+                  <LogOut size={15} /> Logout
+                </button>
+              </>
+            ) : !authLoading ? (
+              <>
+                <Link
+                  to="/signup"
+                  className="inline-flex items-center gap-2 rounded-xl bg-orange-300 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-orange-200"
+                >
+                  <UserPlus size={15} /> Create Account
+                </Link>
+                <Link
+                  to="/login"
+                  className="inline-flex items-center gap-2 rounded-xl border border-zinc-100/25 px-4 py-2.5 text-sm font-semibold text-zinc-100 transition hover:border-orange-200/60"
+                >
+                  <LogIn size={15} /> Login
+                </Link>
+              </>
+            ) : null}
           </div>
         </section>
 

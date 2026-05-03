@@ -2,8 +2,13 @@ import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { canManageRole, ORG_ROLES, type OrgRole } from '../../../lib/orgAccess'
 import { getBanRecord } from '../../../lib/orgAuth'
-import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin'
+import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../../lib/supabaseAdmin'
 import { getRequesterAccess, requirePermission } from '../../../lib/orgAuth'
+import { getSupabaseServerPublicClient } from '../../../lib/supabaseServer'
+
+function getAdminOrPublicClient() {
+  return hasSupabaseAdminConfig() ? getSupabaseAdminClient() : getSupabaseServerPublicClient()
+}
 
 const setRoleSchema = z.object({
   targetEmail: z.string().email(),
@@ -17,13 +22,13 @@ export const Route = createFileRoute('/api/admin/roles')({
     handlers: {
       GET: async ({ request }) => {
         try {
-          const { requester, role, permissions } = await getRequesterAccess(request)
+          const { role, permissions } = await getRequesterAccess(request)
 
           if (role !== 'superadmin' && !permissions.includes('manage_users')) {
             return Response.json({ error: 'Manage users permission required' }, { status: 403 })
           }
 
-          const admin = getSupabaseAdminClient()
+          const admin = getAdminOrPublicClient()
 
           const { data, error } = await admin.rpc('list_org_member_roles')
 
@@ -50,7 +55,7 @@ export const Route = createFileRoute('/api/admin/roles')({
       POST: async ({ request }) => {
         try {
           const { requester, role } = await requirePermission(request, 'manage_users')
-          const admin = getSupabaseAdminClient()
+          const admin = getAdminOrPublicClient()
           const body = await request.json()
           const parsed = setRoleSchema.safeParse(body)
 

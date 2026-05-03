@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { ArrowLeft, ShieldCheck, UserCog } from 'lucide-react'
+import { ArrowLeft, Ban, Check, ChevronDown, ShieldCheck, UserCog, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { formatRoleLabel, ORG_ROLE_LABELS, ORG_ROLES, type OrgRole } from '../lib/orgAccess'
 import { authedFetch } from '../lib/supabaseBrowser'
@@ -31,20 +31,18 @@ type PermissionRow = {
 }
 
 const roleBadgeClass: Record<OrgRole, string> = {
-  superadmin: 'border-orange-300/60 text-orange-100',
-  admin: 'border-cyan-400/40 text-cyan-200',
-  manager: 'border-emerald-400/40 text-emerald-200',
-  staff: 'border-sky-400/40 text-sky-200',
-  moderator: 'border-fuchsia-400/40 text-fuchsia-200',
-  helper: 'border-violet-400/40 text-violet-200',
-  user: 'border-zinc-500/40 text-zinc-300',
-  banned: 'border-rose-400/50 text-rose-200',
+  superadmin: 'border-orange-300/60 bg-orange-400/10 text-orange-200',
+  admin: 'border-cyan-400/40 bg-cyan-400/10 text-cyan-200',
+  manager: 'border-emerald-400/40 bg-emerald-400/10 text-emerald-200',
+  staff: 'border-sky-400/40 bg-sky-400/10 text-sky-200',
+  moderator: 'border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200',
+  helper: 'border-violet-400/40 bg-violet-400/10 text-violet-200',
+  user: 'border-zinc-500/40 bg-zinc-800/40 text-zinc-300',
+  banned: 'border-rose-400/50 bg-rose-500/10 text-rose-200',
 }
 
-const permissionRoleKeys = ORG_ROLES.map((role) => ({
-  role,
-  field: `${role}_enabled` as keyof PermissionRow,
-}))
+// Roles that show up in the permission tab selector (exclude banned — no permissions)
+const PERMISSION_ROLES = ORG_ROLES.filter((r) => r !== 'banned')
 
 export const Route = createFileRoute('/admin/users')({
   beforeLoad: async () => {
@@ -53,10 +51,7 @@ export const Route = createFileRoute('/admin/users')({
   head: () => ({
     meta: [
       { title: 'Admin Users — W.A.G.E. Society' },
-      {
-        name: 'description',
-        content: 'Manage users, roles, and permissions for the organization.',
-      },
+      { name: 'description', content: 'Manage members, roles, and permissions.' },
       { name: 'robots', content: 'noindex, nofollow' },
     ],
   }),
@@ -67,241 +62,198 @@ function AdminUsersPage() {
   const [roles, setRoles] = useState<RoleRow[]>([])
   const [permissionMatrix, setPermissionMatrix] = useState<PermissionRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [permissionSavingKey, setPermissionSavingKey] = useState('')
   const [error, setError] = useState('')
   const [requesterEmail, setRequesterEmail] = useState('')
   const [requestSource, setRequestSource] = useState('')
   const [requesterRole, setRequesterRole] = useState<OrgRole>('user')
   const [requesterPermissions, setRequesterPermissions] = useState<string[]>([])
 
-  const [targetEmail, setTargetEmail] = useState('')
-  const [targetRole, setTargetRole] = useState<OrgRole>('manager')
+  // Role assignment form
+  const [formEmail, setFormEmail] = useState('')
+  const [formRole, setFormRole] = useState<OrgRole>('manager')
   const [banReason, setBanReason] = useState('')
   const [bannedUntil, setBannedUntil] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitSuccess, setSubmitSuccess] = useState(false)
+
+  // Permission panel
+  const [activePermRole, setActivePermRole] = useState<OrgRole>('admin')
+  const [permSavingKey, setPermSavingKey] = useState('')
 
   const isLocalSuperadmin = useMemo(() => requestSource === 'localhost-bypass', [requestSource])
-  const canManagePermissions =
-    requesterRole === 'superadmin' || isLocalSuperadmin || requesterPermissions.includes('manage_permissions')
+  const canManagePerms = requesterRole === 'superadmin' || isLocalSuperadmin || requesterPermissions.includes('manage_permissions')
   const canManageUsers = requesterRole === 'superadmin' || isLocalSuperadmin || requesterPermissions.includes('manage_users')
 
   const loadRoles = async () => {
-    try {
-      setError('')
-      const res = await authedFetch('/api/admin/roles')
-      const json = await res.json()
-
-      if (!res.ok) {
-        setError(json.error || 'Failed to load roles')
-        setRoles([])
-        return
-      }
-
-      setRoles(json.roles || [])
-      setRequesterEmail(json.requester?.email || '')
-      setRequestSource(json.requester?.source || '')
-      setRequesterRole((json.requester?.role as OrgRole) || 'user')
-      setRequesterPermissions(json.requester?.permissions || [])
-    } catch {
-      setError('Failed to load roles')
-    }
+    const res = await authedFetch('/api/admin/roles')
+    const json = await res.json()
+    if (!res.ok) { setError(json.error || 'Failed to load members'); return }
+    setRoles(json.roles || [])
+    setRequesterEmail(json.requester?.email || '')
+    setRequestSource(json.requester?.source || '')
+    setRequesterRole((json.requester?.role as OrgRole) || 'user')
+    setRequesterPermissions(json.requester?.permissions || [])
   }
 
-  const loadPermissionMatrix = async () => {
-    try {
-      setError('')
-      const res = await authedFetch('/api/admin/permissions')
-      const json = await res.json()
-
-      if (!res.ok) {
-        setError(json.error || 'Failed to load permission matrix')
-        setPermissionMatrix([])
-        return
-      }
-
-      setPermissionMatrix(json.matrix || [])
-    } catch {
-      setError('Failed to load permission matrix')
-    }
+  const loadPermissions = async () => {
+    const res = await authedFetch('/api/admin/permissions')
+    const json = await res.json()
+    if (!res.ok) { setError(json.error || 'Failed to load permissions'); return }
+    setPermissionMatrix(json.matrix || [])
   }
 
   useEffect(() => {
     void (async () => {
       setLoading(true)
-      await loadRoles()
-      await loadPermissionMatrix()
+      await Promise.all([loadRoles(), loadPermissions()])
       setLoading(false)
     })()
   }, [])
 
-  const submitRoleUpdate = async (event: React.FormEvent) => {
+  const submitRole = async (event: React.FormEvent) => {
     event.preventDefault()
-
-    try {
-      setSubmitting(true)
-      setError('')
-      const res = await authedFetch('/api/admin/roles', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          targetEmail,
-          role: targetRole,
-          banReason: targetRole === 'banned' ? banReason.trim() || null : null,
-          bannedUntil: targetRole === 'banned' && bannedUntil ? new Date(bannedUntil).toISOString() : null,
-        }),
-      })
-
-      const json = await res.json()
-
-      if (!res.ok) {
-        setError(json.error || 'Failed to update role')
-        return
-      }
-
-      setTargetEmail('')
-      setTargetRole('manager')
-      setBanReason('')
-      setBannedUntil('')
-      await loadRoles()
-    } catch {
-      setError('Failed to update role')
-    } finally {
-      setSubmitting(false)
-    }
+    setSubmitting(true)
+    setError('')
+    setSubmitSuccess(false)
+    const res = await authedFetch('/api/admin/roles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        targetEmail: formEmail,
+        role: formRole,
+        banReason: formRole === 'banned' ? banReason.trim() || null : null,
+        bannedUntil: formRole === 'banned' && bannedUntil ? new Date(bannedUntil).toISOString() : null,
+      }),
+    })
+    const json = await res.json()
+    if (!res.ok) { setError(json.error || 'Failed to update role'); setSubmitting(false); return }
+    setFormEmail('')
+    setFormRole('manager')
+    setBanReason('')
+    setBannedUntil('')
+    setSubmitSuccess(true)
+    setTimeout(() => setSubmitSuccess(false), 3000)
+    await loadRoles()
+    setSubmitting(false)
   }
 
   const togglePermission = async (role: OrgRole, permissionKey: string, enabled: boolean) => {
-    if (!canManagePermissions) return
-
-    try {
-      setPermissionSavingKey(`${role}:${permissionKey}`)
-      setError('')
-
-      const res = await authedFetch('/api/admin/permissions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          role,
-          permissionKey,
-          enabled,
-        }),
-      })
-
-      const json = await res.json()
-
-      if (!res.ok) {
-        setError(json.error || 'Failed to update permission')
-        return
-      }
-
-      await loadPermissionMatrix()
-    } catch {
-      setError('Failed to update permission')
-    } finally {
-      setPermissionSavingKey('')
-    }
+    if (!canManagePerms) return
+    setPermSavingKey(`${role}:${permissionKey}`)
+    setError('')
+    const res = await authedFetch('/api/admin/permissions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role, permissionKey, enabled }),
+    })
+    const json = await res.json()
+    if (!res.ok) setError(json.error || 'Failed to update permission')
+    else await loadPermissions()
+    setPermSavingKey('')
   }
+
+  // Permissions for the currently selected role tab
+  const activeRoleField = `${activePermRole}_enabled` as keyof PermissionRow
 
   return (
     <div className="min-h-screen px-4 py-12 text-zinc-100">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <header className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6 md:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
+
+        {/* Header */}
+        <header className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Admin / Users</p>
-              <h1 className="mt-2 text-3xl font-black text-zinc-50 md:text-4xl">Users & Permissions</h1>
-              <p className="mt-3 max-w-2xl text-zinc-300">
-                Manage organization members, role hierarchy, bans, and permission matrix controls.
-              </p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">Admin / Users</p>
+              <h1 className="mt-1.5 text-3xl font-black text-zinc-50">Users & Permissions</h1>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <Link
                 to="/admin"
-                className="inline-flex items-center gap-2 rounded-lg border border-zinc-300/35 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:border-zinc-100"
+                className="inline-flex items-center gap-2 rounded-lg border border-zinc-300/30 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:border-zinc-100"
               >
-                <ArrowLeft size={16} /> Admin Hub
+                <ArrowLeft size={14} /> Admin
               </Link>
               <Link
                 to="/dashboard"
-                className="inline-flex items-center gap-2 rounded-lg border border-zinc-300/35 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:border-zinc-100"
+                className="rounded-lg border border-zinc-300/30 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:border-zinc-100"
               >
                 Dashboard
               </Link>
             </div>
           </div>
-
-          <div className="mt-5 flex flex-wrap gap-3 text-sm">
-            <span className="rounded-full border border-zinc-200/20 px-3 py-1 text-zinc-300">
-              Active account: {requesterEmail || 'Unknown'}
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+            <span className="rounded-full border border-zinc-700 px-2.5 py-1 text-zinc-400">
+              {requesterEmail || 'Loading…'}
             </span>
-            <span className={`rounded-full border px-3 py-1 ${isLocalSuperadmin ? 'border-orange-300/60 text-orange-100' : 'border-cyan-400/50 text-cyan-200'}`}>
-              {isLocalSuperadmin ? 'Localhost auto-superadmin' : `Authenticated ${formatRoleLabel(requesterRole)}`}
-            </span>
-            <span className={`rounded-full border px-3 py-1 ${canManagePermissions ? 'border-orange-300/60 text-orange-100' : 'border-zinc-500/50 text-zinc-300'}`}>
-              Permission Management: {canManagePermissions ? 'Enabled' : 'Read only'}
+            <span className={`rounded-full border px-2.5 py-1 ${isLocalSuperadmin ? 'border-orange-300/60 text-orange-200' : 'border-zinc-700 text-zinc-400'}`}>
+              {isLocalSuperadmin ? 'Localhost superadmin' : formatRoleLabel(requesterRole)}
             </span>
           </div>
         </header>
 
-        <section className="grid gap-6 lg:grid-cols-[1fr_1.6fr]">
-          <article className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6">
-            <div className="mb-4 flex items-center gap-2 text-orange-100">
-              <UserCog size={18} />
-              <h2 className="text-xl font-bold text-zinc-50">Set Member Role</h2>
+        {error ? (
+          <p className="rounded-xl border border-rose-400/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</p>
+        ) : null}
+
+        {/* Two-column: form + member list */}
+        <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
+
+          {/* Assign role form */}
+          <section className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <UserCog size={16} className="text-orange-300" />
+              <h2 className="font-bold text-zinc-100">Assign Role</h2>
             </div>
 
-            <form onSubmit={submitRoleUpdate} className="space-y-4">
+            <form onSubmit={submitRole} className="space-y-3">
               <label className="block">
-                <span className="mb-2 block text-sm font-medium text-zinc-200">Member Email</span>
+                <span className="mb-1.5 block text-xs font-medium text-zinc-400">Member Email</span>
                 <input
                   type="email"
                   required
-                  value={targetEmail}
-                  onChange={(event) => setTargetEmail(event.target.value)}
-                  className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-zinc-100 outline-none transition focus:border-orange-200/70"
+                  value={formEmail}
+                  onChange={(e) => setFormEmail(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-orange-300/60"
                   placeholder="member@domain.com"
                 />
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-sm font-medium text-zinc-200">Role</span>
-                <select
-                  value={targetRole}
-                  onChange={(event) => setTargetRole(event.target.value as OrgRole)}
-                  className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-zinc-100 outline-none transition focus:border-orange-200/70"
-                >
-                  {ORG_ROLES.map((role) => (
-                    <option key={role} value={role}>
-                      {formatRoleLabel(role)}
-                    </option>
-                  ))}
-                </select>
+                <span className="mb-1.5 block text-xs font-medium text-zinc-400">Role</span>
+                <div className="relative">
+                  <select
+                    value={formRole}
+                    onChange={(e) => setFormRole(e.target.value as OrgRole)}
+                    className="w-full appearance-none rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 pr-8 text-sm text-zinc-100 outline-none transition focus:border-orange-300/60"
+                  >
+                    {ORG_ROLES.map((r) => (
+                      <option key={r} value={r}>{ORG_ROLE_LABELS[r]}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+                </div>
               </label>
 
-              {targetRole === 'banned' ? (
+              {formRole === 'banned' ? (
                 <>
                   <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-zinc-200">Ban Reason</span>
+                    <span className="mb-1.5 block text-xs font-medium text-zinc-400">Ban Reason</span>
                     <textarea
                       required
                       value={banReason}
-                      onChange={(event) => setBanReason(event.target.value)}
-                      className="min-h-28 w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-zinc-100 outline-none transition focus:border-orange-200/70"
+                      onChange={(e) => setBanReason(e.target.value)}
+                      rows={3}
+                      className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-orange-300/60"
                       placeholder="Reason for the ban"
                     />
                   </label>
-
                   <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-zinc-200">Ban Until</span>
+                    <span className="mb-1.5 block text-xs font-medium text-zinc-400">Ban Until (optional)</span>
                     <input
                       type="datetime-local"
                       value={bannedUntil}
-                      onChange={(event) => setBannedUntil(event.target.value)}
-                      className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-zinc-100 outline-none transition focus:border-orange-200/70"
+                      onChange={(e) => setBannedUntil(e.target.value)}
+                      className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-orange-300/60"
                     />
                   </label>
                 </>
@@ -310,121 +262,128 @@ function AdminUsersPage() {
               <button
                 type="submit"
                 disabled={submitting || !canManageUsers}
-                className="w-full rounded-lg bg-orange-300 px-4 py-2.5 font-semibold text-zinc-950 transition hover:bg-orange-200 disabled:cursor-not-allowed disabled:opacity-70"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-orange-300 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-orange-200 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {submitting ? 'Saving...' : 'Save Role'}
+                {submitting ? 'Saving…' : submitSuccess ? <><Check size={14} /> Saved</> : 'Save Role'}
               </button>
             </form>
+          </section>
 
-            <p className="mt-4 text-xs text-zinc-400">
-              Higher roles can manage lower roles only. Banned members lose all access by default.
-            </p>
-          </article>
-
-          <article className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6">
-            <div className="mb-4 flex items-center gap-2 text-orange-100">
-              <ShieldCheck size={18} />
-              <h2 className="text-xl font-bold text-zinc-50">Role Directory</h2>
+          {/* Member list */}
+          <section className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users size={16} className="text-orange-300" />
+                <h2 className="font-bold text-zinc-100">Members</h2>
+              </div>
+              <span className="rounded-full border border-zinc-700 px-2.5 py-0.5 text-xs text-zinc-500">
+                {roles.length} total
+              </span>
             </div>
 
-            {loading ? <p className="text-zinc-300">Loading roles...</p> : null}
-            {error ? <p className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{error}</p> : null}
-
-            {!loading && !error ? (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[760px] text-left text-sm">
-                  <thead className="text-zinc-400">
-                    <tr>
-                      <th className="pb-2 pr-2 font-medium">Email</th>
-                      <th className="pb-2 pr-2 font-medium">Role</th>
-                      <th className="pb-2 pr-2 font-medium">Granted By</th>
-                      <th className="pb-2 pr-2 font-medium">Ban Details</th>
-                      <th className="pb-2 font-medium">Updated</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {roles.map((row) => (
-                      <tr key={row.email} className="border-t border-zinc-200/10 align-top">
-                        <td className="py-3 pr-2 text-zinc-100">{row.email}</td>
-                        <td className="py-3 pr-2">
-                          <span className={`rounded-full border px-2 py-1 text-xs uppercase tracking-wide ${roleBadgeClass[row.role]}`}>
-                            {ORG_ROLE_LABELS[row.role]}
-                          </span>
-                        </td>
-                        <td className="py-3 pr-2 text-zinc-300">{row.granted_by || 'system'}</td>
-                        <td className="py-3 pr-2 text-zinc-300">
-                          {row.role === 'banned' ? (
-                            <div className="space-y-1 text-xs">
-                              <p>By: {row.banned_by || 'system'}</p>
-                              <p>Reason: {row.ban_reason || 'No reason provided'}</p>
-                              <p>Until: {row.banned_until ? new Date(row.banned_until).toLocaleString() : 'Forever'}</p>
-                            </div>
-                          ) : (
-                            <span className="text-zinc-500">N/A</span>
-                          )}
-                        </td>
-                        <td className="py-3 text-zinc-300">{new Date(row.updated_at).toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : null}
-          </article>
-        </section>
-
-        <section className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6">
-          <div className="mb-4 flex items-center gap-2 text-orange-100">
-            <ShieldCheck size={18} />
-            <h2 className="text-xl font-bold text-zinc-50">Permission Management</h2>
-          </div>
-
-          <p className="mb-4 text-sm text-zinc-300">
-            Configure which dashboard and platform functions are available to each role.
-          </p>
-
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1220px] text-left text-sm">
-              <thead className="text-zinc-400">
-                <tr>
-                  <th className="pb-2 pr-2 font-medium">Permission</th>
-                  <th className="pb-2 pr-2 font-medium">Description</th>
-                  {ORG_ROLES.map((role) => (
-                    <th key={role} className="pb-2 pr-2 font-medium">
-                      {formatRoleLabel(role)}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {permissionMatrix.map((row) => (
-                  <tr key={row.permission_key} className="border-t border-zinc-200/10">
-                    <td className="py-3 pr-2">
-                      <p className="font-semibold text-zinc-100">{row.label}</p>
-                      <p className="text-xs uppercase tracking-wide text-zinc-500">{row.permission_key}</p>
-                    </td>
-                    <td className="py-3 pr-2 text-zinc-300">{row.description}</td>
-                    {permissionRoleKeys.map(({ role, field }) => (
-                      <td key={`${row.permission_key}:${role}`} className="py-3 pr-2">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(row[field])}
-                          disabled={
-                            !canManagePermissions ||
-                            role === 'banned' ||
-                            permissionSavingKey === `${role}:${row.permission_key}`
-                          }
-                          onChange={(event) => {
-                            void togglePermission(role, row.permission_key, event.target.checked)
-                          }}
-                        />
-                      </td>
-                    ))}
-                  </tr>
+            {loading ? (
+              <p className="text-sm text-zinc-400">Loading members…</p>
+            ) : roles.length === 0 ? (
+              <p className="text-sm text-zinc-500">No members yet.</p>
+            ) : (
+              <ul className="space-y-1.5 max-h-[480px] overflow-y-auto pr-1">
+                {roles.map((row) => (
+                  <li
+                    key={row.email}
+                    className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-zinc-200/10 bg-zinc-950/40 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-zinc-100">{row.email}</p>
+                      {row.role === 'banned' && row.ban_reason ? (
+                        <p className="mt-0.5 text-xs text-rose-300/80">Banned: {row.ban_reason}</p>
+                      ) : (
+                        <p className="mt-0.5 text-xs text-zinc-600">
+                          Granted by {row.granted_by || 'system'} · {new Date(row.updated_at).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${roleBadgeClass[row.role]}`}>
+                        {row.role === 'banned' ? <span className="flex items-center gap-1"><Ban size={10} />{ORG_ROLE_LABELS[row.role]}</span> : ORG_ROLE_LABELS[row.role]}
+                      </span>
+                    </div>
+                  </li>
                 ))}
-              </tbody>
-            </table>
+              </ul>
+            )}
+          </section>
+        </div>
+
+        {/* Permission management */}
+        <section className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-5">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={16} className="text-orange-300" />
+              <h2 className="font-bold text-zinc-100">Permission Management</h2>
+            </div>
+            {!canManagePerms ? (
+              <span className="rounded-full border border-zinc-700 px-2.5 py-0.5 text-xs text-zinc-500">Read-only</span>
+            ) : null}
           </div>
+
+          {/* Role tab selector */}
+          <div className="mb-5 flex flex-wrap gap-1.5">
+            {PERMISSION_ROLES.map((role) => (
+              <button
+                key={role}
+                type="button"
+                onClick={() => setActivePermRole(role)}
+                className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                  activePermRole === role
+                    ? `${roleBadgeClass[role]} ring-1 ring-current/30`
+                    : 'border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+                }`}
+              >
+                {ORG_ROLE_LABELS[role]}
+              </button>
+            ))}
+          </div>
+
+          {/* Permission toggle list for active role */}
+          {loading ? (
+            <p className="text-sm text-zinc-400">Loading permissions…</p>
+          ) : (
+            <ul className="divide-y divide-zinc-200/8">
+              {permissionMatrix.map((perm) => {
+                const isEnabled = Boolean(perm[activeRoleField])
+                const isSaving = permSavingKey === `${activePermRole}:${perm.permission_key}`
+                const isLocked = !canManagePerms || activePermRole === 'banned'
+
+                return (
+                  <li key={perm.permission_key} className="flex items-center justify-between gap-4 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-zinc-100">{perm.label}</p>
+                      <p className="text-xs text-zinc-500">{perm.description}</p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isLocked || isSaving}
+                      onClick={() => { void togglePermission(activePermRole, perm.permission_key, !isEnabled) }}
+                      className={`relative shrink-0 h-6 w-11 rounded-full border transition-colors duration-200 ${
+                        isEnabled
+                          ? 'border-orange-400/60 bg-orange-400/20'
+                          : 'border-zinc-600 bg-zinc-800'
+                      } disabled:cursor-not-allowed disabled:opacity-50`}
+                      aria-label={`${isEnabled ? 'Disable' : 'Enable'} ${perm.label} for ${ORG_ROLE_LABELS[activePermRole]}`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-4 w-4 rounded-full transition-all duration-200 ${
+                          isEnabled
+                            ? 'left-[calc(100%-18px)] bg-orange-300'
+                            : 'left-0.5 bg-zinc-500'
+                        }`}
+                      />
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
         </section>
       </div>
     </div>

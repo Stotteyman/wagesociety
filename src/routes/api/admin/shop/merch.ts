@@ -1,7 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { requirePermission } from '../../../../lib/orgAuth'
-import { getSupabaseAdminClient } from '../../../../lib/supabaseAdmin'
+import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../../../lib/supabaseAdmin'
+import { getSupabaseServerPublicClient } from '../../../../lib/supabaseServer'
+
+function getAdminOrPublicClient() {
+  return hasSupabaseAdminConfig() ? getAdminOrPublicClient() : getSupabaseServerPublicClient()
+}
 
 const createMerchSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -25,7 +30,7 @@ export const Route = createFileRoute('/api/admin/shop/merch')({
       GET: async ({ request }) => {
         try {
           const access = await requirePermission(request, 'access_admin_dashboard')
-          const admin = getSupabaseAdminClient()
+          const admin = getAdminOrPublicClient()
 
           const { data, error } = await admin
             .from('org_shop_merch_items')
@@ -53,7 +58,7 @@ export const Route = createFileRoute('/api/admin/shop/merch')({
       POST: async ({ request }) => {
         try {
           await requirePermission(request, 'access_admin_dashboard')
-          const admin = getSupabaseAdminClient()
+          const admin = getAdminOrPublicClient()
           const body = await request.json()
           const parsed = createMerchSchema.safeParse(body)
 
@@ -87,7 +92,7 @@ export const Route = createFileRoute('/api/admin/shop/merch')({
       PUT: async ({ request }) => {
         try {
           await requirePermission(request, 'access_admin_dashboard')
-          const admin = getSupabaseAdminClient()
+          const admin = getAdminOrPublicClient()
           const body = await request.json()
           const parsed = updateMerchSchema.safeParse(body)
 
@@ -123,7 +128,7 @@ export const Route = createFileRoute('/api/admin/shop/merch')({
       DELETE: async ({ request }) => {
         try {
           await requirePermission(request, 'access_admin_dashboard')
-          const admin = getSupabaseAdminClient()
+          const admin = getAdminOrPublicClient()
           const body = await request.json()
           const parsed = deleteMerchSchema.safeParse(body)
 

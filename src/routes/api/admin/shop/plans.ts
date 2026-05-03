@@ -1,7 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { requirePermission } from '../../../../lib/orgAuth'
-import { getSupabaseAdminClient } from '../../../../lib/supabaseAdmin'
+import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../../../lib/supabaseAdmin'
+import { getSupabaseServerPublicClient } from '../../../../lib/supabaseServer'
+
+function getAdminOrPublicClient() {
+  return hasSupabaseAdminConfig() ? getAdminOrPublicClient() : getSupabaseServerPublicClient()
+}
 
 const planBaseSchema = z.object({
   slug: z.string().trim().min(1).max(80),
@@ -29,7 +34,7 @@ export const Route = createFileRoute('/api/admin/shop/plans')({
       GET: async ({ request }) => {
         try {
           const access = await requirePermission(request, 'access_admin_dashboard')
-          const admin = getSupabaseAdminClient()
+          const admin = getAdminOrPublicClient()
 
           const { data, error } = await admin
             .from('org_shop_membership_plans')
@@ -57,7 +62,7 @@ export const Route = createFileRoute('/api/admin/shop/plans')({
       POST: async ({ request }) => {
         try {
           await requirePermission(request, 'access_admin_dashboard')
-          const admin = getSupabaseAdminClient()
+          const admin = getAdminOrPublicClient()
           const body = await request.json()
           const parsed = createPlanSchema.safeParse(body)
 
@@ -94,7 +99,7 @@ export const Route = createFileRoute('/api/admin/shop/plans')({
       PUT: async ({ request }) => {
         try {
           await requirePermission(request, 'access_admin_dashboard')
-          const admin = getSupabaseAdminClient()
+          const admin = getAdminOrPublicClient()
           const body = await request.json()
           const parsed = updatePlanSchema.safeParse(body)
 
@@ -133,7 +138,7 @@ export const Route = createFileRoute('/api/admin/shop/plans')({
       DELETE: async ({ request }) => {
         try {
           await requirePermission(request, 'access_admin_dashboard')
-          const admin = getSupabaseAdminClient()
+          const admin = getAdminOrPublicClient()
           const body = await request.json()
           const parsed = deletePlanSchema.safeParse(body)
 

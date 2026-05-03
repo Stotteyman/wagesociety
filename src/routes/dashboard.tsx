@@ -16,6 +16,7 @@ import {
   Settings,
   Shield,
   Store,
+  Target,
   Users,
 } from 'lucide-react'
 import { canManageRole, formatRoleLabel, type BanRecord, type OrgPermission, type OrgRole } from '../lib/orgAccess'
@@ -362,6 +363,7 @@ function CreatorDashboard({
       | 'knowledge-vault'
       | 'promotion-hub'
       | 'merch-studio'
+      | 'creator-growth-system'
     title: string
     description: string
     items: string[]
@@ -430,6 +432,14 @@ function CreatorDashboard({
       description: 'Submit your merch mockups, track admin review status, and monitor your earnings splits.',
       items: ['Design submissions', 'Approval status', 'Earnings & payouts'],
       requiredPermission: 'view_merch',
+    },
+    {
+      icon: <Target size={18} />,
+      toolKey: 'creator-growth-system',
+      title: 'Creator Growth System',
+      description: 'Build and track your creator operating system across 5 modules: broadcast, hub, monetization, distribution, and operations.',
+      items: ['Creator System Score', '5-module checklist', 'Next action guidance'],
+      requiredPermission: 'view_creator_tools',
     },
   ]
 
@@ -918,6 +928,7 @@ function ResourceCard({
     | 'knowledge-vault'
     | 'promotion-hub'
     | 'merch-studio'
+    | 'creator-growth-system'
   title: string
   description: string
   items: string[]

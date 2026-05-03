@@ -1,5 +1,6 @@
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import { isLocalRootSessionActive } from '../lib/localRootSession'
 import { formatRoleLabel, type OrgRole } from '../lib/orgAccess'
 import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 import { getStoredViewAsRole, setStoredViewAsRole } from '../lib/viewAs'
@@ -94,6 +95,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     const isLocalhost = host === 'localhost' || host === '127.0.0.1'
 
     if (!isLocalhost || pathname !== '/') return
+
+    // Redirect immediately if local root session is active
+    if (isLocalRootSessionActive()) {
+      window.location.replace('/dashboard')
+      return
+    }
 
     void (async () => {
       try {

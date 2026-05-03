@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { ArrowLeft, Store, Users, RadioTower, ShoppingBag, CircleHelp } from 'lucide-react'
+import { createFileRoute, Link, Outlet, useLocation } from '@tanstack/react-router'
+import { ArrowLeft, Store, Users, RadioTower, CircleHelp } from 'lucide-react'
 import { requireAuthenticatedRoute } from '../lib/routeAuth'
 
 const adminLinks = [
@@ -20,12 +20,6 @@ const adminLinks = [
     description: 'Add/remove stream channels and monitor live status.',
     to: '/live' as const,
     icon: RadioTower,
-  },
-  {
-    title: 'Merch Page',
-    description: 'Open the public merch storefront.',
-    to: '/merch' as const,
-    icon: ShoppingBag,
   },
   {
     title: 'FAQ Page',
@@ -53,6 +47,12 @@ export const Route = createFileRoute('/admin')({
 })
 
 function AdminHubPage() {
+  const location = useLocation()
+
+  if (location.pathname.startsWith('/admin/')) {
+    return <Outlet />
+  }
+
   return (
     <div className="min-h-screen px-4 py-12 text-zinc-100">
       <div className="mx-auto max-w-6xl space-y-6">

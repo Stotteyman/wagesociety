@@ -73,7 +73,6 @@ function LivePage() {
   const [canUseAutoclipper, setCanUseAutoclipper] = useState(false)
 
   const [url, setUrl] = useState('')
-  const [title, setTitle] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [autoJobs, setAutoJobs] = useState<AutoclipperJob[]>([])
   const [autoLoading, setAutoLoading] = useState(true)
@@ -83,6 +82,32 @@ function LivePage() {
   const formatNumber = (value: number | null) => {
     if (value === null || Number.isNaN(value)) return 'Unknown'
     return new Intl.NumberFormat().format(value)
+  }
+
+  const formatStreamLabel = (stream: StreamRow) => {
+    if (stream.title) return stream.title
+
+    if (stream.platform !== 'youtube') {
+      return `${stream.platform.toUpperCase()} · ${stream.stream_key}`
+    }
+
+    if (stream.stream_key.startsWith('handle:')) {
+      return `YOUTUBE · ${stream.stream_key.slice('handle:'.length)}`
+    }
+
+    if (stream.stream_key.startsWith('channel:')) {
+      return `YOUTUBE · Channel ${stream.stream_key.slice('channel:'.length)}`
+    }
+
+    if (stream.stream_key.startsWith('user:')) {
+      return `YOUTUBE · ${stream.stream_key.slice('user:'.length)}`
+    }
+
+    if (stream.stream_key.startsWith('custom:')) {
+      return `YOUTUBE · ${stream.stream_key.slice('custom:'.length)}`
+    }
+
+    return `YOUTUBE · ${stream.stream_key}`
   }
 
   const loadStreams = async () => {
@@ -210,7 +235,7 @@ function LivePage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url, title }),
+        body: JSON.stringify({ url }),
       })
 
       const data = (await response.json()) as { error?: string }
@@ -221,7 +246,6 @@ function LivePage() {
       }
 
       setUrl('')
-      setTitle('')
       await loadStreams()
     } catch {
       setError('Failed to add livestream')
@@ -287,24 +311,20 @@ function LivePage() {
         {canManage ? (
           <section className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6">
             <h2 className="text-xl font-bold text-zinc-50">Add Livestream Link</h2>
-            <p className="mt-2 text-sm text-zinc-300">Admins can add Twitch channel links, YouTube live video links, and Kick channel links.</p>
+            <p className="mt-2 text-sm text-zinc-300">Admins can add Twitch channel links, YouTube channel links, and Kick channel links.</p>
 
-            <form onSubmit={handleAddStream} className="mt-4 grid gap-3 md:grid-cols-[1.4fr_1fr_auto]">
-              <input
-                type="url"
-                required
-                value={url}
-                onChange={(event) => setUrl(event.target.value)}
-                className="rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-zinc-100 outline-none transition focus:border-orange-200/70"
-                placeholder="https://www.twitch.tv/channel, https://www.youtube.com/watch?v=..., or https://kick.com/channel"
-              />
-              <input
-                type="text"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                className="rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-zinc-100 outline-none transition focus:border-orange-200/70"
-                placeholder="Optional title"
-              />
+            <form onSubmit={handleAddStream} className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
+              <label className="flex flex-col gap-2 text-sm text-zinc-300">
+                <span>Livestream URL</span>
+                <input
+                  type="url"
+                  required
+                  value={url}
+                  onChange={(event) => setUrl(event.target.value)}
+                  className="rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-zinc-100 outline-none transition focus:border-orange-200/70"
+                  placeholder="https://www.twitch.tv/channel, https://www.youtube.com/@channel, or https://kick.com/channel"
+                />
+              </label>
               <button
                 type="submit"
                 disabled={submitting}
@@ -433,7 +453,7 @@ function LivePage() {
                     <div className="flex items-center gap-2">
                       <RadioTower size={16} className={isLive ? 'text-rose-300' : 'text-zinc-400'} />
                       <p className="truncate text-lg font-semibold text-zinc-50 group-hover:text-orange-100">
-                        {stream.title || `${stream.platform.toUpperCase()} · ${stream.stream_key}`}
+                        {formatStreamLabel(stream)}
                       </p>
                       <ExternalLink size={16} className="text-zinc-400 group-hover:text-orange-200" />
                     </div>

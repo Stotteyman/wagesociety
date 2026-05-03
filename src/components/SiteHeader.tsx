@@ -79,7 +79,9 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          {!authLoading && user ? (
+          {authLoading ? (
+            <div className="h-8 w-32 animate-pulse rounded-lg bg-zinc-800" />
+          ) : user ? (
             <>
               <Link
                 to="/dashboard"
@@ -137,7 +139,9 @@ export function SiteHeader() {
             </Link>
           ))}
           <div className="mt-1 grid grid-cols-2 gap-2">
-            {!authLoading && user ? (
+            {authLoading ? (
+              <div className="col-span-2 h-9 animate-pulse rounded-lg bg-zinc-800" />
+            ) : user ? (
               <>
                 <Link
                   to="/dashboard"

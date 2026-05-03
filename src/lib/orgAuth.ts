@@ -1,5 +1,6 @@
 import { canManageRole, isOrgRole, type BanRecord, type OrgPermission, type OrgRole } from './orgAccess'
 import { getSupabaseAdminClient, getSupabaseAdminConfigIssues, hasSupabaseAdminConfig } from './supabaseAdmin'
+import { getSupabaseServerPublicClient } from './supabaseServer'
 
 export const LOCAL_SUPERADMIN_EMAIL = 'root-superadmin@localhost'
 const OWNER_SUPERADMIN_EMAILS = new Set(['stotteyman@gmail.com'])
@@ -41,8 +42,10 @@ export async function resolveRequester(request: Request) {
     })
   }
 
-  const admin = getSupabaseAdminClient()
-  const { data, error } = await admin.auth.getUser(token)
+  // JWT verification works with either the service-role client or the public client.
+  // Fall back to the public client so local dev without SUPABASE_SERVICE_ROLE_KEY still works.
+  const authClient = hasSupabaseAdminConfig() ? getSupabaseAdminClient() : getSupabaseServerPublicClient()
+  const { data, error } = await authClient.auth.getUser(token)
   const email = data.user?.email?.toLowerCase()
 
   if (error || !email) {
@@ -100,16 +103,10 @@ export async function resolveOrgRole(email: string): Promise<OrgRole> {
   }
 
   if (!hasSupabaseAdminConfig()) {
-    throw new Response(
-      JSON.stringify({
-        error: 'Supabase admin configuration is incomplete.',
-        details: getSupabaseAdminConfigIssues(),
-      }),
-      {
-        status: 503,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    )
+    // Without the service role key we can't query the DB for the member's role.
+    // Fall back to 'user' so authenticated members can still access the platform
+    // with default permissions. Superadmin and owner emails are already handled above.
+    return 'user'
   }
 
   const admin = getSupabaseAdminClient()
@@ -168,8 +165,8 @@ export async function getRolePermissions(role: OrgRole): Promise<OrgPermission[]
     return []
   }
 
-  if (role === 'superadmin' && !hasSupabaseAdminConfig()) {
-    return SUPERADMIN_FALLBACK_PERMISSIONS
+  if (!hasSupabaseAdminConfig()) {
+    return role === 'superadmin' ? SUPERADMIN_FALLBACK_PERMISSIONS : []
   }
 
   const admin = getSupabaseAdminClient()
