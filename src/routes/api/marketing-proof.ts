@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { requirePermission } from '../../lib/orgAuth'
 import { getSupabaseAdminClient } from '../../lib/supabaseAdmin'
 
 function getQuarterStartIso(now: Date) {
@@ -16,8 +17,9 @@ function average(values: number[]) {
 export const Route = createFileRoute('/api/marketing-proof')({
   server: {
     handlers: {
-      GET: async () => {
+      GET: async ({ request }) => {
         try {
+          await requirePermission(request, 'access_admin_dashboard')
           const admin = getSupabaseAdminClient()
           const quarterStartIso = getQuarterStartIso(new Date())
 

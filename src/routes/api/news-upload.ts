@@ -1,44 +1,51 @@
+import { createFileRoute } from '@tanstack/react-router'
+import { getRequesterAccess } from '../../lib/orgAuth'
 import { getSupabaseAdminClient } from '../../lib/supabaseAdmin'
-import { getUserRoleFromRequest } from '../../lib/orgAuth'
 
-export const config = {
-  runtime: 'edge',
-}
+const WRITE_ROLES = new Set(['superadmin', 'admin', 'manager', 'staff'])
+const ALLOWED_IMAGES = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp'])
+const ALLOWED_VIDEOS = new Set(['mp4', 'webm', 'mov', 'avi', 'mkv'])
 
-export default async function handler(req: Request) {
-  // Only staff/admin/manager/superadmin can upload
-  const role = await getUserRoleFromRequest(req)
-  if (!['superadmin', 'admin', 'manager', 'staff'].includes(role)) {
-    return new Response(JSON.stringify({ error: 'Insufficient permissions' }), { status: 403 })
-  }
+export const Route = createFileRoute('/api/news-upload')({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        try {
+          const access = await getRequesterAccess(request)
+          if (!WRITE_ROLES.has(access.role)) {
+            return Response.json({ error: 'Insufficient permissions' }, { status: 403 })
+          }
 
-  if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 })
-  }
+          const form = await request.formData()
+          const file = form.get('file') as File | null
+          if (!file) {
+            return Response.json({ error: 'No file uploaded' }, { status: 400 })
+          }
 
-  const form = await req.formData()
-  const file = form.get('file') as File | null
-  if (!file) {
-    return new Response(JSON.stringify({ error: 'No file uploaded' }), { status: 400 })
-  }
+          const ext = file.name.split('.').pop()?.toLowerCase() || 'bin'
+          const isImage = ALLOWED_IMAGES.has(ext)
+          const isVideo = ALLOWED_VIDEOS.has(ext)
+          if (!isImage && !isVideo) {
+            return Response.json({ error: 'Invalid file type' }, { status: 400 })
+          }
 
-  const ext = file.name.split('.').pop()?.toLowerCase() || 'bin'
-  const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)
-  const isVideo = ['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(ext)
-  if (!isImage && !isVideo) {
-    return new Response(JSON.stringify({ error: 'Invalid file type' }), { status: 400 })
-  }
-
-  const supabase = getSupabaseAdminClient()
-  const bucket = isImage ? 'news-images' : 'news-videos'
-  const filePath = `${Date.now()}-${file.name}`
-  const { data, error } = await supabase.storage.from(bucket).upload(filePath, file.stream(), {
-    contentType: file.type,
-    upsert: false,
-  })
-  if (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 })
-  }
-  const publicUrl = supabase.storage.from(bucket).getPublicUrl(filePath).publicUrl
-  return new Response(JSON.stringify({ url: publicUrl }), { status: 201 })
-}
+          const supabase = getSupabaseAdminClient()
+          const bucket = isImage ? 'news-images' : 'news-videos'
+          const filePath = `${Date.now()}-${file.name}`
+          const { error } = await supabase.storage.from(bucket).upload(filePath, file.stream(), {
+            contentType: file.type,
+            upsert: false,
+          })
+          if (error) {
+            return Response.json({ error: error.message }, { status: 500 })
+          }
+          const publicUrl = supabase.storage.from(bucket).getPublicUrl(filePath).publicUrl
+          return Response.json({ url: publicUrl }, { status: 201 })
+        } catch (error) {
+          if (error instanceof Response) return error
+          return Response.json({ error: 'Unexpected server error' }, { status: 500 })
+        }
+      },
+    },
+  },
+})

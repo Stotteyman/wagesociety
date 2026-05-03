@@ -23,6 +23,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
 import { Route as ApiShopRouteImport } from './routes/api/shop'
 import { Route as ApiProfileRouteImport } from './routes/api/profile'
+import { Route as ApiNewsUploadRouteImport } from './routes/api/news-upload'
+import { Route as ApiNewsRouteImport } from './routes/api/news'
 import { Route as ApiMarketingProofRouteImport } from './routes/api/marketing-proof'
 import { Route as ApiKnowledgeVaultRouteImport } from './routes/api/knowledge-vault'
 import { Route as ApiKickLoginRouteImport } from './routes/api/kick-login'
@@ -112,6 +114,16 @@ const ApiShopRoute = ApiShopRouteImport.update({
 const ApiProfileRoute = ApiProfileRouteImport.update({
   id: '/api/profile',
   path: '/api/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiNewsUploadRoute = ApiNewsUploadRouteImport.update({
+  id: '/api/news-upload',
+  path: '/api/news-upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiNewsRoute = ApiNewsRouteImport.update({
+  id: '/api/news',
+  path: '/api/news',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiMarketingProofRoute = ApiMarketingProofRouteImport.update({
@@ -236,6 +248,8 @@ export interface FileRoutesByFullPath {
   '/api/kick-login': typeof ApiKickLoginRoute
   '/api/knowledge-vault': typeof ApiKnowledgeVaultRoute
   '/api/marketing-proof': typeof ApiMarketingProofRoute
+  '/api/news': typeof ApiNewsRoute
+  '/api/news-upload': typeof ApiNewsUploadRoute
   '/api/profile': typeof ApiProfileRoute
   '/api/shop': typeof ApiShopRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
@@ -272,6 +286,8 @@ export interface FileRoutesByTo {
   '/api/kick-login': typeof ApiKickLoginRoute
   '/api/knowledge-vault': typeof ApiKnowledgeVaultRoute
   '/api/marketing-proof': typeof ApiMarketingProofRoute
+  '/api/news': typeof ApiNewsRoute
+  '/api/news-upload': typeof ApiNewsUploadRoute
   '/api/profile': typeof ApiProfileRoute
   '/api/shop': typeof ApiShopRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
@@ -309,6 +325,8 @@ export interface FileRoutesById {
   '/api/kick-login': typeof ApiKickLoginRoute
   '/api/knowledge-vault': typeof ApiKnowledgeVaultRoute
   '/api/marketing-proof': typeof ApiMarketingProofRoute
+  '/api/news': typeof ApiNewsRoute
+  '/api/news-upload': typeof ApiNewsUploadRoute
   '/api/profile': typeof ApiProfileRoute
   '/api/shop': typeof ApiShopRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
@@ -347,6 +365,8 @@ export interface FileRouteTypes {
     | '/api/kick-login'
     | '/api/knowledge-vault'
     | '/api/marketing-proof'
+    | '/api/news'
+    | '/api/news-upload'
     | '/api/profile'
     | '/api/shop'
     | '/api/stripe-webhook'
@@ -383,6 +403,8 @@ export interface FileRouteTypes {
     | '/api/kick-login'
     | '/api/knowledge-vault'
     | '/api/marketing-proof'
+    | '/api/news'
+    | '/api/news-upload'
     | '/api/profile'
     | '/api/shop'
     | '/api/stripe-webhook'
@@ -419,6 +441,8 @@ export interface FileRouteTypes {
     | '/api/kick-login'
     | '/api/knowledge-vault'
     | '/api/marketing-proof'
+    | '/api/news'
+    | '/api/news-upload'
     | '/api/profile'
     | '/api/shop'
     | '/api/stripe-webhook'
@@ -454,6 +478,8 @@ export interface RootRouteChildren {
   ApiKickLoginRoute: typeof ApiKickLoginRoute
   ApiKnowledgeVaultRoute: typeof ApiKnowledgeVaultRoute
   ApiMarketingProofRoute: typeof ApiMarketingProofRoute
+  ApiNewsRoute: typeof ApiNewsRoute
+  ApiNewsUploadRoute: typeof ApiNewsUploadRoute
   ApiProfileRoute: typeof ApiProfileRoute
   ApiShopRoute: typeof ApiShopRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
@@ -565,6 +591,20 @@ declare module '@tanstack/react-router' {
       path: '/api/profile'
       fullPath: '/api/profile'
       preLoaderRoute: typeof ApiProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/news-upload': {
+      id: '/api/news-upload'
+      path: '/api/news-upload'
+      fullPath: '/api/news-upload'
+      preLoaderRoute: typeof ApiNewsUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/news': {
+      id: '/api/news'
+      path: '/api/news'
+      fullPath: '/api/news'
+      preLoaderRoute: typeof ApiNewsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/marketing-proof': {
@@ -767,6 +807,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiKickLoginRoute: ApiKickLoginRoute,
   ApiKnowledgeVaultRoute: ApiKnowledgeVaultRoute,
   ApiMarketingProofRoute: ApiMarketingProofRoute,
+  ApiNewsRoute: ApiNewsRoute,
+  ApiNewsUploadRoute: ApiNewsUploadRoute,
   ApiProfileRoute: ApiProfileRoute,
   ApiShopRoute: ApiShopRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,

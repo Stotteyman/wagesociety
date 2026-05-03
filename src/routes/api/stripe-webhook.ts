@@ -5,7 +5,7 @@ import { getSupabaseAdminClient } from '../../lib/supabaseAdmin'
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY
   if (!key) throw new Error('STRIPE_SECRET_KEY is not set.')
-  return new Stripe(key, { apiVersion: '2025-03-31.basil' })
+  return new Stripe(key, { apiVersion: '2026-03-25.dahlia' })
 }
 
 /**
@@ -34,12 +34,15 @@ export const Route = createFileRoute('/api/stripe-webhook')({
           const payload = await request.text()
           const sig = request.headers.get('stripe-signature') || ''
 
-          if (webhookSecret && sig) {
-            event = await stripe.webhooks.constructEventAsync(payload, sig, webhookSecret)
-          } else {
-            // No secret configured — parse raw (dev/test only)
-            event = JSON.parse(payload) as Stripe.Event
+          if (!webhookSecret) {
+            return Response.json({ error: 'Webhook secret not configured.' }, { status: 500 })
           }
+
+          if (!sig) {
+            return Response.json({ error: 'Missing stripe-signature header.' }, { status: 400 })
+          }
+
+          event = await stripe.webhooks.constructEventAsync(payload, sig, webhookSecret)
         } catch (err) {
           const msg = err instanceof Error ? err.message : 'Invalid webhook payload.'
           return Response.json({ error: msg }, { status: 400 })
@@ -55,12 +58,14 @@ export const Route = createFileRoute('/api/stripe-webhook')({
 
               // Ensure the member exists with at least the "user" role
               // ensure_org_member_role provisions the role if not present
-              await admin.rpc('ensure_org_member_role', {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              await (admin.rpc as any)('ensure_org_member_role', {
                 p_email: customerEmail,
               })
 
               // Log the fulfilled purchase
-              await admin.from('org_shop_orders').upsert(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              await (admin.from('org_shop_orders') as any).upsert(
                 {
                   stripe_payment_intent_id: intent.id,
                   customer_email: customerEmail,

@@ -9,7 +9,9 @@ export function isLocalRequest(request: Request) {
 }
 
 export async function resolveRequester(request: Request) {
-  if (isLocalRequest(request)) {
+  // Localhost bypass is disabled by default. Enable only for explicit local dev
+  // by setting ALLOW_LOCALHOST_SUPERADMIN=true in your .env file.
+  if (isLocalRequest(request) && process.env.ALLOW_LOCALHOST_SUPERADMIN === 'true') {
     return {
       email: LOCAL_SUPERADMIN_EMAIL,
       source: 'localhost-bypass' as const,

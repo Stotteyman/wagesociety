@@ -4,13 +4,8 @@ const supabaseUrl =
   process.env.SUPABASE_URL ||
   process.env.VITE_SUPABASE_URL ||
   process.env.NEXT_PUBLIC_SUPABASE_URL
-const serverKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
-  process.env.VITE_SUPABASE_ANON_KEY ||
-  process.env.SUPABASE_PUBLISHABLE_KEY ||
-  process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+// Server admin client MUST use the service role key — never a public/anon key.
+const serverKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 // Singleton — avoids creating a new TCP connection on every request
 let adminClient: ReturnType<typeof createClient> | null = null
@@ -22,7 +17,7 @@ export function getSupabaseAdminClient() {
 
   if (!serverKey) {
     throw new Error(
-      'Missing Supabase server key. Set SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY for role APIs.'
+      'Missing SUPABASE_SERVICE_ROLE_KEY. The admin client requires the service role key — do not use anon/publishable keys here.'
     )
   }
 

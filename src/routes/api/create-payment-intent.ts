@@ -1,12 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 import Stripe from 'stripe'
 import { getSupabaseAdminClient } from '../../lib/supabaseAdmin'
-import { resolveRequester } from '../../lib/orgAuth'
+import { getRequesterAccess } from '../../lib/orgAuth'
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY
   if (!key) throw new Error('STRIPE_SECRET_KEY is not set.')
-  return new Stripe(key, { apiVersion: '2025-03-31.basil' })
+  return new Stripe(key, { apiVersion: '2026-03-25.dahlia' })
 }
 
 export const Route = createFileRoute('/api/create-payment-intent')({
@@ -14,6 +14,9 @@ export const Route = createFileRoute('/api/create-payment-intent')({
     handlers: {
       POST: async ({ request }) => {
         try {
+          // Require an authenticated member — prevents anonymous abuse of payment-intent creation
+          await getRequesterAccess(request)
+
           const body = (await request.json()) as {
             planSlug?: string
             email?: string
@@ -34,12 +37,20 @@ export const Route = createFileRoute('/api/create-payment-intent')({
 
           // Fetch plan price from DB
           const admin = getSupabaseAdminClient()
-          const { data: plan, error: planError } = await admin
+          const { data: _plan, error: planError } = await admin
             .from('org_shop_membership_plans')
             .select('id, slug, name, price_cents, display_price')
             .eq('slug', planSlug)
             .eq('is_active', true)
             .single()
+
+          const plan = _plan as {
+            id: string
+            slug: string
+            name: string
+            price_cents: number
+            display_price: string
+          } | null
 
           if (planError || !plan) {
             return Response.json({ error: 'Plan not found.' }, { status: 404 })

@@ -124,7 +124,7 @@ export function parseLivestreamLink(rawUrl: string): ParsedStreamLink {
 }
 
 async function getYouTubeSnapshot(videoId: string): Promise<LivestreamSnapshot> {
-  const apiKey = process.env.YOUTUBE_API_KEY || process.env.VITE_YOUTUBE_API_KEY
+  const apiKey = process.env.YOUTUBE_API_KEY
   if (!apiKey) {
     return OFFLINE_SNAPSHOT
   }
@@ -205,7 +205,7 @@ async function getYouTubeSnapshot(videoId: string): Promise<LivestreamSnapshot> 
 }
 
 async function getTwitchSnapshot(channelLogin: string): Promise<LivestreamSnapshot> {
-  const clientId = process.env.TWITCH_CLIENT_ID || process.env.VITE_TWITCH_CLIENT_ID
+  const clientId = process.env.TWITCH_CLIENT_ID
   const clientSecret = process.env.TWITCH_CLIENT_SECRET
 
   if (!clientId || !clientSecret) {
@@ -300,8 +300,8 @@ async function getTwitchSnapshot(channelLogin: string): Promise<LivestreamSnapsh
 }
 
 async function getKickSnapshot(channelSlug: string): Promise<LivestreamSnapshot> {
-  const kickClientId = process.env.KICK_CLIENT_ID || process.env.VITE_KICK_CLIENT_ID
-  const kickClientSecret = process.env.KICK_CLIENT_SECRET || process.env.VITE_KICK_CLIENT_SECRET
+  const kickClientId = process.env.KICK_CLIENT_ID
+  const kickClientSecret = process.env.KICK_CLIENT_SECRET
 
   // Prefer the official authenticated API for consistent server-side access.
   if (kickClientId && kickClientSecret) {

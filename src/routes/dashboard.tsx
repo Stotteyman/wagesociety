@@ -152,6 +152,7 @@ const fallbackMembershipPlans: Array<{
 
 function DashboardGate() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [member, setMember] = useState<AppUser | null>(null)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState('')
@@ -254,6 +255,11 @@ function DashboardGate() {
     )
   }
 
+  if (!member) {
+    void navigate({ to: '/login' })
+    return null
+  }
+
   if (location.pathname.startsWith('/dashboard/tools/')) {
     return <Outlet />
   }
@@ -280,7 +286,7 @@ function CreatorDashboard({
   permissions,
   ban,
 }: {
-  member: AppUser
+  member: AppUser | null
   onLogout: () => Promise<void>
   role: OrgRole
   actorRole: OrgRole
