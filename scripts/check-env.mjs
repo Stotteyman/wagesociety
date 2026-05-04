@@ -34,19 +34,25 @@ const browserPublishableKeys = [
   'SUPABASE_ANON_KEY',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
 ]
+const serverRoleKeys = [
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'SUPABASE_SERVICE_KEY',
+  'SUPABASE_SECRET_KEY',
+  'SUPABASE_SERVICE_ROLE',
+]
 
 const hasAny = (keys) => keys.some((key) => Boolean(getValue(key)))
 
 const hasServerUrl = hasAny(serverUrlKeys)
 const hasBrowserUrl = hasAny(browserUrlKeys)
 const hasBrowserPublishable = hasAny(browserPublishableKeys)
-const hasServiceRole = Boolean(getValue('SUPABASE_SERVICE_ROLE_KEY'))
+const hasServiceRole = hasAny(serverRoleKeys)
 
 if (hasServerUrl && hasBrowserUrl && hasBrowserPublishable) {
   console.log('Environment check passed: Supabase URL and browser publishable key are configured.')
   if (!hasServiceRole) {
     console.warn(
-      'Warning: SUPABASE_SERVICE_ROLE_KEY is missing. Public/auth flows work, but privileged admin DB operations will be limited.',
+      `Warning: service role key is missing. Set one of: ${serverRoleKeys.join(', ')}. Public/auth flows work, but privileged admin DB operations will be limited.`,
     )
   }
   process.exit(0)

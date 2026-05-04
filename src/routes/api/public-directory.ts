@@ -23,6 +23,10 @@ type DirectoryProfileRow = {
   bio: string | null
 }
 
+type RoleEmailRow = {
+  email: string
+}
+
 type AuthListUserRow = {
   id: string
   email: string | null
@@ -148,24 +152,43 @@ export const Route = createFileRoute('/api/public-directory')({
             .order('updated_at', { ascending: false })
             .limit(5000)
 
+          const { data: roleEmails } = await client
+            .from('org_user_roles')
+            .select('email')
+            .limit(10000)
+
           if (profilesError) {
             return Response.json({ error: profilesError.message }, { status: 500 })
           }
 
-          const entries = (Array.isArray(profiles) ? (profiles as DirectoryProfileRow[]) : [])
-            .map((row) => {
-              const email = String(row.email || '').trim().toLowerCase()
-              if (!email) return null
+          const profileRows = Array.isArray(profiles) ? (profiles as DirectoryProfileRow[]) : []
+          const roleRows = Array.isArray(roleEmails) ? (roleEmails as RoleEmailRow[]) : []
 
-              const rawUsername = row.display_name?.trim() || email.split('@')[0] || ''
+          const profileByEmail = new Map(profileRows.map((row) => [String(row.email || '').trim().toLowerCase(), row]))
+          const allEmails = new Set<string>()
+
+          for (const profile of profileRows) {
+            const email = String(profile.email || '').trim().toLowerCase()
+            if (email) allEmails.add(email)
+          }
+
+          for (const roleRow of roleRows) {
+            const email = String(roleRow.email || '').trim().toLowerCase()
+            if (email) allEmails.add(email)
+          }
+
+          const entries = Array.from(allEmails)
+            .map((email) => {
+              const profile = profileByEmail.get(email)
+              const rawUsername = profile?.display_name?.trim() || email.split('@')[0] || ''
               const username = normalizeUsername(rawUsername)
               if (!username) return null
 
               return {
                 username,
-                displayName: row.display_name?.trim() || username,
-                avatarUrl: row.avatar_url,
-                bio: row.bio,
+                displayName: profile?.display_name?.trim() || username,
+                avatarUrl: profile?.avatar_url || null,
+                bio: profile?.bio || null,
                 connectedCount: 0,
               }
             })
