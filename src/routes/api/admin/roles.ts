@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { canManageRole, ORG_ROLES, type OrgRole } from '../../../lib/orgAccess'
 import { listAuthIndexedUsers } from '../../../lib/authUserIndex'
 import { getBanRecord } from '../../../lib/orgAuth'
-import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../../lib/supabaseAdmin'
+import { getSupabaseAdminClient, getSupabaseAdminConfigIssues, hasSupabaseAdminConfig } from '../../../lib/supabaseAdmin'
 import { getRequesterAccess, requirePermission } from '../../../lib/orgAuth'
 import { getSupabaseServerClientForToken, getSupabaseServerPublicClient } from '../../../lib/supabaseServer'
 
@@ -81,6 +81,35 @@ const setRoleSchema = z.object({
   banReason: z.string().trim().max(500).nullable().optional(),
   bannedUntil: z.string().datetime({ offset: true }).nullable().optional(),
 })
+
+const setSubscriptionSchema = z.object({
+  targetEmail: z.string().email(),
+  membershipPlan: z.string().trim().min(1).max(80),
+})
+
+async function findAuthUserByEmail(email: string) {
+  if (!hasSupabaseAdminConfig()) return null
+
+  const admin = getSupabaseAdminClient()
+  let page = 1
+  const perPage = 1000
+
+  while (page <= 10) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage })
+    if (error) throw new Error(error.message)
+
+    const users = (data?.users || []) as AuthUserListRow[]
+    if (!users.length) break
+
+    const match = users.find((user) => String(user.email || '').trim().toLowerCase() === email)
+    if (match?.id) return match
+
+    if (users.length < perPage) break
+    page += 1
+  }
+
+  return null
+}
 
 export const Route = createFileRoute('/api/admin/roles')({
   server: {
@@ -375,6 +404,103 @@ export const Route = createFileRoute('/api/admin/roles')({
                   ban,
                 }
               : null,
+          })
+        } catch (error) {
+          if (error instanceof Response) return error
+          return Response.json(
+            { error: error instanceof Error ? error.message : 'Unexpected server error' },
+            { status: 500 },
+          )
+        }
+      },
+      PUT: async ({ request }) => {
+        try {
+          const access = await requirePermission(request, 'manage_users')
+          const admin = getAdminOrRequestClient(request)
+          const body = await request.json()
+          const parsed = setSubscriptionSchema.safeParse(body)
+
+          if (!parsed.success) {
+            return Response.json({ error: 'Invalid payload', details: parsed.error.flatten() }, { status: 400 })
+          }
+
+          if (!hasSupabaseAdminConfig()) {
+            return Response.json(
+              {
+                error: 'Supabase admin configuration missing on server.',
+                details: getSupabaseAdminConfigIssues(),
+              },
+              { status: 500 },
+            )
+          }
+
+          const normalizedEmail = parsed.data.targetEmail.toLowerCase()
+          const membershipPlan = parsed.data.membershipPlan.toLowerCase()
+
+          const { data: currentMember, error: currentMemberError } = await admin
+            .from('org_user_roles')
+            .select('role')
+            .eq('email', normalizedEmail)
+            .maybeSingle()
+
+          if (currentMemberError) {
+            return Response.json({ error: currentMemberError.message }, { status: 500 })
+          }
+
+          if (currentMember?.role && !canManageRole(access.role, currentMember.role as OrgRole)) {
+            return Response.json({ error: 'You cannot change a member at your role level or above' }, { status: 403 })
+          }
+
+          const { data: planRows, error: planError } = await admin
+            .from('org_shop_membership_plans')
+            .select('slug, is_active')
+
+          if (planError) {
+            return Response.json({ error: planError.message }, { status: 500 })
+          }
+
+          const allowedPlans = Array.from(new Set([
+            'free',
+            ...((planRows || []) as Array<{ slug?: string; is_active?: boolean }>)
+              .filter((plan) => plan.is_active !== false)
+              .map((plan) => String(plan.slug || '').trim().toLowerCase())
+              .filter(Boolean),
+          ]))
+
+          if (!allowedPlans.includes(membershipPlan)) {
+            return Response.json({ error: 'Invalid membership plan selected.' }, { status: 400 })
+          }
+
+          const authUser = await findAuthUserByEmail(normalizedEmail)
+          if (!authUser?.id) {
+            return Response.json({ error: 'Target auth user not found' }, { status: 404 })
+          }
+
+          const currentMeta = ((authUser.user_metadata as Record<string, unknown> | null | undefined) ?? {})
+          const nextMeta: Record<string, unknown> = {
+            ...currentMeta,
+            membership_plan: membershipPlan,
+          }
+
+          if (membershipPlan === 'free') {
+            nextMeta.stripe_subscription_id = null
+          }
+
+          const adminClient = getSupabaseAdminClient()
+          const { error: updateError } = await adminClient.auth.admin.updateUserById(authUser.id, {
+            user_metadata: nextMeta,
+          })
+
+          if (updateError) {
+            return Response.json({ error: updateError.message }, { status: 500 })
+          }
+
+          return Response.json({
+            updated: {
+              email: normalizedEmail,
+              membership_plan: membershipPlan,
+              stripe_subscription_id: membershipPlan === 'free' ? null : (nextMeta.stripe_subscription_id || null),
+            },
           })
         } catch (error) {
           if (error instanceof Response) return error

@@ -96,6 +96,7 @@ type CustomOAuthProviderRow = {
 const BUILTIN_OAUTH_PROVIDER_META: Record<string, { label: string; description: string }> = {
   discord: { label: 'Discord', description: 'Link your Discord account' },
   google: { label: 'Google / YouTube', description: 'Link your Google account' },
+  kick: { label: 'Kick', description: 'Link your Kick account' },
   apple: { label: 'Apple', description: 'Link your Apple account' },
   facebook: { label: 'Facebook', description: 'Link your Facebook account' },
 }

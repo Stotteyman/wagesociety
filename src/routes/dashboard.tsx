@@ -338,6 +338,8 @@ function CreatorDashboard({
   const [newsLoading, setNewsLoading] = useState(false)
   const [plans, setPlans] = useState<MembershipPlan[]>(fallbackMembershipPlans)
   const [plansLoading, setPlansLoading] = useState(true)
+  const [upgradingPlan, setUpgradingPlan] = useState<string | null>(null)
+  const [subscriptionError, setSubscriptionError] = useState('')
   const isSuperadmin = role === 'superadmin'
   const canUseViewAs = actorRole === 'superadmin' || canManageRole(actorRole, 'user')
   const selectableRoles: OrgRole[] = [
@@ -505,6 +507,60 @@ function CreatorDashboard({
     setStoredViewAsRole(targetRole ? (targetRole as OrgRole) : null)
     if (typeof window !== 'undefined') {
       window.location.reload()
+    }
+  }
+
+  const updateMembership = async (plan: MembershipPlan) => {
+    const email = String(member?.email || '').trim().toLowerCase()
+    if (!email) {
+      setSubscriptionError('Missing account email. Please refresh and try again.')
+      return
+    }
+
+    try {
+      setUpgradingPlan(plan.slug)
+      setSubscriptionError('')
+
+      const response = await authedFetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planSlug: plan.slug,
+          email,
+          name: getDashboardUsername(member),
+        }),
+      })
+
+      const data = (await response.json()) as {
+        checkoutUrl?: string
+        successUrl?: string
+        updated?: boolean
+        free?: boolean
+        error?: string
+      }
+
+      if (!response.ok || data.error) {
+        setSubscriptionError(data.error || 'Could not update your subscription right now.')
+        return
+      }
+
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl
+        return
+      }
+
+      if (data.successUrl) {
+        window.location.href = data.successUrl
+        return
+      }
+
+      if (data.updated || data.free) {
+        window.location.reload()
+      }
+    } catch {
+      setSubscriptionError('Could not update your subscription right now.')
+    } finally {
+      setUpgradingPlan(null)
     }
   }
 
@@ -749,9 +805,18 @@ function CreatorDashboard({
                               <p className="mt-0.5 text-xs text-zinc-400">{plan.description}</p>
                             </div>
                             {!isCurrent ? (
-                              <span className="flex-shrink-0 rounded-lg border border-zinc-100/25 px-3 py-1.5 text-xs font-semibold text-zinc-300">
-                                {plan.slug === 'free' ? 'Downgrade via admin' : 'Upgrade via admin'}
-                              </span>
+                              <button
+                                type="button"
+                                onClick={() => { void updateMembership(plan) }}
+                                disabled={Boolean(upgradingPlan)}
+                                className="flex-shrink-0 rounded-lg border border-zinc-100/25 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition hover:border-orange-200/70 hover:text-orange-100 disabled:cursor-not-allowed disabled:opacity-60"
+                              >
+                                {upgradingPlan === plan.slug
+                                  ? 'Processing...'
+                                  : plan.slug === 'free'
+                                  ? 'Downgrade'
+                                  : 'Choose Plan'}
+                              </button>
                             ) : null}
                           </div>
                           {plan.features.length > 0 ? (
@@ -768,6 +833,12 @@ function CreatorDashboard({
                     })}
                   </div>
                 )}
+
+                {subscriptionError ? (
+                  <p className="mt-3 rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+                    {subscriptionError}
+                  </p>
+                ) : null}
 
                 <p className="mt-3 text-xs text-zinc-500">
                   Payments are processed securely via Stripe. Cancel anytime from your billing settings.

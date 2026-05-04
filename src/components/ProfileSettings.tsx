@@ -37,9 +37,12 @@ type ProfileApiResponse = {
 const FALLBACK_OAUTH_PROVIDERS: OAuthProviderOption[] = [
   { key: 'discord', label: 'Discord', description: 'Link your Discord account' },
   { key: 'google', label: 'Google / YouTube', description: 'Link your Google account' },
+  { key: 'kick', label: 'Kick', description: 'Link your Kick account' },
   { key: 'apple', label: 'Apple', description: 'Link your Apple account' },
   { key: 'facebook', label: 'Facebook', description: 'Link your Facebook account' },
 ]
+
+const REQUIRED_OAUTH_PROVIDER_KEYS = ['google', 'kick'] as const
 
 function toTitleCase(value: string) {
   return value
@@ -84,6 +87,12 @@ function mergeProviderOptions(
     if (!key || key === 'email') continue
     if (!options.has(key)) {
       options.set(key, providerOptionFromKey(key))
+    }
+  }
+
+  for (const requiredKey of REQUIRED_OAUTH_PROVIDER_KEYS) {
+    if (!options.has(requiredKey)) {
+      options.set(requiredKey, providerOptionFromKey(requiredKey))
     }
   }
 
@@ -209,6 +218,11 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
     setLinkingProvider(provider)
     setError('')
     try {
+      if (normalizedProvider === 'kick') {
+        window.location.href = '/api/kick-login'
+        return
+      }
+
       const supabase = getSupabaseBrowserClient()
       const { error: linkError } = await supabase.auth.linkIdentity({
         provider: normalizedProvider as any,
@@ -227,14 +241,28 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
     }
   }
 
+  const isKickLinked = () => {
+    const metadata = (user?.user_metadata as Record<string, unknown> | undefined) || {}
+    const kickId = String(metadata.kick_id || '').trim()
+    const kickUsername = String(metadata.kick_username || '').trim()
+    return Boolean(kickId || kickUsername)
+  }
+
   const isLinked = (provider: string) => {
     const normalizedProvider = provider.trim().toLowerCase()
+    if (normalizedProvider === 'kick') {
+      return isKickLinked()
+    }
     return user?.identities?.some((i) => String(i.provider || '').trim().toLowerCase() === normalizedProvider) ?? false
   }
 
   const linkedIdentityProviders = (user?.identities || [])
     .map((identity) => String(identity.provider || '').toLowerCase())
     .filter(Boolean)
+
+  if (isKickLinked() && !linkedIdentityProviders.includes('kick')) {
+    linkedIdentityProviders.push('kick')
+  }
 
   const checkUsername = (value: string) => {
     if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current)

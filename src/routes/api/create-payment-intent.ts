@@ -1,7 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import Stripe from 'stripe'
-import { getSupabaseAdminClient } from '../../lib/supabaseAdmin'
+import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../lib/supabaseAdmin'
 import { getRequesterAccess } from '../../lib/orgAuth'
+import { getSupabaseServerClientForToken, getSupabaseServerPublicClient } from '../../lib/supabaseServer'
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY
@@ -22,31 +23,86 @@ function getBaseUrl(request: Request) {
   return `${proto}://${host}`
 }
 
+function getBearerToken(request: Request) {
+  const authHeader = request.headers.get('authorization') || request.headers.get('Authorization') || ''
+  if (!authHeader.toLowerCase().startsWith('bearer ')) return undefined
+  const token = authHeader.slice(7).trim()
+  return token || undefined
+}
+
+function getServerClientForRequest(request: Request) {
+  if (hasSupabaseAdminConfig()) {
+    return getSupabaseAdminClient()
+  }
+
+  const token = getBearerToken(request)
+  if (token) {
+    return getSupabaseServerClientForToken(token)
+  }
+
+  return getSupabaseServerPublicClient()
+}
+
 async function updateUserMembershipMetadata(
+  request: Request,
   email: string,
   updates: Partial<AuthUserMeta>,
 ) {
-  const admin = getSupabaseAdminClient()
-  const { data: users, error: usersError } = await admin
-    .schema('auth')
-    .from('users')
-    .select('id, email, raw_user_meta_data')
-    .ilike('email', email)
-    .limit(1)
+  if (hasSupabaseAdminConfig()) {
+    const admin = getSupabaseAdminClient() as any
+    const { data: users, error: usersError } = await admin
+      .schema('auth')
+      .from('users')
+      .select('id, email, raw_user_meta_data')
+      .ilike('email', email)
+      .limit(1)
 
-  if (usersError) throw new Error(usersError.message)
-  const user = Array.isArray(users) ? users[0] : null
-  if (!user?.id) return
+    if (usersError) throw new Error(usersError.message)
+    const user = Array.isArray(users) ? users[0] : null
+    if (!user?.id) return
 
-  const currentMeta = ((user.raw_user_meta_data as AuthUserMeta | null | undefined) ?? {})
+    const currentMeta = ((user.raw_user_meta_data as AuthUserMeta | null | undefined) ?? {})
+    const nextMeta: AuthUserMeta = {
+      ...currentMeta,
+      ...updates,
+    }
+
+    const { error: updateError } = await admin.auth.admin.updateUserById(user.id, {
+      user_metadata: nextMeta,
+    })
+    if (updateError) throw new Error(updateError.message)
+    return
+  }
+
+  const token = getBearerToken(request)
+  if (!token) {
+    throw new Error('Missing user token for metadata update')
+  }
+
+  const userClient = getSupabaseServerClientForToken(token)
+  const {
+    data: { user },
+    error: userError,
+  } = await userClient.auth.getUser(token)
+
+  if (userError || !user?.email) {
+    throw new Error(userError?.message || 'Could not resolve current user')
+  }
+
+  if (user.email.toLowerCase() !== email.toLowerCase()) {
+    throw new Error('Metadata update email mismatch')
+  }
+
+  const currentMeta = ((user.user_metadata as AuthUserMeta | null | undefined) ?? {})
   const nextMeta: AuthUserMeta = {
     ...currentMeta,
     ...updates,
   }
 
-  const { error: updateError } = await admin.auth.admin.updateUserById(user.id, {
-    user_metadata: nextMeta,
+  const { error: updateError } = await userClient.auth.updateUser({
+    data: nextMeta,
   })
+
   if (updateError) throw new Error(updateError.message)
 }
 
@@ -81,8 +137,8 @@ export const Route = createFileRoute('/api/create-payment-intent')({
           }
 
           // Fetch plan details from DB
-          const admin = getSupabaseAdminClient()
-          const { data: _plan, error: planError } = await admin
+          const serverClient = getServerClientForRequest(request)
+          const { data: _plan, error: planError } = await serverClient
             .from('org_shop_membership_plans')
             .select('id, slug, name, price_cents, display_price')
             .eq('slug', planSlug)
@@ -131,13 +187,13 @@ export const Route = createFileRoute('/api/create-payment-intent')({
               await stripe.subscriptions.cancel(existingSubscription.id)
             }
 
-            await updateUserMembershipMetadata(email.toLowerCase(), {
+            await updateUserMembershipMetadata(request, email.toLowerCase(), {
               membership_plan: plan.slug,
               stripe_customer_id: customer.id,
               stripe_subscription_id: undefined,
             })
 
-            await admin.rpc('ensure_org_member_role', {
+            await (serverClient as any).rpc('ensure_org_member_role', {
               p_email: email.toLowerCase(),
             })
 
@@ -181,13 +237,13 @@ export const Route = createFileRoute('/api/create-payment-intent')({
               },
             })
 
-            await updateUserMembershipMetadata(email.toLowerCase(), {
+            await updateUserMembershipMetadata(request, email.toLowerCase(), {
               membership_plan: plan.slug,
               stripe_customer_id: customer.id,
               stripe_subscription_id: updatedSubscription.id,
             })
 
-            await admin.rpc('ensure_org_member_role', {
+            await (serverClient as any).rpc('ensure_org_member_role', {
               p_email: email.toLowerCase(),
             })
 

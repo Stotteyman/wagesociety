@@ -110,13 +110,16 @@ export const Route = createFileRoute('/api/kick-callback')({
           const existing = existingUsers?.users?.find((u) => u.email === email)
 
           if (existing) {
+            const existingMeta = (existing.user_metadata as Record<string, unknown> | null | undefined) ?? {}
             await admin.auth.admin.updateUserById(existing.id, {
               user_metadata: {
+                ...existingMeta,
                 username: kickUser.username,
                 full_name: kickUser.name || kickUser.username,
                 avatar_url: kickUser.profile_pic || null,
                 kick_username: kickUser.username,
                 kick_id: kickUser.id,
+                membership_plan: String(existingMeta.membership_plan || 'free'),
               },
             })
           } else {
@@ -129,6 +132,8 @@ export const Route = createFileRoute('/api/kick-callback')({
                 avatar_url: kickUser.profile_pic || null,
                 kick_username: kickUser.username,
                 kick_id: kickUser.id,
+                membership_plan: 'free',
+                onboarding_completed: false,
               },
             })
 
@@ -136,7 +141,7 @@ export const Route = createFileRoute('/api/kick-callback')({
               return Response.redirect(buildAuthRedirectUrl(authOrigin, '/dashboard?error=kick_account_create_failed'), 302)
             }
 
-            await admin.rpc('ensure_org_member_role', {
+            await (admin as any).rpc('ensure_org_member_role', {
               p_email: email,
               p_role: 'user',
             })

@@ -36,6 +36,11 @@ type PermissionRow = {
   banned_enabled: boolean
 }
 
+type ShopPlanRow = {
+  slug: string
+  is_active?: boolean
+}
+
 const roleBadgeClass: Record<OrgRole, string> = {
   superadmin: 'border-orange-300/60 bg-orange-400/10 text-orange-200',
   admin: 'border-cyan-400/40 bg-cyan-400/10 text-cyan-200',
@@ -83,6 +88,11 @@ function AdminUsersPage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
 
+  // Subscription management
+  const [availablePlans, setAvailablePlans] = useState<string[]>(['free'])
+  const [planDraftByEmail, setPlanDraftByEmail] = useState<Record<string, string>>({})
+  const [planSavingEmail, setPlanSavingEmail] = useState('')
+
   // Permission panel
   const [activePermRole, setActivePermRole] = useState<OrgRole>('admin')
   const [permSavingKey, setPermSavingKey] = useState('')
@@ -119,11 +129,37 @@ function AdminUsersPage() {
     const res = await authedFetch('/api/admin/roles')
     const json = await res.json()
     if (!res.ok) { setError(json.error || 'Failed to load members'); return }
-    setRoles(json.roles || [])
+    const nextRoles = (json.roles || []) as RoleRow[]
+    setRoles(nextRoles)
+    setPlanDraftByEmail((prev) => {
+      const next = { ...prev }
+      for (const row of nextRoles) {
+        if (!row.email) continue
+        const currentPlan = String(row.membership_plan || 'free').trim().toLowerCase()
+        next[row.email] = currentPlan || 'free'
+      }
+      return next
+    })
     setRequesterEmail(json.requester?.email || '')
     setRequestSource(json.requester?.source || '')
     setRequesterRole((json.requester?.role as OrgRole) || 'user')
     setRequesterPermissions(json.requester?.permissions || [])
+  }
+
+  const loadPlans = async () => {
+    const res = await authedFetch('/api/admin/shop/plans')
+    const json = await res.json()
+    if (!res.ok) return
+
+    const planSlugs = Array.isArray(json.plans)
+      ? (json.plans as ShopPlanRow[])
+          .filter((plan) => plan.is_active !== false)
+          .map((plan) => String(plan.slug || '').trim().toLowerCase())
+          .filter((slug) => Boolean(slug))
+      : []
+
+    const unique = Array.from(new Set(['free', ...planSlugs]))
+    setAvailablePlans(unique)
   }
 
   const loadPermissions = async () => {
@@ -136,7 +172,7 @@ function AdminUsersPage() {
   useEffect(() => {
     void (async () => {
       setLoading(true)
-      await Promise.all([loadRoles(), loadPermissions()])
+      await Promise.all([loadRoles(), loadPermissions(), loadPlans()])
       setLoading(false)
     })()
   }, [])
@@ -181,6 +217,40 @@ function AdminUsersPage() {
     if (!res.ok) setError(json.error || 'Failed to update permission')
     else await loadPermissions()
     setPermSavingKey('')
+  }
+
+  const updateSubscription = async (email: string) => {
+    if (!canManageUsers) return
+    const requestedPlan = String(planDraftByEmail[email] || 'free').trim().toLowerCase()
+    if (!requestedPlan) {
+      setError('Please select a valid subscription plan.')
+      return
+    }
+
+    setPlanSavingEmail(email)
+    setError('')
+
+    const res = await authedFetch('/api/admin/roles', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        targetEmail: email,
+        membershipPlan: requestedPlan,
+      }),
+    })
+
+    const json = await res.json()
+    if (!res.ok) {
+      const detailText = Array.isArray(json.details)
+        ? json.details.filter((item: unknown) => typeof item === 'string').join(' ')
+        : ''
+      setError([json.error || 'Failed to update subscription plan', detailText].filter(Boolean).join(' '))
+      setPlanSavingEmail('')
+      return
+    }
+
+    await loadRoles()
+    setPlanSavingEmail('')
   }
 
   // Permissions for the currently selected role tab
@@ -373,6 +443,29 @@ function AdminUsersPage() {
                       <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${roleBadgeClass[row.role]}`}>
                         {row.role === 'banned' ? <span className="flex items-center gap-1"><Ban size={10} />{ORG_ROLE_LABELS[row.role]}</span> : ORG_ROLE_LABELS[row.role]}
                       </span>
+                      <div className="flex items-center gap-1.5">
+                        <select
+                          value={planDraftByEmail[row.email] || 'free'}
+                          onChange={(event) => {
+                            const value = event.target.value
+                            setPlanDraftByEmail((prev) => ({ ...prev, [row.email]: value }))
+                          }}
+                          disabled={!canManageUsers || planSavingEmail === row.email}
+                          className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 outline-none"
+                        >
+                          {availablePlans.map((plan) => (
+                            <option key={plan} value={plan}>{plan.toUpperCase()}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => { void updateSubscription(row.email) }}
+                          disabled={!canManageUsers || planSavingEmail === row.email}
+                          className="rounded-md border border-zinc-500/60 px-2 py-1 text-xs font-semibold text-zinc-100 transition hover:border-orange-300/70 hover:text-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {planSavingEmail === row.email ? 'Saving...' : 'Save Plan'}
+                        </button>
+                      </div>
                     </div>
                   </li>
                 ))}
