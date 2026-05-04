@@ -25,24 +25,43 @@ function parseEnvFile(filePath) {
 const fileEnv = parseEnvFile(envLocalPath)
 const getValue = (key) => process.env[key] || fileEnv[key] || ''
 
-const requiredServer = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
-const requiredBrowser = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_PUBLISHABLE_KEY']
+const serverUrlKeys = ['SUPABASE_URL', 'VITE_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL']
+const browserUrlKeys = ['VITE_SUPABASE_URL', 'SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL']
+const browserPublishableKeys = [
+  'VITE_SUPABASE_PUBLISHABLE_KEY',
+  'VITE_SUPABASE_ANON_KEY',
+  'SUPABASE_PUBLISHABLE_KEY',
+  'SUPABASE_ANON_KEY',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+]
 
-const missingServer = requiredServer.filter((key) => !getValue(key))
-const missingBrowser = requiredBrowser.filter((key) => !getValue(key))
+const hasAny = (keys) => keys.some((key) => Boolean(getValue(key)))
 
-if (!missingServer.length && !missingBrowser.length) {
-  console.log('Environment check passed: Supabase server and browser keys are configured.')
+const hasServerUrl = hasAny(serverUrlKeys)
+const hasBrowserUrl = hasAny(browserUrlKeys)
+const hasBrowserPublishable = hasAny(browserPublishableKeys)
+const hasServiceRole = Boolean(getValue('SUPABASE_SERVICE_ROLE_KEY'))
+
+if (hasServerUrl && hasBrowserUrl && hasBrowserPublishable) {
+  console.log('Environment check passed: Supabase URL and browser publishable key are configured.')
+  if (!hasServiceRole) {
+    console.warn(
+      'Warning: SUPABASE_SERVICE_ROLE_KEY is missing. Public/auth flows work, but privileged admin DB operations will be limited.',
+    )
+  }
   process.exit(0)
 }
 
 console.error('Environment check failed.')
-if (missingServer.length) {
-  console.error(`Missing server keys: ${missingServer.join(', ')}`)
+if (!hasServerUrl) {
+  console.error(`Missing Supabase URL. Set one of: ${serverUrlKeys.join(', ')}`)
 }
-if (missingBrowser.length) {
-  console.error(`Missing browser keys: ${missingBrowser.join(', ')}`)
+if (!hasBrowserUrl) {
+  console.error(`Missing browser Supabase URL. Set one of: ${browserUrlKeys.join(', ')}`)
+}
+if (!hasBrowserPublishable) {
+  console.error(`Missing browser publishable key. Set one of: ${browserPublishableKeys.join(', ')}`)
 }
 
-console.error('Set missing values in .env.local or your deployment environment variables.')
+console.error('Set missing values in .env.local (localhost) or in your deployment environment variables (production).')
 process.exit(1)

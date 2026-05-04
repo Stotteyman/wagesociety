@@ -10,14 +10,13 @@
  *   - Case-insensitive uniqueness against org_member_profiles.display_name
  */
 import { createFileRoute } from '@tanstack/react-router'
-import { getSupabaseAdminClient } from '../../lib/supabaseAdmin'
+import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../lib/supabaseAdmin'
+import { getSupabaseServerPublicClient } from '../../lib/supabaseServer'
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,20}$/
 
 type AuthUserMeta = {
   username?: string
-  full_name?: string
-  name?: string
   preferred_username?: string
 }
 
@@ -41,35 +40,38 @@ export const Route = createFileRoute('/api/check-username')({
         }
 
         try {
-          const admin = getSupabaseAdminClient()
-          const { data, error } = await admin
+          const client = hasSupabaseAdminConfig() ? getSupabaseAdminClient() : getSupabaseServerPublicClient()
+          const { data, error } = await client
             .from('org_member_profiles')
             .select('email, display_name')
             .ilike('display_name', username)
             .limit(1)
 
           if (error && error.code !== '42P01') {
-            // 42P01 = table does not exist yet → no profiles → username is free
-            return Response.json({ error: 'Could not check username availability.' }, { status: 500 })
+            // If lookup cannot run in this environment, do not block the user with a false "taken" result.
+            return Response.json({ available: true, username, reason: 'Availability check is limited in this environment.' })
           }
 
-          const { data: authUsersPage, error: authUsersError } = await admin.auth.admin.listUsers({
-            page: 1,
-            perPage: 1000,
-          })
+          let takenInMetadata = false
 
-          if (authUsersError) {
-            return Response.json({ error: 'Could not check username availability.' }, { status: 500 })
+          if (hasSupabaseAdminConfig()) {
+            const admin = getSupabaseAdminClient()
+            const { data: authUsersPage, error: authUsersError } = await admin.auth.admin.listUsers({
+              page: 1,
+              perPage: 1000,
+            })
+
+            if (!authUsersError) {
+              const normalized = username.toLowerCase()
+              takenInMetadata = (authUsersPage?.users || []).some((row) => {
+                const rowEmail = String(row.email || '').toLowerCase()
+                if (currentEmail && rowEmail === currentEmail) return false
+                const meta = (row.user_metadata as AuthUserMeta | null | undefined) ?? null
+                const candidates = [meta?.username, meta?.preferred_username]
+                return candidates.some((candidate) => candidate?.trim().toLowerCase() === normalized)
+              })
+            }
           }
-
-          const normalized = username.toLowerCase()
-          const takenInMetadata = (authUsersPage?.users || []).some((row) => {
-            const rowEmail = String(row.email || '').toLowerCase()
-            if (currentEmail && rowEmail === currentEmail) return false
-            const meta = (row.user_metadata as AuthUserMeta | null | undefined) ?? null
-            const candidates = [meta?.username, meta?.full_name, meta?.name, meta?.preferred_username]
-            return candidates.some((candidate) => candidate?.trim().toLowerCase() === normalized)
-          })
 
           const takenInProfiles = (Array.isArray(data) ? data : []).some((row) => {
             const rowEmail = String((row as { email?: string | null }).email || '').toLowerCase()
@@ -80,7 +82,7 @@ export const Route = createFileRoute('/api/check-username')({
           const taken = takenInProfiles || takenInMetadata
           return Response.json({ available: !taken, username })
         } catch {
-          return Response.json({ error: 'Unexpected server error' }, { status: 500 })
+          return Response.json({ available: true, username, reason: 'Availability check is temporarily unavailable.' })
         }
       },
     },

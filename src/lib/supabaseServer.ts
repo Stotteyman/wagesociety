@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
 const publishableKey =
   process.env.SUPABASE_PUBLISHABLE_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
   process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
@@ -30,7 +31,9 @@ export function getSupabaseServerPublicClient(): ReturnType<typeof createClient>
   }
 
   if (!publishableKey) {
-    throw new Error('Missing Supabase publishable key. Set VITE_SUPABASE_PUBLISHABLE_KEY.')
+    throw new Error(
+      'Missing Supabase publishable key. Set SUPABASE_PUBLISHABLE_KEY, SUPABASE_ANON_KEY, VITE_SUPABASE_PUBLISHABLE_KEY, or NEXT_PUBLIC_SUPABASE_ANON_KEY.',
+    )
   }
 
   if (!serverPublicClient) {
@@ -46,7 +49,9 @@ export function getSupabaseServerClientForToken(accessToken?: string): ReturnTyp
   }
 
   if (!publishableKey) {
-    throw new Error('Missing Supabase publishable key. Set VITE_SUPABASE_PUBLISHABLE_KEY.')
+    throw new Error(
+      'Missing Supabase publishable key. Set SUPABASE_PUBLISHABLE_KEY, SUPABASE_ANON_KEY, VITE_SUPABASE_PUBLISHABLE_KEY, or NEXT_PUBLIC_SUPABASE_ANON_KEY.',
+    )
   }
 
   return createServerClient(accessToken)

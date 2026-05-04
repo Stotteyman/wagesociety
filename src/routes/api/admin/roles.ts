@@ -22,9 +22,9 @@ export const Route = createFileRoute('/api/admin/roles')({
     handlers: {
       GET: async ({ request }) => {
         try {
-          const { role, permissions } = await getRequesterAccess(request)
+          const access = await getRequesterAccess(request)
 
-          if (role !== 'superadmin' && !permissions.includes('manage_users')) {
+          if (!access.isSuperadmin && !access.permissions.includes('manage_users')) {
             return Response.json({ error: 'Manage users permission required' }, { status: 403 })
           }
 
@@ -38,9 +38,9 @@ export const Route = createFileRoute('/api/admin/roles')({
 
           return Response.json({
             requester: {
-              ...requester,
-              role,
-              permissions,
+              ...access.requester,
+              role: access.role,
+              permissions: access.permissions,
             },
             roles: data || [],
           })

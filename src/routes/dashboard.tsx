@@ -67,9 +67,16 @@ type AppUser = {
   email?: string | null
   user_metadata?: {
     username?: string
-    full_name?: string
+    preferred_username?: string
     membership_plan?: string
   }
+}
+
+function getDashboardUsername(member: AppUser | null) {
+  const username = String(member?.user_metadata?.username || '').trim()
+  const preferred = String(member?.user_metadata?.preferred_username || '').trim()
+  const fromEmail = String(member?.email || '').split('@')[0].trim()
+  return username || preferred || fromEmail || 'Member'
 }
 
 type NewsItem = {
@@ -444,10 +451,7 @@ function CreatorDashboard({
   ]
 
   const visibleFunctions = dashboardFunctions.filter((fn) => hasPermission(fn.requiredPermission))
-  const dashboardDisplayName =
-    member?.email?.toLowerCase() === 'stotteyman@gmail.com'
-      ? 'stotteyman'
-      : member?.user_metadata?.username || member?.email?.split('@')[0] || 'Member'
+  const dashboardDisplayName = getDashboardUsername(member)
 
   useEffect(() => {
     if (isLocalRootSessionActive()) {
@@ -789,7 +793,7 @@ function CreatorDashboard({
                 </div>
                 <div>
                   <p className="text-xs font-medium text-zinc-400">Username</p>
-                  <p className="mt-0.5 text-sm text-zinc-100">{member.user_metadata?.username || member.user_metadata?.full_name || '—'}</p>
+                  <p className="mt-0.5 text-sm text-zinc-100">{getDashboardUsername(member)}</p>
                 </div>
                 <div>
                   <p className="text-xs font-medium text-zinc-400">Role</p>

@@ -92,7 +92,7 @@ function OnboardingPage() {
         setEmail(user.email)
         const seedName =
           String(meta.username || '').trim() ||
-          String(meta.full_name || '').trim() ||
+          String(meta.preferred_username || '').trim() ||
           user.email.split('@')[0] ||
           ''
         setDisplayName(seedName)
@@ -149,6 +149,13 @@ function OnboardingPage() {
           const response = await fetch(
             `/api/check-username?username=${encodeURIComponent(trimmed)}&currentEmail=${encodeURIComponent(email)}`,
           )
+
+          if (!response.ok) {
+            setUsernameStatus('idle')
+            setUsernameMessage('Could not verify availability right now.')
+            return
+          }
+
           const data = (await response.json()) as { available?: boolean; reason?: string }
 
           if (data.available === true) {
@@ -174,6 +181,12 @@ function OnboardingPage() {
     const response = await fetch(
       `/api/check-username?username=${encodeURIComponent(trimmed)}&currentEmail=${encodeURIComponent(email)}`,
     )
+
+    if (!response.ok) {
+      // Do not block onboarding on temporary availability-check issues.
+      return true
+    }
+
     const data = (await response.json()) as { available?: boolean; reason?: string }
     if (!data.available) {
       setError(data.reason || 'That username is already taken. Please choose another.')
@@ -232,7 +245,7 @@ function OnboardingPage() {
           data: {
             ...meta,
             username: trimmedName,
-            full_name: trimmedName,
+            preferred_username: trimmedName,
             membership_plan: String(meta.membership_plan || 'free'),
             onboarding_completed: true,
           },

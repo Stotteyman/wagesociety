@@ -32,6 +32,16 @@ const OAUTH_PROVIDERS: { key: OAuthProvider; label: string; description: string 
   { key: 'facebook', label: 'Facebook', description: 'Link your Facebook account' },
 ]
 
+function deriveUsername(user: SupabaseUser | null, memberEmail: string) {
+  const fromUsername = String(user?.user_metadata?.username || '').trim()
+  const fromPreferred = String(user?.user_metadata?.preferred_username || '').trim()
+  const fromEmail = String(user?.email || memberEmail || '')
+    .split('@')[0]
+    .trim()
+
+  return fromUsername || fromPreferred || fromEmail || ''
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function ProfileSettings({ member }: { member: { email: string } }) {
@@ -59,11 +69,7 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
           supabase.auth.getUser(),
         ])
 
-        const metadataName =
-          String(currentUser?.user_metadata?.username || '').trim() ||
-          String(currentUser?.user_metadata?.full_name || '').trim() ||
-          String(currentUser?.email || '').split('@')[0] ||
-          ''
+        const metadataName = deriveUsername(currentUser, member.email)
 
         if (profileResponse.ok) {
           const data = (await profileResponse.json()) as ProfileApiResponse
@@ -151,7 +157,7 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
     if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current)
     const trimmed = value.trim()
     // If the value matches current saved name, no check needed
-    if (!trimmed || trimmed === (profile?.display_name ?? '')) {
+    if (!trimmed || trimmed.toLowerCase() === String(profile?.display_name ?? '').trim().toLowerCase()) {
       setUsernameStatus('idle')
       setUsernameMessage('')
       return
@@ -169,6 +175,13 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
           const res = await fetch(
             `/api/check-username?username=${encodeURIComponent(trimmed)}&currentEmail=${encodeURIComponent(member.email)}`,
           )
+
+          if (!res.ok) {
+            setUsernameStatus('idle')
+            setUsernameMessage('Could not verify availability right now.')
+            return
+          }
+
           const data = (await res.json()) as { available?: boolean; reason?: string }
           if (data.available === true) {
             setUsernameStatus('available')

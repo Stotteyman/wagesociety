@@ -84,6 +84,13 @@ export function AuthPage({ view }: { view: AuthView }) {
       void (async () => {
         try {
           const response = await fetch(`/api/check-username?username=${encodeURIComponent(trimmed)}`)
+
+          if (!response.ok) {
+            setUsernameStatus('idle')
+            setUsernameMessage('Could not verify availability right now.')
+            return
+          }
+
           const data = (await response.json()) as { available?: boolean; reason?: string }
           if (data.available === true) {
             setUsernameStatus('available')
@@ -118,10 +125,16 @@ export function AuthPage({ view }: { view: AuthView }) {
       }
       if (usernameStatus !== 'available') {
         const checkResponse = await fetch(`/api/check-username?username=${encodeURIComponent(name.trim())}`)
+
+        if (!checkResponse.ok) {
+          // Do not block signup on temporary availability-check issues.
+          setUsernameStatus('idle')
+        } else {
         const checkData = (await checkResponse.json()) as { available?: boolean; reason?: string }
-        if (!checkData.available) {
-          setError(checkData.reason || 'That username is already taken. Please choose another.')
-          return
+          if (!checkData.available) {
+            setError(checkData.reason || 'That username is already taken. Please choose another.')
+            return
+          }
         }
       }
       setBusyAction('signup')
@@ -132,7 +145,7 @@ export function AuthPage({ view }: { view: AuthView }) {
         options: {
           data: {
             username: name.trim(),
-            full_name: name.trim(),
+            preferred_username: name.trim(),
             membership_plan: 'free',
             onboarding_completed: false,
           },

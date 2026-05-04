@@ -20,7 +20,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { requirePermission } from '../../../lib/orgAuth'
-import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin'
+import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../../lib/supabaseAdmin'
+import { getSupabaseServerClientForToken } from '../../../lib/supabaseServer'
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,20}$/
 
@@ -33,18 +34,23 @@ const updateSchema = z.object({
 
 type AuthUserMeta = {
   username?: string
-  full_name?: string
-  name?: string
   preferred_username?: string
 }
 
 function readDisplayNameFromMeta(meta: AuthUserMeta | null | undefined) {
-  const candidates = [meta?.username, meta?.full_name, meta?.name, meta?.preferred_username]
+  const candidates = [meta?.username, meta?.preferred_username]
   for (const candidate of candidates) {
     const trimmed = candidate?.trim()
     if (trimmed) return trimmed
   }
   return null
+}
+
+function getBearerToken(request: Request) {
+  const authHeader = request.headers.get('authorization') || ''
+  if (!authHeader.toLowerCase().startsWith('bearer ')) return undefined
+  const token = authHeader.slice(7).trim()
+  return token || undefined
 }
 
 function createFallbackProfile(email: string, displayName: string | null) {
@@ -59,27 +65,47 @@ function createFallbackProfile(email: string, displayName: string | null) {
   }
 }
 
+type ProfileRow = {
+  email: string
+  display_name: string | null
+  avatar_url: string | null
+  bio: string | null
+  skills: string[] | null
+  updated_at: string | null
+  username_changed_at: string | null
+}
+
 export const Route = createFileRoute('/api/me/profile')({
   server: {
     handlers: {
       GET: async ({ request }) => {
         try {
           const access = await requirePermission(request, 'view_dashboard')
-          const admin = getSupabaseAdminClient()
+          const canUseAdmin = hasSupabaseAdminConfig()
+          const token = getBearerToken(request)
+          const client = canUseAdmin ? getSupabaseAdminClient() : getSupabaseServerClientForToken(token)
 
-          const [{ data: profile, error: profileError }, { data: authUser, error: authUserError }] = await Promise.all([
-            admin
+          const profilePromise = (client as any)
               .from('org_member_profiles')
               .select('email, display_name, avatar_url, bio, skills, updated_at, username_changed_at')
               .eq('email', access.requester.email)
-              .maybeSingle(),
-            admin
+              .maybeSingle()
+
+          const authUserPromise = canUseAdmin
+            ? (getSupabaseAdminClient() as any)
               .schema('auth')
               .from('users')
               .select('raw_user_meta_data')
               .eq('email', access.requester.email)
-              .maybeSingle(),
+              .maybeSingle()
+            : Promise.resolve({ data: null, error: null })
+
+          const [{ data: profileRaw, error: profileError }, { data: authUser, error: authUserError }] = await Promise.all([
+            profilePromise,
+            authUserPromise,
           ])
+
+          const profile = (profileRaw as ProfileRow | null) || null
 
           if (profileError && profileError.code !== '42P01') {
             return Response.json({ error: profileError.message }, { status: 500 })
@@ -118,18 +144,24 @@ export const Route = createFileRoute('/api/me/profile')({
             return Response.json({ error: 'Invalid payload', details: parsed.error.flatten() }, { status: 400 })
           }
 
-          const admin = getSupabaseAdminClient()
+          const canUseAdmin = hasSupabaseAdminConfig()
+          const token = getBearerToken(request)
+          const client = canUseAdmin ? getSupabaseAdminClient() : getSupabaseServerClientForToken(token)
 
-          const { data: authUsers, error: authUsersError } = await admin
-            .schema('auth')
-            .from('users')
-            .select('id, email, raw_user_meta_data')
+          let authUserList: Array<{ id?: string | null; email?: string | null; raw_user_meta_data?: unknown }> = []
 
-          if (authUsersError) {
-            return Response.json({ error: authUsersError.message }, { status: 500 })
+          if (canUseAdmin) {
+            const { data: authUsers, error: authUsersError } = await (getSupabaseAdminClient() as any)
+              .schema('auth')
+              .from('users')
+              .select('id, email, raw_user_meta_data')
+
+            if (authUsersError) {
+              return Response.json({ error: authUsersError.message }, { status: 500 })
+            }
+
+            authUserList = Array.isArray(authUsers) ? authUsers : []
           }
-
-          const authUserList = Array.isArray(authUsers) ? authUsers : []
 
           // Enforce username uniqueness when display_name is being changed.
           if (parsed.data.displayName !== undefined) {
@@ -142,7 +174,7 @@ export const Route = createFileRoute('/api/me/profile')({
             }
 
             if (newName) {
-              const { data: existing, error: checkError } = await admin
+              const { data: existing, error: checkError } = await client
                 .from('org_member_profiles')
                 .select('email')
                 .ilike('display_name', newName)
@@ -157,17 +189,19 @@ export const Route = createFileRoute('/api/me/profile')({
                 return Response.json({ error: 'That username is already taken. Please choose another.' }, { status: 409 })
               }
 
-              const normalized = newName.toLowerCase()
-              const takenInAuth = authUserList.some((userRow) => {
-                const rowEmail = String(userRow.email || '').toLowerCase()
-                if (!rowEmail || rowEmail === access.requester.email) return false
-                const metadata = (userRow.raw_user_meta_data as AuthUserMeta | null | undefined) ?? null
-                const candidates = [metadata?.username, metadata?.full_name, metadata?.name, metadata?.preferred_username]
-                return candidates.some((candidate) => candidate?.trim().toLowerCase() === normalized)
-              })
+              if (canUseAdmin) {
+                const normalized = newName.toLowerCase()
+                const takenInAuth = authUserList.some((userRow) => {
+                  const rowEmail = String(userRow.email || '').toLowerCase()
+                  if (!rowEmail || rowEmail === access.requester.email) return false
+                  const metadata = (userRow.raw_user_meta_data as AuthUserMeta | null | undefined) ?? null
+                  const candidates = [metadata?.username, metadata?.preferred_username]
+                  return candidates.some((candidate) => candidate?.trim().toLowerCase() === normalized)
+                })
 
-              if (takenInAuth) {
-                return Response.json({ error: 'That username is already taken. Please choose another.' }, { status: 409 })
+                if (takenInAuth) {
+                  return Response.json({ error: 'That username is already taken. Please choose another.' }, { status: 409 })
+                }
               }
             }
           }
@@ -176,17 +210,15 @@ export const Route = createFileRoute('/api/me/profile')({
             (userRow) => String(userRow.email || '').toLowerCase() === access.requester.email,
           )
 
-          if (currentAuthUser?.id && parsed.data.displayName !== undefined) {
+          if (canUseAdmin && currentAuthUser?.id && parsed.data.displayName !== undefined) {
             const existingMeta = (currentAuthUser.raw_user_meta_data as AuthUserMeta | null | undefined) ?? {}
             const trimmedDisplayName = parsed.data.displayName.trim()
             const nextName = trimmedDisplayName || readDisplayNameFromMeta(existingMeta) || ''
 
-            const { error: updateAuthError } = await admin.auth.admin.updateUserById(currentAuthUser.id, {
+            const { error: updateAuthError } = await getSupabaseAdminClient().auth.admin.updateUserById(currentAuthUser.id, {
               user_metadata: {
                 ...existingMeta,
                 username: nextName,
-                full_name: nextName,
-                name: nextName,
                 preferred_username: nextName,
               },
             })
@@ -208,9 +240,9 @@ export const Route = createFileRoute('/api/me/profile')({
           if (parsed.data.bio !== undefined) payload.bio = parsed.data.bio
           if (parsed.data.skills !== undefined) payload.skills = parsed.data.skills
 
-          const { data, error } = await admin
+          const { data, error } = await (client as any)
             .from('org_member_profiles')
-            .upsert(payload, { onConflict: 'email' })
+            .upsert(payload as any, { onConflict: 'email' })
             .select('email, display_name, avatar_url, bio, skills, updated_at, username_changed_at')
             .single()
 
