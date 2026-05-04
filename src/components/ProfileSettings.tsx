@@ -51,6 +51,7 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
   const [usernameMessage, setUsernameMessage] = useState('')
   const usernameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [avatarUrl, setAvatarUrl] = useState('')
+  const [avatarUploading, setAvatarUploading] = useState(false)
   const [bio, setBio] = useState('')
   const [skillsInput, setSkillsInput] = useState('')
   const [loading, setLoading] = useState(true)
@@ -198,6 +199,64 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
     }, 500)
   }
 
+  const uploadAvatar = async (file: File) => {
+    const maxSize = 8 * 1024 * 1024
+    const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+
+    if (file.size > maxSize) {
+      setError('Image is too large. Maximum size is 8 MB.')
+      return
+    }
+
+    if (file.type && !allowedTypes.has(file.type)) {
+      setError('Unsupported image type. Use JPG, PNG, WEBP, or GIF.')
+      return
+    }
+
+    setAvatarUploading(true)
+    setError('')
+    setSaved(false)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const uploadResponse = await authedFetch('/api/profile-photo-upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const uploadData = (await uploadResponse.json()) as { url?: string; error?: string }
+      if (!uploadResponse.ok || !uploadData.url) {
+        setError(uploadData.error || 'Could not upload profile photo.')
+        return
+      }
+
+      const profileResponse = await authedFetch('/api/me/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatarUrl: uploadData.url }),
+      })
+
+      if (!profileResponse.ok) {
+        const data = (await profileResponse.json()) as { error?: string }
+        setError(data.error || 'Photo uploaded, but profile update failed.')
+        setAvatarUrl(uploadData.url)
+        return
+      }
+
+      const profileData = (await profileResponse.json()) as ProfileApiResponse
+      setProfile(profileData.profile)
+      setAvatarUrl(profileData.profile.avatar_url || uploadData.url)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch {
+      setError('Could not upload profile photo.')
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-zinc-400">
@@ -247,26 +306,39 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
           </div>
 
           <div className="sm:col-span-2">
-            <label className="mb-1.5 block text-xs font-medium text-zinc-400">Avatar URL</label>
-            <div className="flex items-center gap-3">
+            <label className="mb-1.5 block text-xs font-medium text-zinc-400">Profile Photo</label>
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200/20 bg-zinc-950/40 p-3">
               {avatarUrl ? (
                 <img
                   src={avatarUrl}
                   alt="Avatar"
-                  className="h-10 w-10 flex-shrink-0 rounded-full border border-zinc-200/20 object-cover"
+                  className="h-14 w-14 flex-shrink-0 rounded-full border border-zinc-200/20 object-cover"
                 />
               ) : (
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-zinc-200/20 bg-zinc-800 text-xs text-zinc-500">
+                <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full border border-zinc-200/20 bg-zinc-800 text-xs text-zinc-500">
                   {member.email.slice(0, 2).toUpperCase()}
                 </div>
               )}
-              <input
-                type="url"
-                value={avatarUrl}
-                onChange={(e) => setAvatarUrl(e.target.value)}
-                placeholder="https://example.com/your-photo.jpg"
-                className="flex-1 rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-orange-200/70"
-              />
+
+              <div className="flex-1">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  disabled={avatarUploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      void uploadAvatar(file)
+                    }
+                    e.currentTarget.value = ''
+                  }}
+                  className="block w-full text-sm text-zinc-300 file:mr-3 file:rounded-md file:border-0 file:bg-orange-300 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-zinc-950 hover:file:bg-orange-200 disabled:opacity-60"
+                />
+                <p className="mt-1 text-xs text-zinc-500">Upload JPG, PNG, WEBP, or GIF (max 8 MB).</p>
+                {avatarUploading ? (
+                  <p className="mt-1 text-xs text-zinc-400">Uploading photo...</p>
+                ) : null}
+              </div>
             </div>
           </div>
 

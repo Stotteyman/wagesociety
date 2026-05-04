@@ -61,7 +61,6 @@ function createFallbackProfile(email: string, displayName: string | null) {
     bio: null,
     skills: [] as string[],
     updated_at: null,
-    username_changed_at: null,
   }
 }
 
@@ -72,7 +71,6 @@ type ProfileRow = {
   bio: string | null
   skills: string[] | null
   updated_at: string | null
-  username_changed_at: string | null
 }
 
 export const Route = createFileRoute('/api/me/profile')({
@@ -87,7 +85,7 @@ export const Route = createFileRoute('/api/me/profile')({
 
           const profilePromise = (client as any)
               .from('org_member_profiles')
-              .select('email, display_name, avatar_url, bio, skills, updated_at, username_changed_at')
+              .select('email, display_name, avatar_url, bio, skills, updated_at')
               .eq('email', access.requester.email)
               .maybeSingle()
 
@@ -243,7 +241,7 @@ export const Route = createFileRoute('/api/me/profile')({
           const { data, error } = await (client as any)
             .from('org_member_profiles')
             .upsert(payload as any, { onConflict: 'email' })
-            .select('email, display_name, avatar_url, bio, skills, updated_at, username_changed_at')
+            .select('email, display_name, avatar_url, bio, skills, updated_at')
             .single()
 
           if (error && error.code !== '42P01') {

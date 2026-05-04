@@ -27,6 +27,7 @@ import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhoo
 import { Route as ApiShopRouteImport } from './routes/api/shop'
 import { Route as ApiPublicProfileRouteImport } from './routes/api/public-profile'
 import { Route as ApiPublicDirectoryRouteImport } from './routes/api/public-directory'
+import { Route as ApiProfilePhotoUploadRouteImport } from './routes/api/profile-photo-upload'
 import { Route as ApiProfileRouteImport } from './routes/api/profile'
 import { Route as ApiNewsUploadRouteImport } from './routes/api/news-upload'
 import { Route as ApiNewsRouteImport } from './routes/api/news'
@@ -143,6 +144,11 @@ const ApiPublicProfileRoute = ApiPublicProfileRouteImport.update({
 const ApiPublicDirectoryRoute = ApiPublicDirectoryRouteImport.update({
   id: '/api/public-directory',
   path: '/api/public-directory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProfilePhotoUploadRoute = ApiProfilePhotoUploadRouteImport.update({
+  id: '/api/profile-photo-upload',
+  path: '/api/profile-photo-upload',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiProfileRoute = ApiProfileRouteImport.update({
@@ -309,6 +315,7 @@ export interface FileRoutesByFullPath {
   '/api/news': typeof ApiNewsRoute
   '/api/news-upload': typeof ApiNewsUploadRoute
   '/api/profile': typeof ApiProfileRoute
+  '/api/profile-photo-upload': typeof ApiProfilePhotoUploadRoute
   '/api/public-directory': typeof ApiPublicDirectoryRoute
   '/api/public-profile': typeof ApiPublicProfileRoute
   '/api/shop': typeof ApiShopRoute
@@ -356,6 +363,7 @@ export interface FileRoutesByTo {
   '/api/news': typeof ApiNewsRoute
   '/api/news-upload': typeof ApiNewsUploadRoute
   '/api/profile': typeof ApiProfileRoute
+  '/api/profile-photo-upload': typeof ApiProfilePhotoUploadRoute
   '/api/public-directory': typeof ApiPublicDirectoryRoute
   '/api/public-profile': typeof ApiPublicProfileRoute
   '/api/shop': typeof ApiShopRoute
@@ -404,6 +412,7 @@ export interface FileRoutesById {
   '/api/news': typeof ApiNewsRoute
   '/api/news-upload': typeof ApiNewsUploadRoute
   '/api/profile': typeof ApiProfileRoute
+  '/api/profile-photo-upload': typeof ApiProfilePhotoUploadRoute
   '/api/public-directory': typeof ApiPublicDirectoryRoute
   '/api/public-profile': typeof ApiPublicProfileRoute
   '/api/shop': typeof ApiShopRoute
@@ -453,6 +462,7 @@ export interface FileRouteTypes {
     | '/api/news'
     | '/api/news-upload'
     | '/api/profile'
+    | '/api/profile-photo-upload'
     | '/api/public-directory'
     | '/api/public-profile'
     | '/api/shop'
@@ -500,6 +510,7 @@ export interface FileRouteTypes {
     | '/api/news'
     | '/api/news-upload'
     | '/api/profile'
+    | '/api/profile-photo-upload'
     | '/api/public-directory'
     | '/api/public-profile'
     | '/api/shop'
@@ -547,6 +558,7 @@ export interface FileRouteTypes {
     | '/api/news'
     | '/api/news-upload'
     | '/api/profile'
+    | '/api/profile-photo-upload'
     | '/api/public-directory'
     | '/api/public-profile'
     | '/api/shop'
@@ -593,6 +605,7 @@ export interface RootRouteChildren {
   ApiNewsRoute: typeof ApiNewsRoute
   ApiNewsUploadRoute: typeof ApiNewsUploadRoute
   ApiProfileRoute: typeof ApiProfileRoute
+  ApiProfilePhotoUploadRoute: typeof ApiProfilePhotoUploadRoute
   ApiPublicDirectoryRoute: typeof ApiPublicDirectoryRoute
   ApiPublicProfileRoute: typeof ApiPublicProfileRoute
   ApiShopRoute: typeof ApiShopRoute
@@ -737,6 +750,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public-directory'
       fullPath: '/api/public-directory'
       preLoaderRoute: typeof ApiPublicDirectoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/profile-photo-upload': {
+      id: '/api/profile-photo-upload'
+      path: '/api/profile-photo-upload'
+      fullPath: '/api/profile-photo-upload'
+      preLoaderRoute: typeof ApiProfilePhotoUploadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/profile': {
@@ -994,6 +1014,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiNewsRoute: ApiNewsRoute,
   ApiNewsUploadRoute: ApiNewsUploadRoute,
   ApiProfileRoute: ApiProfileRoute,
+  ApiProfilePhotoUploadRoute: ApiProfilePhotoUploadRoute,
   ApiPublicDirectoryRoute: ApiPublicDirectoryRoute,
   ApiPublicProfileRoute: ApiPublicProfileRoute,
   ApiShopRoute: ApiShopRoute,

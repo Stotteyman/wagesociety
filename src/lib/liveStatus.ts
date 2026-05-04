@@ -564,6 +564,34 @@ async function getKickSnapshot(channelSlug: string): Promise<LivestreamSnapshot>
     }
   }
 
+  // Final fallback: parse the public channel HTML payload. This helps when API
+  // endpoints are blocked or changed in serverless environments.
+  const pageResponse = await fetch(`https://kick.com/${encodedSlug}`, {
+    method: 'GET',
+    headers: {
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+      Referer: 'https://kick.com/',
+    },
+  })
+
+  if (pageResponse.ok) {
+    const html = await pageResponse.text()
+    const isLive = /"is_live"\s*:\s*true/i.test(html)
+
+    const viewerMatch = html.match(/"viewer_count"\s*:\s*(\d+)/i)
+    const followerMatch = html.match(/"followers?_count"\s*:\s*(\d+)/i)
+    const createdAtMatch = html.match(/"created_at"\s*:\s*"([^"]+)"/i)
+
+    return {
+      status: isLive ? 'live' : 'offline',
+      viewerCount: viewerMatch ? Number.parseInt(viewerMatch[1], 10) : null,
+      followerCount: followerMatch ? Number.parseInt(followerMatch[1], 10) : null,
+      accountCreatedAt: createdAtMatch?.[1] || null,
+    }
+  }
+
   return OFFLINE_SNAPSHOT
 }
 
@@ -584,6 +612,7 @@ async function getKickSnapshotFromOfficialApi(
     method: 'GET',
     headers: {
       Authorization: `Bearer ${accessToken}`,
+      'Client-Id': clientId,
       Accept: 'application/json',
     },
   })
