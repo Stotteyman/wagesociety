@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { ExternalLink, Loader2, UserRound } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
+import { isLocalRootSessionActive, getLocalRootUser } from '../lib/localRootSession'
 
 type PublicConnectedAccount = {
   provider: string
@@ -42,6 +44,8 @@ function PublicProfilePage() {
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<PublicProfile | null>(null)
   const [error, setError] = useState('')
+  const [user, setUser] = useState<{ email?: string } | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
 
   useEffect(() => {
     let mounted = true
@@ -76,6 +80,44 @@ function PublicProfilePage() {
     }
   }, [username])
 
+  useEffect(() => {
+    const supabase = getSupabaseBrowserClient()
+
+    const checkAuth = async () => {
+      if (isLocalRootSessionActive()) {
+        setUser(getLocalRootUser())
+        setAuthLoading(false)
+        return
+      }
+      try {
+        const { data } = await supabase.auth.getSession()
+        setUser(data.session?.user || null)
+      } catch {
+        setUser(null)
+      } finally {
+        setAuthLoading(false)
+      }
+    }
+
+    void checkAuth()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (isLocalRootSessionActive()) {
+        setUser(getLocalRootUser())
+        setAuthLoading(false)
+        return
+      }
+      setUser(session?.user || null)
+      setAuthLoading(false)
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
+
   const connectedCount = useMemo(() => profile?.connectedAccounts.length || 0, [profile?.connectedAccounts])
 
   if (loading) {
@@ -103,12 +145,23 @@ function PublicProfilePage() {
             >
               Home
             </Link>
-            <Link
-              to="/signup"
-              className="rounded-lg bg-orange-300 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-orange-200"
-            >
-              Join W.A.G.E.
-            </Link>
+            {!authLoading && (
+              user ? (
+                <Link
+                  to="/dashboard"
+                  className="rounded-lg bg-orange-300 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-orange-200"
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                <Link
+                  to="/signup"
+                  className="rounded-lg bg-orange-300 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-orange-200"
+                >
+                  Join W.A.G.E.
+                </Link>
+              )
+            )}
           </div>
         </div>
       </main>
@@ -142,18 +195,31 @@ function PublicProfilePage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Link
-                to="/signup"
-                className="rounded-lg bg-orange-300 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-orange-200"
-              >
-                Join / Connect
-              </Link>
-              <Link
-                to="/login"
-                className="rounded-lg border border-zinc-100/25 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:border-orange-200/70"
-              >
-                Log In
-              </Link>
+              {!authLoading && (
+                user ? (
+                  <Link
+                    to="/dashboard"
+                    className="rounded-lg bg-orange-300 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-orange-200"
+                  >
+                    Dashboard
+                  </Link>
+                ) : (
+                  <>
+                    <Link
+                      to="/signup"
+                      className="rounded-lg bg-orange-300 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-orange-200"
+                    >
+                      Join / Connect
+                    </Link>
+                    <Link
+                      to="/login"
+                      className="rounded-lg border border-zinc-100/25 px-4 py-2 text-sm font-semibold text-zinc-100 transition hover:border-orange-200/70"
+                    >
+                      Log In
+                    </Link>
+                  </>
+                )
+              )}
             </div>
           </div>
 

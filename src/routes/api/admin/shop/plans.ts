@@ -5,7 +5,7 @@ import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../../../lib/
 import { getSupabaseServerPublicClient } from '../../../../lib/supabaseServer'
 
 function getAdminOrPublicClient() {
-  return hasSupabaseAdminConfig() ? getAdminOrPublicClient() : getSupabaseServerPublicClient()
+  return hasSupabaseAdminConfig() ? getSupabaseAdminClient() : getSupabaseServerPublicClient()
 }
 
 const planBaseSchema = z.object({

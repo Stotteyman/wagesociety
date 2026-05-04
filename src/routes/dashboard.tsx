@@ -2,7 +2,6 @@ import { createFileRoute, Link, Outlet, useLocation, useNavigate } from '@tansta
 import { useEffect, useState } from 'react'
 import {
   ArrowLeft,
-  BarChart3,
   CalendarDays,
   ClipboardList,
   CreditCard,
@@ -680,7 +679,6 @@ function CreatorDashboard({
               <h2 className="text-2xl font-bold text-zinc-50">Workspace</h2>
               <p className="mt-1 text-sm text-zinc-300">Your assigned creator modules are listed below.</p>
             </div>
-            <WorkspaceAnalytics />
             <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
               {visibleFunctions.map((fn) => (
                 <ResourceCard
@@ -809,62 +807,6 @@ function CreatorDashboard({
         ) : null}
       </div>
     </div>
-  )
-}
-
-function WorkspaceAnalytics() {
-  const [loading, setLoading] = useState(true)
-  const [linkedProviders, setLinkedProviders] = useState<string[]>([])
-
-  useEffect(() => {
-    void (async () => {
-      setLoading(true)
-      try {
-        const supabase = getSupabaseBrowserClient()
-        const { data: userData } = await supabase.auth.getUser()
-
-        const identityProviders = (userData.user?.identities || [])
-          .map((identity) => identity.provider)
-          .filter((provider): provider is string => Boolean(provider))
-
-        setLinkedProviders(Array.from(new Set(identityProviders)).sort())
-      } catch {
-        setLinkedProviders([])
-      } finally {
-        setLoading(false)
-      }
-    })()
-  }, [])
-
-  const totalLinkedAccounts = linkedProviders.length
-
-  return (
-    <article className="mb-5 rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-5">
-      <div className="flex items-center gap-2">
-        <BarChart3 size={16} className="text-orange-200" />
-        <h3 className="text-lg font-semibold text-zinc-50">Workspace Analytics</h3>
-      </div>
-      <p className="mt-1 text-sm text-zinc-300">Track linked accounts connected to your member workspace.</p>
-      {loading ? (
-        <p className="mt-3 text-sm text-zinc-400">Loading analytics...</p>
-      ) : (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-zinc-200/15 bg-zinc-950/60 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">Linked Accounts</p>
-            <p className="mt-2 text-2xl font-black text-orange-200">{totalLinkedAccounts}</p>
-          </div>
-          <div className="rounded-xl border border-zinc-200/15 bg-zinc-950/60 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">OAuth Providers</p>
-            <p className="mt-2 text-2xl font-black text-zinc-50">{linkedProviders.length}</p>
-          </div>
-        </div>
-      )}
-      {!loading ? (
-        <p className="mt-3 text-xs text-zinc-400">
-          Connected providers: {linkedProviders.length ? linkedProviders.join(', ') : 'None linked yet'}.
-        </p>
-      ) : null}
-    </article>
   )
 }
 

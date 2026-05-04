@@ -1,5 +1,5 @@
 import { canManageRole, isOrgRole, type BanRecord, type OrgPermission, type OrgRole } from './orgAccess'
-import { getSupabaseAdminClient, getSupabaseAdminConfigIssues, hasSupabaseAdminConfig } from './supabaseAdmin'
+import { getSupabaseAdminClient, hasSupabaseAdminConfig } from './supabaseAdmin'
 import { getSupabaseServerPublicClient } from './supabaseServer'
 
 export const LOCAL_SUPERADMIN_EMAIL = 'root-superadmin@localhost'
@@ -130,34 +130,6 @@ export async function resolveOrgRole(email: string): Promise<OrgRole> {
   }
 
   return data
-}
-
-export async function requireAdminRole(request: Request) {
-  const requester = await resolveRequester(request)
-  const role = await resolveOrgRole(requester.email)
-
-  if (!canManageRole(role, 'user')) {
-    throw new Response(JSON.stringify({ error: 'Admin access required' }), {
-      status: 403,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  return { requester, role }
-}
-
-export async function requireSuperadminRole(request: Request) {
-  const requester = await resolveRequester(request)
-  const role = await resolveOrgRole(requester.email)
-
-  if (role !== 'superadmin') {
-    throw new Response(JSON.stringify({ error: 'Superadmin access required' }), {
-      status: 403,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  return { requester, role }
 }
 
 export async function getRolePermissions(role: OrgRole): Promise<OrgPermission[]> {
