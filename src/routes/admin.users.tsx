@@ -70,6 +70,7 @@ function AdminUsersPage() {
 
   // Role assignment form
   const [formEmail, setFormEmail] = useState('')
+  const [memberSearchOpen, setMemberSearchOpen] = useState(false)
   const [formRole, setFormRole] = useState<OrgRole>('manager')
   const [banReason, setBanReason] = useState('')
   const [bannedUntil, setBannedUntil] = useState('')
@@ -83,6 +84,29 @@ function AdminUsersPage() {
   const isLocalSuperadmin = useMemo(() => requestSource === 'localhost-bypass', [requestSource])
   const canManagePerms = requesterRole === 'superadmin' || isLocalSuperadmin || requesterPermissions.includes('manage_permissions')
   const canManageUsers = requesterRole === 'superadmin' || isLocalSuperadmin || requesterPermissions.includes('manage_users')
+
+  const memberSuggestions = useMemo(() => {
+    const query = formEmail.trim().toLowerCase()
+    const rows = roles
+      .map((row) => {
+        const local = row.email.split('@')[0] || ''
+        const name = local
+          .split(/[._-]+/)
+          .filter(Boolean)
+          .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1).toLowerCase()}`)
+          .join(' ')
+
+        return {
+          email: row.email,
+          name,
+          search: `${row.email} ${name}`.toLowerCase(),
+        }
+      })
+      .sort((a, b) => a.email.localeCompare(b.email))
+
+    if (!query) return rows.slice(0, 8)
+    return rows.filter((row) => row.search.includes(query)).slice(0, 8)
+  }, [roles, formEmail])
 
   const loadRoles = async () => {
     const res = await authedFetch('/api/admin/roles')
@@ -207,15 +231,46 @@ function AdminUsersPage() {
 
             <form onSubmit={submitRole} className="space-y-3">
               <label className="block">
-                <span className="mb-1.5 block text-xs font-medium text-zinc-400">Member Email</span>
-                <input
-                  type="email"
-                  required
-                  value={formEmail}
-                  onChange={(e) => setFormEmail(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-orange-300/60"
-                  placeholder="member@domain.com"
-                />
+                <span className="mb-1.5 block text-xs font-medium text-zinc-400">Member (search by name or email)</span>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={formEmail}
+                    onChange={(e) => {
+                      setFormEmail(e.target.value)
+                      setMemberSearchOpen(true)
+                    }}
+                    onFocus={() => setMemberSearchOpen(true)}
+                    onBlur={() => {
+                      setTimeout(() => setMemberSearchOpen(false), 120)
+                    }}
+                    className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-orange-300/60"
+                    placeholder="Type a name or email"
+                    autoComplete="off"
+                  />
+
+                  {memberSearchOpen && memberSuggestions.length > 0 ? (
+                    <ul className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-950/95 p-1 shadow-xl backdrop-blur">
+                      {memberSuggestions.map((member) => (
+                        <li key={member.email}>
+                          <button
+                            type="button"
+                            onMouseDown={(event) => {
+                              event.preventDefault()
+                              setFormEmail(member.email)
+                              setMemberSearchOpen(false)
+                            }}
+                            className="w-full rounded-md px-2.5 py-2 text-left transition hover:bg-zinc-800"
+                          >
+                            <p className="truncate text-sm font-medium text-zinc-100">{member.name || member.email}</p>
+                            <p className="truncate text-xs text-zinc-500">{member.email}</p>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
               </label>
 
               <label className="block">

@@ -1,4 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
+import {
+  assignDeterministicUsernames,
+  readAvatarFromMetadata,
+  readDisplayNameFromMetadata,
+  type AuthUserLike,
+} from '../../lib/memberDirectory'
+import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../lib/supabaseAdmin'
 import { getSupabaseServerPublicClient } from '../../lib/supabaseServer'
 
 type DirectoryRow = {
@@ -14,6 +21,15 @@ type DirectoryProfileRow = {
   display_name: string | null
   avatar_url: string | null
   bio: string | null
+}
+
+type AuthListUserRow = {
+  id: string
+  email: string | null
+  created_at: string
+  updated_at?: string
+  user_metadata?: Record<string, unknown> | null
+  identities?: Array<unknown> | null
 }
 
 function normalizeUsername(value: string) {
@@ -34,6 +50,78 @@ export const Route = createFileRoute('/api/public-directory')({
           const q = (url.searchParams.get('q') || '').trim().toLowerCase()
           const limitParam = Number(url.searchParams.get('limit') || '200')
           const limit = Number.isFinite(limitParam) ? Math.max(1, Math.min(500, Math.floor(limitParam))) : 200
+
+          if (hasSupabaseAdminConfig()) {
+            const admin = getSupabaseAdminClient()
+            const users: AuthListUserRow[] = []
+
+            let page = 1
+            const perPage = 1000
+
+            while (page <= 10) {
+              const { data: usersData, error: usersError } = await admin.auth.admin.listUsers({ page, perPage })
+              if (usersError) {
+                return Response.json({ error: usersError.message }, { status: 500 })
+              }
+
+              const pageUsers = (usersData?.users || []) as AuthListUserRow[]
+              if (!pageUsers.length) break
+              users.push(...pageUsers)
+              if (pageUsers.length < perPage) break
+              page += 1
+            }
+
+            const { data: profiles, error: profilesError } = await admin
+              .from('org_member_profiles')
+              .select('email, display_name, avatar_url, bio')
+              .limit(10000)
+
+            if (profilesError && profilesError.code !== '42P01') {
+              return Response.json({ error: profilesError.message }, { status: 500 })
+            }
+
+            const profileByEmail = new Map(
+              (Array.isArray(profiles) ? (profiles as DirectoryProfileRow[]) : []).map((profile) => [
+                String(profile.email || '').trim().toLowerCase(),
+                profile,
+              ]),
+            )
+
+            const usernameMap = assignDeterministicUsernames(users as AuthUserLike[])
+
+            const entries = users
+              .map((user) => {
+                const email = String(user.email || '').trim().toLowerCase()
+                if (!email || !user.id) return null
+
+                const profile = profileByEmail.get(email)
+                const username = usernameMap.get(String(user.id))
+                if (!username) return null
+
+                const displayName =
+                  profile?.display_name?.trim() ||
+                  readDisplayNameFromMetadata((user.user_metadata as any) || null) ||
+                  username
+
+                const entry = {
+                  username,
+                  displayName,
+                  avatarUrl: profile?.avatar_url || readAvatarFromMetadata((user.user_metadata as any) || null),
+                  bio: profile?.bio || null,
+                  connectedCount: Array.isArray(user.identities) ? user.identities.length : 0,
+                }
+
+                if (!q) return entry
+
+                const haystack = `${entry.username} ${entry.displayName} ${entry.bio || ''} ${email}`.toLowerCase()
+                return haystack.includes(q) ? entry : null
+              })
+              .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+              .sort((a, b) => a.username.localeCompare(b.username))
+              .slice(0, limit)
+
+            return Response.json({ entries })
+          }
 
           const client = getSupabaseServerPublicClient()
           // @ts-expect-error New RPC may exist before generated DB types are refreshed.

@@ -17,6 +17,7 @@ import { Route as MerchRouteImport } from './routes/merch'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LiveRouteImport } from './routes/live'
 import { Route as FaqRouteImport } from './routes/faq'
+import { Route as DownloadRouteImport } from './routes/download'
 import { Route as DirectoryRouteImport } from './routes/directory'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AppealsRouteImport } from './routes/appeals'
@@ -94,6 +95,11 @@ const LiveRoute = LiveRouteImport.update({
 const FaqRoute = FaqRouteImport.update({
   id: '/faq',
   path: '/faq',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DownloadRoute = DownloadRouteImport.update({
+  id: '/download',
+  path: '/download',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DirectoryRoute = DirectoryRouteImport.update({
@@ -295,6 +301,7 @@ export interface FileRoutesByFullPath {
   '/appeals': typeof AppealsRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/directory': typeof DirectoryRoute
+  '/download': typeof DownloadRoute
   '/faq': typeof FaqRoute
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
@@ -343,6 +350,7 @@ export interface FileRoutesByTo {
   '/appeals': typeof AppealsRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/directory': typeof DirectoryRoute
+  '/download': typeof DownloadRoute
   '/faq': typeof FaqRoute
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
@@ -392,6 +400,7 @@ export interface FileRoutesById {
   '/appeals': typeof AppealsRoute
   '/dashboard': typeof DashboardRouteWithChildren
   '/directory': typeof DirectoryRoute
+  '/download': typeof DownloadRoute
   '/faq': typeof FaqRoute
   '/live': typeof LiveRoute
   '/login': typeof LoginRoute
@@ -442,6 +451,7 @@ export interface FileRouteTypes {
     | '/appeals'
     | '/dashboard'
     | '/directory'
+    | '/download'
     | '/faq'
     | '/live'
     | '/login'
@@ -490,6 +500,7 @@ export interface FileRouteTypes {
     | '/appeals'
     | '/dashboard'
     | '/directory'
+    | '/download'
     | '/faq'
     | '/live'
     | '/login'
@@ -538,6 +549,7 @@ export interface FileRouteTypes {
     | '/appeals'
     | '/dashboard'
     | '/directory'
+    | '/download'
     | '/faq'
     | '/live'
     | '/login'
@@ -587,6 +599,7 @@ export interface RootRouteChildren {
   AppealsRoute: typeof AppealsRoute
   DashboardRoute: typeof DashboardRouteWithChildren
   DirectoryRoute: typeof DirectoryRoute
+  DownloadRoute: typeof DownloadRoute
   FaqRoute: typeof FaqRoute
   LiveRoute: typeof LiveRoute
   LoginRoute: typeof LoginRoute
@@ -680,6 +693,13 @@ declare module '@tanstack/react-router' {
       path: '/faq'
       fullPath: '/faq'
       preLoaderRoute: typeof FaqRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/download': {
+      id: '/download'
+      path: '/download'
+      fullPath: '/download'
+      preLoaderRoute: typeof DownloadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/directory': {
@@ -996,6 +1016,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppealsRoute: AppealsRoute,
   DashboardRoute: DashboardRouteWithChildren,
   DirectoryRoute: DirectoryRoute,
+  DownloadRoute: DownloadRoute,
   FaqRoute: FaqRoute,
   LiveRoute: LiveRoute,
   LoginRoute: LoginRoute,

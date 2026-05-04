@@ -1,4 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
+import {
+  assignDeterministicUsernames,
+  readAvatarFromMetadata,
+  readDisplayNameFromMetadata,
+  type AuthUserLike,
+} from '../../lib/memberDirectory'
 import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../lib/supabaseAdmin'
 import { getSupabaseServerPublicClient } from '../../lib/supabaseServer'
 
@@ -27,22 +33,13 @@ function normalizeUsername(value: string) {
   return value.trim().toLowerCase()
 }
 
-function readUsernameFromMeta(meta: AuthUserMeta | null | undefined) {
-  const candidates = [meta?.username, meta?.preferred_username, meta?.full_name, meta?.name]
-  for (const candidate of candidates) {
-    const trimmed = candidate?.trim()
-    if (trimmed) return trimmed
-  }
-  return null
-}
-
-function readAvatarFromMeta(meta: AuthUserMeta | null | undefined) {
-  const candidates = [meta?.avatar_url, meta?.picture]
-  for (const candidate of candidates) {
-    const trimmed = candidate?.trim()
-    if (trimmed) return trimmed
-  }
-  return null
+type AuthListUserRow = {
+  id: string
+  email: string | null
+  created_at: string
+  updated_at?: string
+  user_metadata?: AuthUserMeta | null
+  identities?: Array<unknown> | null
 }
 
 function providerLabel(provider: string) {
@@ -141,21 +138,33 @@ export const Route = createFileRoute('/api/public-profile')({
           }
 
           const admin = getSupabaseAdminClient()
-          const { data: users, error: usersError } = await admin
-            .schema('auth')
-            .from('users')
-            .select('id, email, raw_user_meta_data')
-            .limit(5000)
+          const users: AuthListUserRow[] = []
+          let page = 1
+          const perPage = 1000
 
-          if (usersError) {
-            return Response.json({ error: usersError.message }, { status: 500 })
+          while (page <= 10) {
+            const { data: usersData, error: usersError } = await admin.auth.admin.listUsers({ page, perPage })
+            if (usersError) {
+              return Response.json({ error: usersError.message }, { status: 500 })
+            }
+
+            const pageUsers = (usersData?.users || []) as AuthListUserRow[]
+            if (!pageUsers.length) break
+            users.push(...pageUsers)
+            if (pageUsers.length < perPage) break
+            page += 1
           }
 
-          const authUser = (Array.isArray(users) ? users : []).find((row) => {
-            const meta = (row.raw_user_meta_data as AuthUserMeta | null | undefined) ?? null
-            const username = readUsernameFromMeta(meta)
-            return username ? normalizeUsername(username) === normalizedRequestedUsername : false
-          })
+          const usernameMap = assignDeterministicUsernames(users as AuthUserLike[])
+          const userByUsername = new Map<string, AuthListUserRow>()
+
+          for (const user of users) {
+            const username = usernameMap.get(String(user.id || ''))
+            if (!username) continue
+            userByUsername.set(normalizeUsername(username), user)
+          }
+
+          const authUser = userByUsername.get(normalizedRequestedUsername)
 
           if (!authUser?.id || !authUser.email) {
             return Response.json({ error: 'Profile not found.' }, { status: 404 })
@@ -182,8 +191,8 @@ export const Route = createFileRoute('/api/public-profile')({
             return Response.json({ error: identitiesError.message }, { status: 500 })
           }
 
-          const meta = (authUser.raw_user_meta_data as AuthUserMeta | null | undefined) ?? null
-          const username = readUsernameFromMeta(meta)
+          const meta = (authUser.user_metadata as AuthUserMeta | null | undefined) ?? null
+          const username = usernameMap.get(String(authUser.id)) || normalizedRequestedUsername
           const connectedAccounts = (Array.isArray(identities) ? identities : [])
             .map((row) => {
               const identity = row as IdentityRow
@@ -206,9 +215,9 @@ export const Route = createFileRoute('/api/public-profile')({
 
           return Response.json({
             profile: {
-              username: username || normalizedRequestedUsername,
-              displayName: profile?.display_name || username || normalizedRequestedUsername,
-              avatarUrl: profile?.avatar_url || readAvatarFromMeta(meta),
+              username,
+              displayName: profile?.display_name || readDisplayNameFromMetadata(meta) || username,
+              avatarUrl: profile?.avatar_url || readAvatarFromMetadata(meta),
               bio: profile?.bio || null,
               skills: profile?.skills || [],
               connectedAccounts,

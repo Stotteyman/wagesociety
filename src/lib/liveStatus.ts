@@ -506,6 +506,8 @@ async function getKickSnapshot(channelSlug: string): Promise<LivestreamSnapshot>
     `https://kick.com/api/v1/channels/${encodedSlug}/livestream`,
   ]
 
+  const parsedSnapshots: LivestreamSnapshot[] = []
+
   for (const endpoint of endpoints) {
     const response = await fetch(endpoint, {
       method: 'GET',
@@ -526,9 +528,11 @@ async function getKickSnapshot(channelSlug: string): Promise<LivestreamSnapshot>
       is_live?: boolean | null
       viewer_count?: number | null
       followers_count?: number | null
+      follower_count?: number | null
       created_at?: string | null
       livestream?: {
         id?: number | string
+        is_live?: boolean | null
         viewer_count?: number | null
       } | null
       user?: {
@@ -538,9 +542,11 @@ async function getKickSnapshot(channelSlug: string): Promise<LivestreamSnapshot>
         is_live?: boolean | null
         viewer_count?: number | null
         followers_count?: number | null
+        follower_count?: number | null
         created_at?: string | null
         livestream?: {
           id?: number | string
+          is_live?: boolean | null
           viewer_count?: number | null
         } | null
         user?: {
@@ -550,18 +556,39 @@ async function getKickSnapshot(channelSlug: string): Promise<LivestreamSnapshot>
     }
 
     const livestreamId = data.livestream?.id ?? data.data?.livestream?.id
-    const isLiveFlag = data.is_live ?? data.data?.is_live
+    const isLiveFlag = data.is_live ?? data.data?.is_live ?? data.livestream?.is_live ?? data.data?.livestream?.is_live
     const viewerCount =
       data.livestream?.viewer_count ?? data.data?.livestream?.viewer_count ?? data.viewer_count ?? data.data?.viewer_count ?? null
-    const followerCount = data.followers_count ?? data.data?.followers_count ?? null
+    const followerCount =
+      data.followers_count ?? data.data?.followers_count ?? data.follower_count ?? data.data?.follower_count ?? null
     const accountCreatedAt = data.user?.created_at ?? data.data?.user?.created_at ?? data.created_at ?? data.data?.created_at ?? null
 
-    return {
-      status: livestreamId || isLiveFlag === true ? 'live' : 'offline',
+    parsedSnapshots.push({
+      status: livestreamId || isLiveFlag === true || (viewerCount || 0) > 0 ? 'live' : 'offline',
       viewerCount,
       followerCount,
       accountCreatedAt,
+    })
+  }
+
+  // Decide status from all successful payloads rather than trusting the first one.
+  // Kick endpoints can disagree temporarily; if any endpoint says live, treat as live.
+  if (parsedSnapshots.length > 0) {
+    const liveSnapshot = parsedSnapshots.find((snapshot) => snapshot.status === 'live')
+    if (liveSnapshot) {
+      return liveSnapshot
     }
+
+    const richestOffline = parsedSnapshots.reduce<LivestreamSnapshot>((best, current) => {
+      const bestScore = (best.viewerCount ? 1 : 0) + (best.followerCount ? 1 : 0) + (best.accountCreatedAt ? 1 : 0)
+      const currentScore =
+        (current.viewerCount ? 1 : 0) +
+        (current.followerCount ? 1 : 0) +
+        (current.accountCreatedAt ? 1 : 0)
+      return currentScore > bestScore ? current : best
+    }, parsedSnapshots[0])
+
+    return richestOffline
   }
 
   // Final fallback: parse the public channel HTML payload. This helps when API

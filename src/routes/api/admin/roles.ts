@@ -10,6 +10,29 @@ function getAdminOrPublicClient() {
   return hasSupabaseAdminConfig() ? getSupabaseAdminClient() : getSupabaseServerPublicClient()
 }
 
+type RoleListRow = {
+  email: string
+  role: OrgRole
+  granted_by: string | null
+  banned_by: string | null
+  ban_reason: string | null
+  banned_until: string | null
+  updated_at: string
+  created_at: string
+}
+
+type ProfileEmailRow = {
+  email: string
+  created_at: string | null
+  updated_at: string | null
+}
+
+type AuthUserListRow = {
+  email: string | null
+  created_at: string
+  updated_at?: string
+}
+
 const setRoleSchema = z.object({
   targetEmail: z.string().email(),
   role: z.enum(ORG_ROLES),
@@ -36,13 +59,107 @@ export const Route = createFileRoute('/api/admin/roles')({
             return Response.json({ error: error.message }, { status: 500 })
           }
 
+          const roleRows = Array.isArray(data) ? ((data as RoleListRow[]) || []) : []
+          const existingEmails = new Set(roleRows.map((row) => String(row.email || '').trim().toLowerCase()).filter(Boolean))
+
+          let mergedRoles = [...roleRows]
+
+          const inferredRows: RoleListRow[] = []
+
+          if (hasSupabaseAdminConfig()) {
+            const adminClient = getSupabaseAdminClient()
+            let page = 1
+            const perPage = 1000
+
+            while (page <= 10) {
+              const { data: usersData, error: usersError } = await adminClient.auth.admin.listUsers({ page, perPage })
+              if (usersError) break
+
+              const users = (usersData?.users || []) as AuthUserListRow[]
+              if (!users.length) break
+
+              for (const user of users) {
+                const email = String(user.email || '').trim().toLowerCase()
+                if (!email || existingEmails.has(email)) continue
+                existingEmails.add(email)
+
+                const createdAt = user.created_at || user.updated_at || new Date().toISOString()
+                const updatedAt = user.updated_at || user.created_at || createdAt
+
+                inferredRows.push({
+                  email,
+                  role: 'user',
+                  granted_by: null,
+                  banned_by: null,
+                  ban_reason: null,
+                  banned_until: null,
+                  created_at: createdAt,
+                  updated_at: updatedAt,
+                })
+              }
+
+              if (users.length < perPage) break
+              page += 1
+            }
+          }
+
+          // Best-effort: include signed-up members who have not received explicit role rows yet.
+          const { data: profileRows, error: profileError } = await admin
+            .from('org_member_profiles')
+            .select('email, created_at, updated_at')
+            .limit(10000)
+
+          if (!profileError && Array.isArray(profileRows)) {
+            const profileInferredRows = (profileRows as ProfileEmailRow[])
+              .map((profile) => {
+                const email = String(profile.email || '').trim().toLowerCase()
+                if (!email || existingEmails.has(email)) return null
+                existingEmails.add(email)
+
+                const createdAt = profile.created_at || profile.updated_at || new Date().toISOString()
+                const updatedAt = profile.updated_at || profile.created_at || createdAt
+
+                return {
+                  email,
+                  role: 'user' as OrgRole,
+                  granted_by: null,
+                  banned_by: null,
+                  ban_reason: null,
+                  banned_until: null,
+                  created_at: createdAt,
+                  updated_at: updatedAt,
+                }
+              })
+              .filter((row): row is RoleListRow => Boolean(row))
+
+            inferredRows.push(...profileInferredRows)
+          }
+
+          if (hasSupabaseAdminConfig() && inferredRows.length > 0) {
+            const adminClient = getSupabaseAdminClient()
+            // Ensure default role rows exist for all signed-up members discovered from auth/profiles.
+            // ignoreDuplicates prevents overwriting existing roles during races.
+            await adminClient
+              .from('org_user_roles')
+              .upsert(
+                inferredRows.map((row) => ({
+                  email: row.email,
+                  role: 'user' as OrgRole,
+                  granted_by: row.granted_by,
+                })),
+                { onConflict: 'email', ignoreDuplicates: true },
+              )
+          }
+
+          mergedRoles = [...roleRows, ...inferredRows].sort((a, b) => a.email.localeCompare(b.email))
+
           return Response.json({
             requester: {
               ...access.requester,
               role: access.role,
               permissions: access.permissions,
             },
-            roles: data || [],
+            roles: mergedRoles,
           })
         } catch (error) {
           if (error instanceof Response) return error
