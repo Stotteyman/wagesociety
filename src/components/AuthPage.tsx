@@ -5,6 +5,18 @@ import { getClientAuthRedirectUrl } from '../lib/authRedirect'
 import { isLocalhostClient, startLocalRootSession } from '../lib/localRootSession'
 import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 
+// Lazily import Capacitor so the web bundle doesn't break in non-Capacitor environments.
+function isNativeApp(): boolean {
+  try {
+    // @ts-expect-error Capacitor is injected at runtime when running inside a native app.
+    return typeof window !== 'undefined' && typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform()
+  } catch {
+    return false
+  }
+}
+
+const NATIVE_OAUTH_REDIRECT = 'com.wagesociety.android://login-callback'
+
 type AuthView = 'login' | 'signup'
 
 function getPostAuthPath(metadata: Record<string, unknown> | undefined) {
@@ -51,6 +63,27 @@ export function AuthPage({ view }: { view: AuthView }) {
       setError('')
       setBusyAction('login')
       const supabase = getSupabaseBrowserClient()
+
+      if (isNativeApp()) {
+        // On Android/iOS: get the OAuth URL from Supabase without auto-redirecting,
+        // then open it in a system browser (Chrome Custom Tabs). After auth, Google
+        // redirects to the custom scheme which Android routes back to the app.
+        const { data, error: authError } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo: NATIVE_OAUTH_REDIRECT,
+            skipBrowserRedirect: true,
+          },
+        })
+        if (authError) throw authError
+        if (data?.url) {
+          const { Browser } = await import('@capacitor/browser')
+          await Browser.open({ url: data.url })
+        }
+        setBusyAction(null)
+        return
+      }
+
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider,
         options: {

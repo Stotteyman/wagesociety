@@ -5,16 +5,9 @@ import {
   readDisplayNameFromMetadata,
   type AuthUserLike,
 } from '../../lib/memberDirectory'
+import { listAuthIndexedUsers } from '../../lib/authUserIndex'
 import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../lib/supabaseAdmin'
-import { getSupabaseServerPublicClient } from '../../lib/supabaseServer'
-
-type DirectoryRow = {
-  username: string
-  display_name: string
-  avatar_url: string | null
-  bio: string | null
-  connected_count: number
-}
+import { getSupabaseServerClientForToken } from '../../lib/supabaseServer'
 
 type DirectoryProfileRow = {
   email: string
@@ -33,7 +26,6 @@ type AuthListUserRow = {
   created_at: string
   updated_at?: string
   user_metadata?: Record<string, unknown> | null
-  identities?: Array<unknown> | null
 }
 
 function normalizeUsername(value: string) {
@@ -43,6 +35,13 @@ function normalizeUsername(value: string) {
     .replace(/[^a-z0-9_-]+/g, '-')
     .replace(/-{2,}/g, '-')
     .replace(/^-+|-+$/g, '')
+}
+
+function getBearerToken(request: Request) {
+  const authHeader = request.headers.get('authorization') || request.headers.get('Authorization') || ''
+  if (!authHeader.toLowerCase().startsWith('bearer ')) return undefined
+  const token = authHeader.slice(7).trim()
+  return token || undefined
 }
 
 export const Route = createFileRoute('/api/public-directory')({
@@ -55,106 +54,40 @@ export const Route = createFileRoute('/api/public-directory')({
           const limitParam = Number(url.searchParams.get('limit') || '200')
           const limit = Number.isFinite(limitParam) ? Math.max(1, Math.min(500, Math.floor(limitParam))) : 200
 
-          if (hasSupabaseAdminConfig()) {
-            const admin = getSupabaseAdminClient()
-            const users: AuthListUserRow[] = []
+          const client = hasSupabaseAdminConfig()
+            ? getSupabaseAdminClient()
+            : getSupabaseServerClientForToken(getBearerToken(request))
+          let users = await listAuthIndexedUsers(client)
 
+          if (users.length === 0 && hasSupabaseAdminConfig()) {
+            const admin = getSupabaseAdminClient()
+            const collected: AuthListUserRow[] = []
             let page = 1
             const perPage = 1000
 
             while (page <= 10) {
               const { data: usersData, error: usersError } = await admin.auth.admin.listUsers({ page, perPage })
-              if (usersError) {
-                return Response.json({ error: usersError.message }, { status: 500 })
-              }
-
+              if (usersError) break
               const pageUsers = (usersData?.users || []) as AuthListUserRow[]
               if (!pageUsers.length) break
-              users.push(...pageUsers)
+              collected.push(...pageUsers)
               if (pageUsers.length < perPage) break
               page += 1
             }
 
-            const { data: profiles, error: profilesError } = await admin
-              .from('org_member_profiles')
-              .select('email, display_name, avatar_url, bio')
-              .limit(10000)
-
-            if (profilesError && profilesError.code !== '42P01') {
-              return Response.json({ error: profilesError.message }, { status: 500 })
-            }
-
-            const profileByEmail = new Map(
-              (Array.isArray(profiles) ? (profiles as DirectoryProfileRow[]) : []).map((profile) => [
-                String(profile.email || '').trim().toLowerCase(),
-                profile,
-              ]),
-            )
-
-            const usernameMap = assignDeterministicUsernames(users as AuthUserLike[])
-
-            const entries = users
-              .map((user) => {
-                const email = String(user.email || '').trim().toLowerCase()
-                if (!email || !user.id) return null
-
-                const profile = profileByEmail.get(email)
-                const username = usernameMap.get(String(user.id))
-                if (!username) return null
-
-                const displayName =
-                  profile?.display_name?.trim() ||
-                  readDisplayNameFromMetadata((user.user_metadata as any) || null) ||
-                  username
-
-                const entry = {
-                  username,
-                  displayName,
-                  avatarUrl: profile?.avatar_url || readAvatarFromMetadata((user.user_metadata as any) || null),
-                  bio: profile?.bio || null,
-                  connectedCount: Array.isArray(user.identities) ? user.identities.length : 0,
-                }
-
-                if (!q) return entry
-
-                const haystack = `${entry.username} ${entry.displayName} ${entry.bio || ''} ${email}`.toLowerCase()
-                return haystack.includes(q) ? entry : null
-              })
-              .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
-              .sort((a, b) => a.username.localeCompare(b.username))
-              .slice(0, limit)
-
-            return Response.json({ entries })
-          }
-
-          const client = getSupabaseServerPublicClient()
-          // @ts-expect-error New RPC may exist before generated DB types are refreshed.
-          const { data, error } = await client.rpc('list_public_directory', {
-            p_limit: limit,
-            p_query: q || null,
-          })
-
-          if (!error) {
-            const entries = (Array.isArray(data) ? (data as DirectoryRow[]) : []).map((row) => ({
-              username: row.username,
-              displayName: row.display_name,
-              avatarUrl: row.avatar_url,
-              bio: row.bio,
-              connectedCount: row.connected_count,
+            users = collected.map((row) => ({
+              id: row.id,
+              email: row.email,
+              user_metadata: row.user_metadata || null,
+              created_at: row.created_at,
+              updated_at: row.updated_at || row.created_at,
+              identities: null,
             }))
-
-            return Response.json({ entries })
           }
 
           const { data: profiles, error: profilesError } = await client
             .from('org_member_profiles')
             .select('email, display_name, avatar_url, bio')
-            .order('updated_at', { ascending: false })
-            .limit(5000)
-
-          const { data: roleEmails } = await client
-            .from('org_user_roles')
-            .select('email')
             .limit(10000)
 
           if (profilesError) {
@@ -162,32 +95,27 @@ export const Route = createFileRoute('/api/public-directory')({
           }
 
           const profileRows = Array.isArray(profiles) ? (profiles as DirectoryProfileRow[]) : []
-          const roleRows = Array.isArray(roleEmails) ? (roleEmails as RoleEmailRow[]) : []
-
           const profileByEmail = new Map(profileRows.map((row) => [String(row.email || '').trim().toLowerCase(), row]))
-          const allEmails = new Set<string>()
 
-          for (const profile of profileRows) {
-            const email = String(profile.email || '').trim().toLowerCase()
-            if (email) allEmails.add(email)
-          }
+          const usernameMap = assignDeterministicUsernames(users as AuthUserLike[])
+          let entries = users
+            .map((user) => {
+              const email = String(user.email || '').trim().toLowerCase()
+              if (!email || !user.id) return null
 
-          for (const roleRow of roleRows) {
-            const email = String(roleRow.email || '').trim().toLowerCase()
-            if (email) allEmails.add(email)
-          }
-
-          const entries = Array.from(allEmails)
-            .map((email) => {
               const profile = profileByEmail.get(email)
-              const rawUsername = profile?.display_name?.trim() || email.split('@')[0] || ''
-              const username = normalizeUsername(rawUsername)
+              const username = usernameMap.get(String(user.id))
               if (!username) return null
+
+              const displayName =
+                profile?.display_name?.trim() ||
+                readDisplayNameFromMetadata((user.user_metadata as any) || null) ||
+                username
 
               return {
                 username,
-                displayName: profile?.display_name?.trim() || username,
-                avatarUrl: profile?.avatar_url || null,
+                displayName,
+                avatarUrl: profile?.avatar_url || readAvatarFromMetadata((user.user_metadata as any) || null),
                 bio: profile?.bio || null,
                 connectedCount: 0,
               }
@@ -200,6 +128,46 @@ export const Route = createFileRoute('/api/public-directory')({
             })
             .sort((a, b) => a.username.localeCompare(b.username))
             .slice(0, limit)
+
+          if (entries.length === 0) {
+            const { data: roleEmails } = await client.from('org_user_roles').select('email').limit(10000)
+            const roleRows = Array.isArray(roleEmails) ? (roleEmails as RoleEmailRow[]) : []
+            const allEmails = new Set<string>()
+
+            for (const profile of profileRows) {
+              const email = String(profile.email || '').trim().toLowerCase()
+              if (email) allEmails.add(email)
+            }
+
+            for (const roleRow of roleRows) {
+              const email = String(roleRow.email || '').trim().toLowerCase()
+              if (email) allEmails.add(email)
+            }
+
+            entries = Array.from(allEmails)
+              .map((email) => {
+                const profile = profileByEmail.get(email)
+                const rawUsername = profile?.display_name?.trim() || email.split('@')[0] || ''
+                const username = normalizeUsername(rawUsername)
+                if (!username) return null
+
+                return {
+                  username,
+                  displayName: profile?.display_name?.trim() || username,
+                  avatarUrl: profile?.avatar_url || null,
+                  bio: profile?.bio || null,
+                  connectedCount: 0,
+                }
+              })
+              .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+              .filter((entry) => {
+                if (!q) return true
+                const haystack = `${entry.username} ${entry.displayName} ${entry.bio || ''}`.toLowerCase()
+                return haystack.includes(q)
+              })
+              .sort((a, b) => a.username.localeCompare(b.username))
+              .slice(0, limit)
+          }
 
           return Response.json({ entries })
         } catch (error) {

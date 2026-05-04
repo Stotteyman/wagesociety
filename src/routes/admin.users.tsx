@@ -14,6 +14,12 @@ type RoleRow = {
   banned_until: string | null
   updated_at: string
   created_at: string
+  user_id?: string | null
+  display_name?: string | null
+  membership_plan?: string | null
+  stripe_customer_id?: string | null
+  stripe_subscription_id?: string | null
+  effective_permissions?: string[]
 }
 
 type PermissionRow = {
@@ -90,11 +96,12 @@ function AdminUsersPage() {
     const rows = roles
       .map((row) => {
         const local = row.email.split('@')[0] || ''
-        const name = local
+        const fallbackName = local
           .split(/[._-]+/)
           .filter(Boolean)
           .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1).toLowerCase()}`)
           .join(' ')
+        const name = row.display_name?.trim() || fallbackName
 
         return {
           email: row.email,
@@ -348,7 +355,8 @@ function AdminUsersPage() {
                     className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-zinc-200/10 bg-zinc-950/40 px-4 py-3"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-zinc-100">{row.email}</p>
+                      <p className="truncate text-sm font-medium text-zinc-100">{row.display_name || row.email}</p>
+                      {row.display_name ? <p className="mt-0.5 truncate text-xs text-zinc-500">{row.email}</p> : null}
                       {row.role === 'banned' && row.ban_reason ? (
                         <p className="mt-0.5 text-xs text-rose-300/80">Banned: {row.ban_reason}</p>
                       ) : (
@@ -356,6 +364,10 @@ function AdminUsersPage() {
                           Granted by {row.granted_by || 'system'} · {new Date(row.updated_at).toLocaleDateString()}
                         </p>
                       )}
+                      <p className="mt-1 text-xs text-zinc-500">
+                        Plan: {(row.membership_plan || 'free').toUpperCase()} · Permissions: {row.effective_permissions?.length || 0}
+                        {row.stripe_subscription_id ? ' · Stripe active' : ''}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${roleBadgeClass[row.role]}`}>

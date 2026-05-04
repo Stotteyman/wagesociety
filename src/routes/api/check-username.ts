@@ -10,6 +10,7 @@
  *   - Case-insensitive uniqueness against org_member_profiles.display_name
  */
 import { createFileRoute } from '@tanstack/react-router'
+import { listAuthIndexedUsers } from '../../lib/authUserIndex'
 import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../lib/supabaseAdmin'
 import { getSupabaseServerPublicClient } from '../../lib/supabaseServer'
 
@@ -53,8 +54,10 @@ export const Route = createFileRoute('/api/check-username')({
           }
 
           let takenInMetadata = false
+          const normalized = username.toLowerCase()
 
-          if (hasSupabaseAdminConfig()) {
+          let authIndexUsers = await listAuthIndexedUsers(client)
+          if (authIndexUsers.length === 0 && hasSupabaseAdminConfig()) {
             const admin = getSupabaseAdminClient()
             const { data: authUsersPage, error: authUsersError } = await admin.auth.admin.listUsers({
               page: 1,
@@ -62,16 +65,24 @@ export const Route = createFileRoute('/api/check-username')({
             })
 
             if (!authUsersError) {
-              const normalized = username.toLowerCase()
-              takenInMetadata = (authUsersPage?.users || []).some((row) => {
-                const rowEmail = String(row.email || '').toLowerCase()
-                if (currentEmail && rowEmail === currentEmail) return false
-                const meta = (row.user_metadata as AuthUserMeta | null | undefined) ?? null
-                const candidates = [meta?.username, meta?.preferred_username]
-                return candidates.some((candidate) => candidate?.trim().toLowerCase() === normalized)
-              })
+              authIndexUsers = (authUsersPage?.users || []).map((row) => ({
+                id: row.id,
+                email: row.email,
+                user_metadata: (row.user_metadata as AuthUserMeta | null | undefined) ?? null,
+                created_at: row.created_at,
+                updated_at: row.updated_at || row.created_at,
+                identities: null,
+              }))
             }
           }
+
+          takenInMetadata = authIndexUsers.some((row) => {
+            const rowEmail = String(row.email || '').toLowerCase()
+            if (currentEmail && rowEmail === currentEmail) return false
+            const meta = (row.user_metadata as AuthUserMeta | null | undefined) ?? null
+            const candidates = [meta?.username, meta?.preferred_username]
+            return candidates.some((candidate) => candidate?.trim().toLowerCase() === normalized)
+          })
 
           const takenInProfiles = (Array.isArray(data) ? data : []).some((row) => {
             const rowEmail = String((row as { email?: string | null }).email || '').toLowerCase()

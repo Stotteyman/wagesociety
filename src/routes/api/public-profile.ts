@@ -5,6 +5,7 @@ import {
   readDisplayNameFromMetadata,
   type AuthUserLike,
 } from '../../lib/memberDirectory'
+import { listAuthIndexedUsers } from '../../lib/authUserIndex'
 import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../lib/supabaseAdmin'
 import { getSupabaseServerPublicClient } from '../../lib/supabaseServer'
 
@@ -29,17 +30,16 @@ type IdentityRow = {
   } | null
 }
 
-function normalizeUsername(value: string) {
-  return value.trim().toLowerCase()
+type PublicProfileRow = {
+  display_name: string | null
+  avatar_url: string | null
+  bio: string | null
+  skills: string[] | null
+  updated_at: string | null
 }
 
-type AuthListUserRow = {
-  id: string
-  email: string | null
-  created_at: string
-  updated_at?: string
-  user_metadata?: AuthUserMeta | null
-  identities?: Array<unknown> | null
+function normalizeUsername(value: string) {
+  return value.trim().toLowerCase()
 }
 
 function providerLabel(provider: string) {
@@ -98,8 +98,10 @@ export const Route = createFileRoute('/api/public-profile')({
             return Response.json({ error: 'username is required.' }, { status: 400 })
           }
 
-          if (!hasSupabaseAdminConfig()) {
-            const client = getSupabaseServerPublicClient()
+          const client = hasSupabaseAdminConfig() ? getSupabaseAdminClient() : getSupabaseServerPublicClient()
+          const users = await listAuthIndexedUsers(client)
+
+          if (users.length === 0) {
             const { data: profiles, error: profilesError } = await client
               .from('org_member_profiles')
               .select('email, display_name, avatar_url, bio, skills, updated_at')
@@ -110,9 +112,9 @@ export const Route = createFileRoute('/api/public-profile')({
             }
 
             const match = (Array.isArray(profiles) ? profiles : []).find((row) => {
-              const email = String(row.email || '').toLowerCase().trim()
+              const email = String((row as any).email || '').toLowerCase().trim()
               const emailUsername = email.split('@')[0] || ''
-              const display = String(row.display_name || '').trim()
+              const display = String((row as any).display_name || '').trim()
               const candidate = normalizeUsername(display || emailUsername)
               return candidate === normalizedRequestedUsername
             })
@@ -121,42 +123,24 @@ export const Route = createFileRoute('/api/public-profile')({
               return Response.json({ error: 'Profile not found.' }, { status: 404 })
             }
 
-            const email = String(match.email || '').toLowerCase().trim()
+            const email = String((match as any).email || '').toLowerCase().trim()
             const emailUsername = email.split('@')[0] || normalizedRequestedUsername
 
             return Response.json({
               profile: {
-                username: normalizeUsername(String(match.display_name || '').trim() || emailUsername),
-                displayName: String(match.display_name || '').trim() || emailUsername,
-                avatarUrl: match.avatar_url || null,
-                bio: match.bio || null,
-                skills: Array.isArray(match.skills) ? match.skills : [],
+                username: normalizeUsername(String((match as any).display_name || '').trim() || emailUsername),
+                displayName: String((match as any).display_name || '').trim() || emailUsername,
+                avatarUrl: (match as any).avatar_url || null,
+                bio: (match as any).bio || null,
+                skills: Array.isArray((match as any).skills) ? (match as any).skills : [],
                 connectedAccounts: [],
-                updatedAt: match.updated_at || null,
+                updatedAt: (match as any).updated_at || null,
               },
             })
           }
 
-          const admin = getSupabaseAdminClient()
-          const users: AuthListUserRow[] = []
-          let page = 1
-          const perPage = 1000
-
-          while (page <= 10) {
-            const { data: usersData, error: usersError } = await admin.auth.admin.listUsers({ page, perPage })
-            if (usersError) {
-              return Response.json({ error: usersError.message }, { status: 500 })
-            }
-
-            const pageUsers = (usersData?.users || []) as AuthListUserRow[]
-            if (!pageUsers.length) break
-            users.push(...pageUsers)
-            if (pageUsers.length < perPage) break
-            page += 1
-          }
-
           const usernameMap = assignDeterministicUsernames(users as AuthUserLike[])
-          const userByUsername = new Map<string, AuthListUserRow>()
+          const userByUsername = new Map<string, AuthUserLike>()
 
           for (const user of users) {
             const username = usernameMap.get(String(user.id || ''))
@@ -170,18 +154,24 @@ export const Route = createFileRoute('/api/public-profile')({
             return Response.json({ error: 'Profile not found.' }, { status: 404 })
           }
 
-          const [{ data: profile, error: profileError }, { data: identities, error: identitiesError }] = await Promise.all([
-            admin
-              .from('org_member_profiles')
-              .select('display_name, avatar_url, bio, skills, updated_at')
-              .eq('email', String(authUser.email).toLowerCase())
-              .maybeSingle(),
-            admin
-              .schema('auth')
-              .from('identities')
-              .select('provider, identity_data')
-              .eq('user_id', authUser.id),
-          ])
+          const admin = hasSupabaseAdminConfig() ? getSupabaseAdminClient() : null
+          const profilePromise = client
+            .from('org_member_profiles')
+            .select('display_name, avatar_url, bio, skills, updated_at')
+            .eq('email', String(authUser.email).toLowerCase())
+            .maybeSingle()
+
+          const identitiesPromise = admin
+            ? admin
+                // @ts-expect-error auth schema typing can lag behind generated DB types.
+                .schema('auth')
+                .from('identities')
+                .select('provider, identity_data')
+                .eq('user_id', authUser.id)
+            : Promise.resolve({ data: [], error: null })
+
+          const [{ data: rawProfile, error: profileError }, { data: rawIdentities, error: identitiesError }] =
+            await Promise.all([profilePromise, identitiesPromise])
 
           if (profileError && profileError.code !== '42P01') {
             return Response.json({ error: profileError.message }, { status: 500 })
@@ -191,24 +181,25 @@ export const Route = createFileRoute('/api/public-profile')({
             return Response.json({ error: identitiesError.message }, { status: 500 })
           }
 
+          const profile = (rawProfile as PublicProfileRow | null) || null
+          const identities = (Array.isArray(rawIdentities) ? (rawIdentities as IdentityRow[]) : [])
           const meta = (authUser.user_metadata as AuthUserMeta | null | undefined) ?? null
           const username = usernameMap.get(String(authUser.id)) || normalizedRequestedUsername
-          const connectedAccounts = (Array.isArray(identities) ? identities : [])
+          const connectedAccounts = identities
             .map((row) => {
-              const identity = row as IdentityRow
               const handle =
-                identity.identity_data?.preferred_username ||
-                identity.identity_data?.username ||
-                identity.identity_data?.user_name ||
-                identity.identity_data?.channel ||
+                row.identity_data?.preferred_username ||
+                row.identity_data?.username ||
+                row.identity_data?.user_name ||
+                row.identity_data?.channel ||
                 null
-              const explicitUrl = identity.identity_data?.profile_url || null
+              const explicitUrl = row.identity_data?.profile_url || null
 
               return {
-                provider: identity.provider,
-                providerLabel: providerLabel(identity.provider),
+                provider: row.provider,
+                providerLabel: providerLabel(row.provider),
                 handle,
-                url: explicitUrl || (handle ? providerProfileUrl(identity.provider, handle) : null),
+                url: explicitUrl || (handle ? providerProfileUrl(row.provider, handle) : null),
               }
             })
             .filter((entry) => Boolean(entry.provider))

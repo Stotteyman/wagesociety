@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { Loader2, Search, UserRound, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { authedFetch } from '../lib/supabaseBrowser'
 
 type DirectoryEntry = {
   username: string
@@ -40,7 +41,7 @@ function DirectoryPage() {
       setLoading(true)
       setError('')
       try {
-        const response = await fetch('/api/public-directory?limit=500')
+        const response = await authedFetch('/api/public-directory?limit=500')
         const data = (await response.json()) as DirectoryResponse
 
         if (!response.ok) {

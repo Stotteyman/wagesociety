@@ -19,18 +19,82 @@ type MemberProfile = {
   avatar_url: string | null
   bio: string | null
   skills: string[] | null
+  livestream_links: string[] | null
   updated_at: string | null
 }
 
-type ProfileApiResponse = { profile: MemberProfile }
+type OAuthProviderOption = {
+  key: string
+  label: string
+  description: string
+}
 
-type OAuthProvider = 'discord' | 'google' | 'facebook'
+type ProfileApiResponse = {
+  profile: MemberProfile
+  oauth_providers?: OAuthProviderOption[]
+}
 
-const OAUTH_PROVIDERS: { key: OAuthProvider; label: string; description: string }[] = [
+const FALLBACK_OAUTH_PROVIDERS: OAuthProviderOption[] = [
   { key: 'discord', label: 'Discord', description: 'Link your Discord account' },
   { key: 'google', label: 'Google / YouTube', description: 'Link your Google account' },
+  { key: 'apple', label: 'Apple', description: 'Link your Apple account' },
   { key: 'facebook', label: 'Facebook', description: 'Link your Facebook account' },
 ]
+
+function toTitleCase(value: string) {
+  return value
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((word) => word[0]?.toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+function providerOptionFromKey(key: string): OAuthProviderOption {
+  const normalized = key.trim().toLowerCase()
+  const fallback = FALLBACK_OAUTH_PROVIDERS.find((provider) => provider.key === normalized)
+  if (fallback) return fallback
+
+  const customName = normalized.startsWith('custom:') ? normalized.slice('custom:'.length) : normalized
+  const label = toTitleCase(customName) || normalized
+  return {
+    key: normalized,
+    label,
+    description: `Link your ${label} account`,
+  }
+}
+
+function mergeProviderOptions(
+  fromServer: OAuthProviderOption[] | undefined,
+  user: SupabaseUser | null,
+) {
+  const options = new Map<string, OAuthProviderOption>()
+
+  for (const provider of fromServer ?? []) {
+    const key = String(provider.key || '').trim().toLowerCase()
+    if (!key) continue
+    options.set(key, {
+      key,
+      label: String(provider.label || '').trim() || providerOptionFromKey(key).label,
+      description: String(provider.description || '').trim() || providerOptionFromKey(key).description,
+    })
+  }
+
+  for (const identity of user?.identities ?? []) {
+    const key = String(identity.provider || '').trim().toLowerCase()
+    if (!key || key === 'email') continue
+    if (!options.has(key)) {
+      options.set(key, providerOptionFromKey(key))
+    }
+  }
+
+  if (options.size === 0) {
+    for (const provider of FALLBACK_OAUTH_PROVIDERS) {
+      options.set(provider.key, provider)
+    }
+  }
+
+  return Array.from(options.values()).sort((a, b) => a.label.localeCompare(b.label))
+}
 
 function deriveUsername(user: SupabaseUser | null, memberEmail: string) {
   const fromUsername = String(user?.user_metadata?.username || '').trim()
@@ -54,12 +118,14 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [bio, setBio] = useState('')
   const [skillsInput, setSkillsInput] = useState('')
+  const [livestreamLinksInput, setLivestreamLinksInput] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
   const [user, setUser] = useState<SupabaseUser | null>(null)
-  const [linkingProvider, setLinkingProvider] = useState<OAuthProvider | null>(null)
+  const [linkingProvider, setLinkingProvider] = useState<string | null>(null)
+  const [oauthProviders, setOauthProviders] = useState<OAuthProviderOption[]>(FALLBACK_OAUTH_PROVIDERS)
 
   useEffect(() => {
     void (async () => {
@@ -76,11 +142,14 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
           const data = (await profileResponse.json()) as ProfileApiResponse
           const p = data.profile
           setProfile(p)
+          setOauthProviders(mergeProviderOptions(data.oauth_providers, currentUser))
           setDisplayName(p.display_name || metadataName)
           setAvatarUrl(p.avatar_url || '')
           setBio(p.bio || '')
           setSkillsInput((p.skills || []).join(', '))
+          setLivestreamLinksInput((p.livestream_links || []).join('\n'))
         } else {
+          setOauthProviders(mergeProviderOptions(undefined, currentUser))
           setDisplayName(metadataName)
         }
         setUser(currentUser)
@@ -115,6 +184,10 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
         avatarUrl: avatarUrl.trim() || '',
         bio: bio.trim() || undefined,
         skills: skillsInput.split(',').map((s) => s.trim()).filter(Boolean),
+        livestreamLinks: livestreamLinksInput
+          .split(/\r?\n|,/)
+          .map((value) => value.trim())
+          .filter(Boolean),
       }),
     })
     if (response.ok) {
@@ -129,15 +202,18 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
     setSaving(false)
   }
 
-  const linkIdentity = async (provider: OAuthProvider) => {
+  const linkIdentity = async (provider: string) => {
+    const normalizedProvider = provider.trim().toLowerCase()
+    if (!normalizedProvider) return
+
     setLinkingProvider(provider)
     setError('')
     try {
       const supabase = getSupabaseBrowserClient()
       const { error: linkError } = await supabase.auth.linkIdentity({
-        provider,
+        provider: normalizedProvider as any,
         options: {
-          redirectTo: getClientAuthRedirectUrl(`/dashboard?view=settings&linked=${provider}`),
+          redirectTo: getClientAuthRedirectUrl(`/dashboard?view=settings&linked=${normalizedProvider}`),
         },
       })
       if (linkError) {
@@ -151,8 +227,14 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
     }
   }
 
-  const isLinked = (provider: OAuthProvider) =>
-    user?.identities?.some((i) => i.provider === provider) ?? false
+  const isLinked = (provider: string) => {
+    const normalizedProvider = provider.trim().toLowerCase()
+    return user?.identities?.some((i) => String(i.provider || '').trim().toLowerCase() === normalizedProvider) ?? false
+  }
+
+  const linkedIdentityProviders = (user?.identities || [])
+    .map((identity) => String(identity.provider || '').toLowerCase())
+    .filter(Boolean)
 
   const checkUsername = (value: string) => {
     if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current)
@@ -379,6 +461,20 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
               </div>
             ) : null}
           </div>
+
+          <div className="sm:col-span-2">
+            <label className="mb-1.5 block text-xs font-medium text-zinc-400">
+              Livestream Links <span className="text-zinc-500">(Kick, Twitch, YouTube)</span>
+            </label>
+            <textarea
+              value={livestreamLinksInput}
+              onChange={(e) => setLivestreamLinksInput(e.target.value)}
+              rows={4}
+              placeholder="https://kick.com/yourname\nhttps://www.twitch.tv/yourname\nhttps://www.youtube.com/@yourname"
+              className="w-full resize-y rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-orange-200/70"
+            />
+            <p className="mt-0.5 text-xs text-zinc-500">One URL per line. Your best stream will be auto-selected by viewers.</p>
+          </div>
         </div>
       </section>
 
@@ -392,28 +488,7 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
           Link your OAuth accounts to enable single sign-on and verify your identities.
         </p>
         <div className="space-y-2">
-          {/* Kick — custom OAuth flow */}
-          <div className="flex items-center justify-between rounded-xl border border-zinc-200/10 bg-zinc-800/40 px-4 py-3">
-            <div>
-              <p className="text-sm font-semibold text-zinc-100">Kick</p>
-              <p className="text-xs text-zinc-500">Link your Kick streaming account</p>
-            </div>
-            {user?.user_metadata?.kick_username ? (
-              <span className="flex items-center gap-1.5 rounded-full border border-emerald-300/40 bg-emerald-300/5 px-3 py-1 text-xs font-semibold text-emerald-300">
-                <Check size={11} /> {user.user_metadata.kick_username as string}
-              </span>
-            ) : (
-              <a
-                href="/api/kick-login"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200/25 px-3 py-1.5 text-xs font-semibold text-zinc-200 transition hover:border-orange-200/50 hover:text-orange-100"
-              >
-                <Link2 size={11} />
-                Link
-              </a>
-            )}
-          </div>
-
-          {OAUTH_PROVIDERS.map(({ key, label, description }) => {
+          {oauthProviders.map(({ key, label, description }) => {
             const linked = isLinked(key)
             return (
               <div
@@ -446,6 +521,15 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
               </div>
             )
           })}
+
+          {linkedIdentityProviders.length > 0 ? (
+            <div className="rounded-xl border border-zinc-200/10 bg-zinc-800/30 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Currently linked via Supabase</p>
+              <p className="mt-1 text-xs text-zinc-500">
+                {linkedIdentityProviders.join(', ')}
+              </p>
+            </div>
+          ) : null}
         </div>
       </section>
 

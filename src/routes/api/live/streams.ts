@@ -1,8 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { getLivestreamSnapshot, parseLivestreamLink } from '../../../lib/liveStatus'
+import { listAuthIndexedUsers } from '../../../lib/authUserIndex'
 import { isLocalRequest } from '../../../lib/orgAuth'
-import { requirePermission } from '../../../lib/orgAuth'
+import { getRequesterAccess, requirePermission } from '../../../lib/orgAuth'
 import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../../lib/supabaseAdmin'
 import { getSupabaseServerPublicClient } from '../../../lib/supabaseServer'
 
@@ -26,92 +27,260 @@ type DbStream = {
   updated_at: string
 }
 
+type ProfileRow = {
+  email: string
+  display_name: string | null
+  bio: string | null
+  updated_at: string | null
+}
+
+type AuthUserRow = {
+  id: string
+  email: string | null
+  created_at: string | null
+  updated_at: string | null
+  user_metadata?: Record<string, unknown> | null
+}
+
+type AutoCandidate = {
+  url: string
+  platform: 'twitch' | 'youtube' | 'kick'
+  stream_key: string
+}
+
+const URL_REGEX = /https?:\/\/[^\s)]+/gi
+
+function normalizeUrl(value: string) {
+  return value.trim().replace(/[),.;]+$/g, '')
+}
+
+function collectStringValues(input: unknown, depth = 0): string[] {
+  if (depth > 3 || input == null) return []
+
+  if (typeof input === 'string') {
+    const trimmed = input.trim()
+    return trimmed ? [trimmed] : []
+  }
+
+  if (Array.isArray(input)) {
+    return input.flatMap((item) => collectStringValues(item, depth + 1))
+  }
+
+  if (typeof input === 'object') {
+    return Object.values(input as Record<string, unknown>).flatMap((value) => collectStringValues(value, depth + 1))
+  }
+
+  return []
+}
+
+function extractUrls(input: unknown) {
+  const values = collectStringValues(input)
+  const urls: string[] = []
+
+  for (const value of values) {
+    const matches = value.match(URL_REGEX)
+    if (!matches) continue
+
+    for (const match of matches) {
+      const normalized = normalizeUrl(match)
+      if (normalized) urls.push(normalized)
+    }
+  }
+
+  return urls
+}
+
+function toKickUrl(value: unknown) {
+  const username = String(value || '').trim().replace(/^@/, '')
+  if (!username) return null
+  return `https://kick.com/${username}`
+}
+
+function toTwitchUrl(value: unknown) {
+  const username = String(value || '').trim().replace(/^@/, '')
+  if (!username) return null
+  return `https://www.twitch.tv/${username}`
+}
+
+function toYouTubeHandleUrl(value: unknown) {
+  const username = String(value || '').trim().replace(/^@/, '')
+  if (!username) return null
+  return `https://www.youtube.com/@${username}`
+}
+
+function collectCandidateUrls(meta: Record<string, unknown> | null | undefined, profile: ProfileRow | undefined) {
+  const urls = new Set<string>()
+
+  const metadataUrlKeys = [
+    'livestream_url',
+    'livestream_urls',
+    'livestream_link',
+    'livestream_links',
+    'stream_url',
+    'stream_urls',
+    'stream_link',
+    'stream_links',
+    'kick_url',
+    'twitch_url',
+    'youtube_url',
+    'youtube_channel_url',
+  ] as const
+
+  for (const key of metadataUrlKeys) {
+    const source = meta?.[key]
+    for (const url of extractUrls(source)) {
+      urls.add(url)
+    }
+  }
+
+  const kickFromUsername = toKickUrl(meta?.kick_username)
+  if (kickFromUsername) urls.add(kickFromUsername)
+
+  const twitchFromUsername = toTwitchUrl(meta?.twitch_username)
+  if (twitchFromUsername) urls.add(twitchFromUsername)
+
+  const youtubeFromHandle = toYouTubeHandleUrl(meta?.youtube_handle)
+  if (youtubeFromHandle) urls.add(youtubeFromHandle)
+
+  const profileSources = [profile?.bio]
+  for (const source of profileSources) {
+    for (const url of extractUrls(source)) {
+      urls.add(url)
+    }
+  }
+
+  return Array.from(urls)
+}
+
+function parseAutoCandidates(urls: string[]): AutoCandidate[] {
+  const dedupe = new Set<string>()
+  const candidates: AutoCandidate[] = []
+
+  for (const url of urls) {
+    try {
+      const parsed = parseLivestreamLink(url)
+      const key = `${parsed.platform}:${parsed.streamKey}`
+      if (dedupe.has(key)) continue
+      dedupe.add(key)
+
+      candidates.push({
+        url,
+        platform: parsed.platform,
+        stream_key: parsed.streamKey,
+      })
+    } catch {
+      // Ignore non-supported or malformed links in profile metadata.
+    }
+  }
+
+  return candidates
+}
+
+function pickMostEngaged(candidates: Array<DbStream & {
+  status: 'live' | 'offline'
+  viewer_count: number | null
+  follower_count: number | null
+  account_created_at: string | null
+}>) {
+  return [...candidates].sort((a, b) => {
+    const aViewers = a.viewer_count || 0
+    const bViewers = b.viewer_count || 0
+    if (aViewers !== bViewers) return bViewers - aViewers
+
+    const aLive = a.status === 'live' ? 1 : 0
+    const bLive = b.status === 'live' ? 1 : 0
+    if (aLive !== bLive) return bLive - aLive
+
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+  })[0] || null
+}
+
 export const Route = createFileRoute('/api/live/streams')({
   server: {
     handlers: {
       GET: async ({ request }) => {
         try {
-          const useAdminPath = hasSupabaseAdminConfig()
-          const useLocalRoot = request.headers.get('x-local-root-session') === 'true' && isLocalRequest(request)
+          // Streams list is publicly visible — no auth required.
+          // Auth is only used to determine canManage / canUseAutoclipper flags.
+          const client = hasSupabaseAdminConfig() ? getSupabaseAdminClient() : getSupabaseServerPublicClient()
 
-          let streams: DbStream[] = []
-          let requesterEmail = 'unknown'
-          let requesterSource = 'supabase-session'
+          const users = await listAuthIndexedUsers(client)
+
+          const { data: profileRows } = await client
+            .from('org_member_profiles')
+            .select('email, display_name, bio, updated_at')
+            .limit(10000)
+
+          const profileByEmail = new Map(
+            ((profileRows || []) as ProfileRow[]).map((row) => [String(row.email || '').trim().toLowerCase(), row])
+          )
+
+          const autoStreams: DbStream[] = []
+
+          for (const row of users as AuthUserRow[]) {
+            const email = String(row.email || '').trim().toLowerCase()
+            if (!row.id || !email) continue
+
+            const profile = profileByEmail.get(email)
+            const candidates = parseAutoCandidates(collectCandidateUrls((row.user_metadata as Record<string, unknown> | null | undefined) ?? null, profile))
+
+            if (candidates.length === 0) continue
+
+            const streamCandidates = await Promise.all(
+              candidates.map(async (candidate) => {
+                const snapshot = await getLivestreamSnapshot(candidate.platform, candidate.stream_key)
+
+                return {
+                  id: `auto-${row.id}-${candidate.platform}-${candidate.stream_key}`,
+                  url: candidate.url,
+                  title: profile?.display_name?.trim() || email.split('@')[0] || null,
+                  platform: candidate.platform,
+                  stream_key: candidate.stream_key,
+                  created_by: email,
+                  created_at: row.created_at || new Date().toISOString(),
+                  updated_at: profile?.updated_at || row.updated_at || row.created_at || new Date().toISOString(),
+                  status: snapshot.status,
+                  viewer_count: snapshot.viewerCount,
+                  follower_count: snapshot.followerCount,
+                  account_created_at: snapshot.accountCreatedAt,
+                }
+              })
+            )
+
+            const best = pickMostEngaged(streamCandidates)
+            if (best) {
+              autoStreams.push(best)
+            }
+          }
+
+          // Best-effort: resolve requester to compute permission flags.
+          let requesterEmail = 'anonymous'
+          let requesterSource = 'none'
           let canManage = false
           let canUseAutoclipper = false
 
-          if (useAdminPath) {
-            const access = await requirePermission(request, 'view_live_streams')
-            const admin = getSupabaseAdminClient()
+          const authHeader = request.headers.get('authorization') || ''
+          const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
+          const useLocalRoot = request.headers.get('x-local-root-session') === 'true' && isLocalRequest(request)
 
-            const { data, error } = await admin.rpc('list_org_livestreams')
-            if (error) {
-              return Response.json({ error: error.message }, { status: 500 })
+          if (useLocalRoot) {
+            requesterEmail = 'root-superadmin@localhost'
+            requesterSource = 'localhost-bypass'
+            canManage = true
+            canUseAutoclipper = false
+          } else if (token) {
+            try {
+              const access = await getRequesterAccess(request)
+              requesterEmail = access.requester.email
+              requesterSource = access.requester.source
+              canManage = access.isSuperadmin || access.permissions.includes('manage_livestreams')
+              canUseAutoclipper = access.isSuperadmin || access.permissions.includes('use_autoclipper')
+            } catch {
+              // Expired/invalid token — still show public stream list.
             }
-
-            streams = (data || []) as DbStream[]
-            requesterEmail = access.requester.email
-            requesterSource = access.requester.source
-            canManage = access.isSuperadmin || access.permissions.includes('manage_livestreams')
-            canUseAutoclipper = access.isSuperadmin || access.permissions.includes('use_autoclipper')
-          } else {
-            const client = getSupabaseServerPublicClient()
-
-            if (useLocalRoot) {
-              requesterEmail = 'root-superadmin@localhost'
-              requesterSource = 'localhost-bypass'
-              canManage = true
-              canUseAutoclipper = false
-            } else {
-              const authHeader = request.headers.get('authorization') || ''
-              const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
-              if (!token) {
-                return Response.json(
-                  { error: 'Authentication required to view livestreams right now.' },
-                  { status: 401 },
-                )
-              }
-
-              const {
-                data: { user },
-                error: userError,
-              } = await client.auth.getUser(token)
-
-              if (userError || !user?.email) {
-                return Response.json(
-                  { error: 'Authentication required to view livestreams right now.' },
-                  { status: 401 },
-                )
-              }
-
-              requesterEmail = user.email
-              requesterSource = 'supabase-session'
-            }
-
-            // @ts-expect-error RPC typing can lag behind DB migrations in local development.
-            const { data, error } = await client.rpc('list_org_livestreams')
-
-            if (error) {
-              return Response.json({ error: error.message }, { status: 500 })
-            }
-
-            streams = (data || []) as DbStream[]
           }
 
-          const withStatus = await Promise.all(
-            streams.map(async (stream) => {
-              const snapshot = await getLivestreamSnapshot(stream.platform, stream.stream_key)
-              return {
-                ...stream,
-                status: snapshot.status,
-                viewer_count: snapshot.viewerCount,
-                follower_count: snapshot.followerCount,
-                account_created_at: snapshot.accountCreatedAt,
-              }
-            })
-          )
-
-          const sortedStreams = [...withStatus].sort((a, b) => {
+          const sortedStreams = [...autoStreams].sort((a, b) => {
             const aLive = a.status === 'live' ? 1 : 0
             const bLive = b.status === 'live' ? 1 : 0
             if (aLive !== bLive) return bLive - aLive

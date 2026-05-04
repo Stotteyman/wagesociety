@@ -30,11 +30,13 @@ const updateSchema = z.object({
   avatarUrl: z.string().url().optional().or(z.literal('')),
   bio: z.string().trim().max(500).optional(),
   skills: z.array(z.string().trim().max(40)).max(30).optional(),
+  livestreamLinks: z.array(z.string().url()).max(20).optional(),
 })
 
 type AuthUserMeta = {
   username?: string
   preferred_username?: string
+  livestream_links?: string[]
 }
 
 function readDisplayNameFromMeta(meta: AuthUserMeta | null | undefined) {
@@ -60,6 +62,7 @@ function createFallbackProfile(email: string, displayName: string | null) {
     avatar_url: null,
     bio: null,
     skills: [] as string[],
+    livestream_links: [] as string[],
     updated_at: null,
   }
 }
@@ -70,7 +73,107 @@ type ProfileRow = {
   avatar_url: string | null
   bio: string | null
   skills: string[] | null
+  livestream_links?: string[] | null
   updated_at: string | null
+}
+
+type OAuthProviderOption = {
+  key: string
+  label: string
+  description: string
+}
+
+type AuthIdentityRow = {
+  provider?: string | null
+}
+
+type CustomOAuthProviderRow = {
+  identifier?: string | null
+  name?: string | null
+  enabled?: boolean | null
+}
+
+const BUILTIN_OAUTH_PROVIDER_META: Record<string, { label: string; description: string }> = {
+  discord: { label: 'Discord', description: 'Link your Discord account' },
+  google: { label: 'Google / YouTube', description: 'Link your Google account' },
+  apple: { label: 'Apple', description: 'Link your Apple account' },
+  facebook: { label: 'Facebook', description: 'Link your Facebook account' },
+}
+
+function toTitleCase(value: string) {
+  return value
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((word) => word[0]?.toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+function providerOptionFromKey(key: string, explicitLabel?: string | null): OAuthProviderOption {
+  const normalized = key.trim().toLowerCase()
+  const builtin = BUILTIN_OAUTH_PROVIDER_META[normalized]
+  if (builtin) {
+    return { key: normalized, label: builtin.label, description: builtin.description }
+  }
+
+  const customName = normalized.startsWith('custom:') ? normalized.slice('custom:'.length) : normalized
+  const label = (explicitLabel || '').trim() || toTitleCase(customName) || normalized
+  return {
+    key: normalized,
+    label,
+    description: `Link your ${label} account`,
+  }
+}
+
+async function getAvailableOAuthProviders() {
+  if (!hasSupabaseAdminConfig()) {
+    return [] as OAuthProviderOption[]
+  }
+
+  const admin = getSupabaseAdminClient() as any
+
+  const [{ data: identityRows, error: identityError }, { data: customRows, error: customError }] = await Promise.all([
+    admin
+      .schema('auth')
+      .from('identities')
+      .select('provider')
+      .neq('provider', 'email'),
+    admin
+      .schema('auth')
+      .from('custom_oauth_providers')
+      .select('identifier, name, enabled')
+      .eq('enabled', true),
+  ])
+
+  const optionsByKey = new Map<string, OAuthProviderOption>()
+
+  if (!identityError) {
+    for (const row of (identityRows as AuthIdentityRow[] | null) ?? []) {
+      const provider = String(row.provider || '').trim().toLowerCase()
+      if (!provider) continue
+      optionsByKey.set(provider, providerOptionFromKey(provider))
+    }
+  }
+
+  if (!customError) {
+    for (const row of (customRows as CustomOAuthProviderRow[] | null) ?? []) {
+      if (row.enabled === false) continue
+      const identifier = String(row.identifier || '').trim().toLowerCase()
+      if (!identifier) continue
+      optionsByKey.set(identifier, providerOptionFromKey(identifier, row.name))
+    }
+  }
+
+  return Array.from(optionsByKey.values()).sort((a, b) => a.label.localeCompare(b.label))
+}
+
+function readLivestreamLinks(meta: AuthUserMeta | null | undefined) {
+  const raw = Array.isArray(meta?.livestream_links) ? meta?.livestream_links : []
+  const unique = new Set<string>()
+  for (const value of raw) {
+    const trimmed = String(value || '').trim()
+    if (trimmed) unique.add(trimmed)
+  }
+  return Array.from(unique)
 }
 
 export const Route = createFileRoute('/api/me/profile')({
@@ -113,16 +216,23 @@ export const Route = createFileRoute('/api/me/profile')({
             return Response.json({ error: authUserError.message }, { status: 500 })
           }
 
+          const oauthProviders = await getAvailableOAuthProviders()
+
           const meta = (authUser?.raw_user_meta_data as AuthUserMeta | null | undefined) ?? null
           const authDisplayName = readDisplayNameFromMeta(meta)
 
           return Response.json({
+            oauth_providers: oauthProviders,
             profile: profile
               ? {
                   ...profile,
                   display_name: profile.display_name || authDisplayName,
+                  livestream_links: readLivestreamLinks(meta),
                 }
-              : createFallbackProfile(access.requester.email, authDisplayName),
+              : {
+                  ...createFallbackProfile(access.requester.email, authDisplayName),
+                  livestream_links: readLivestreamLinks(meta),
+                },
           })
         } catch (error) {
           if (error instanceof Response) return error
@@ -141,6 +251,11 @@ export const Route = createFileRoute('/api/me/profile')({
           if (!parsed.success) {
             return Response.json({ error: 'Invalid payload', details: parsed.error.flatten() }, { status: 400 })
           }
+
+          const normalizedLivestreamLinks =
+            parsed.data.livestreamLinks !== undefined
+              ? Array.from(new Set(parsed.data.livestreamLinks.map((link) => link.trim()).filter(Boolean)))
+              : undefined
 
           const canUseAdmin = hasSupabaseAdminConfig()
           const token = getBearerToken(request)
@@ -208,16 +323,21 @@ export const Route = createFileRoute('/api/me/profile')({
             (userRow) => String(userRow.email || '').toLowerCase() === access.requester.email,
           )
 
-          if (canUseAdmin && currentAuthUser?.id && parsed.data.displayName !== undefined) {
+          if (canUseAdmin && currentAuthUser?.id && (parsed.data.displayName !== undefined || parsed.data.livestreamLinks !== undefined)) {
             const existingMeta = (currentAuthUser.raw_user_meta_data as AuthUserMeta | null | undefined) ?? {}
-            const trimmedDisplayName = parsed.data.displayName.trim()
+            const trimmedDisplayName = parsed.data.displayName?.trim() || ''
             const nextName = trimmedDisplayName || readDisplayNameFromMeta(existingMeta) || ''
+            const nextLinks =
+              normalizedLivestreamLinks !== undefined
+                ? normalizedLivestreamLinks
+                : readLivestreamLinks(existingMeta)
 
             const { error: updateAuthError } = await getSupabaseAdminClient().auth.admin.updateUserById(currentAuthUser.id, {
               user_metadata: {
                 ...existingMeta,
                 username: nextName,
                 preferred_username: nextName,
+                livestream_links: nextLinks,
               },
             })
 
@@ -249,7 +369,13 @@ export const Route = createFileRoute('/api/me/profile')({
           }
 
           if (data) {
-            return Response.json({ profile: data })
+            const ownAuthMeta = (currentAuthUser?.raw_user_meta_data as AuthUserMeta | null | undefined) ?? null
+            return Response.json({
+              profile: {
+                ...data,
+                livestream_links: normalizedLivestreamLinks ?? readLivestreamLinks(ownAuthMeta),
+              },
+            })
           }
 
           const ownAuthMeta = (currentAuthUser?.raw_user_meta_data as AuthUserMeta | null | undefined) ?? null
@@ -257,7 +383,10 @@ export const Route = createFileRoute('/api/me/profile')({
             parsed.data.displayName?.trim() || readDisplayNameFromMeta(ownAuthMeta)
 
           return Response.json({
-            profile: createFallbackProfile(access.requester.email, fallbackDisplayName || null),
+            profile: {
+              ...createFallbackProfile(access.requester.email, fallbackDisplayName || null),
+              livestream_links: normalizedLivestreamLinks ?? readLivestreamLinks(ownAuthMeta),
+            },
           })
         } catch (error) {
           if (error instanceof Response) return error

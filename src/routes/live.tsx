@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { ExternalLink, RadioTower, Trash2 } from 'lucide-react'
+import { ExternalLink, RadioTower } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { authedFetch } from '../lib/supabaseBrowser'
 
@@ -71,9 +71,6 @@ function LivePage() {
   const [error, setError] = useState('')
   const [canManage, setCanManage] = useState(false)
   const [canUseAutoclipper, setCanUseAutoclipper] = useState(false)
-
-  const [url, setUrl] = useState('')
-  const [submitting, setSubmitting] = useState(false)
   const [autoJobs, setAutoJobs] = useState<AutoclipperJob[]>([])
   const [autoLoading, setAutoLoading] = useState(true)
   const [autoBusy, setAutoBusy] = useState(false)
@@ -113,6 +110,8 @@ function LivePage() {
   const loadStreams = async () => {
     try {
       setError('')
+      // Stream list is public — use authedFetch so logged-in users get canManage/canUseAutoclipper flags,
+      // but unauthenticated visitors will still see the stream list.
       const response = await authedFetch('/api/live/streams')
       const data = (await response.json()) as LiveApiResponse | { error?: string }
 
@@ -223,62 +222,6 @@ function LivePage() {
     }
   }
 
-  const handleAddStream = async (event: React.FormEvent) => {
-    event.preventDefault()
-
-    try {
-      setSubmitting(true)
-      setError('')
-
-      const response = await authedFetch('/api/live/streams', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url }),
-      })
-
-      const data = (await response.json()) as { error?: string }
-
-      if (!response.ok) {
-        setError(data.error || 'Failed to add livestream')
-        return
-      }
-
-      setUrl('')
-      await loadStreams()
-    } catch {
-      setError('Failed to add livestream')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const handleDeleteStream = async (id: string) => {
-    try {
-      setError('')
-
-      const response = await authedFetch('/api/live/streams', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id }),
-      })
-
-      const data = (await response.json()) as { error?: string }
-
-      if (!response.ok) {
-        setError(data.error || 'Failed to remove livestream')
-        return
-      }
-
-      await loadStreams()
-    } catch {
-      setError('Failed to remove livestream')
-    }
-  }
-
   return (
     <div className="min-h-screen px-4 py-12 text-zinc-100">
       <div className="mx-auto max-w-6xl space-y-6">
@@ -288,7 +231,7 @@ function LivePage() {
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Live Control Center</p>
               <h1 className="mt-2 text-3xl font-black text-zinc-50 md:text-4xl">Organization Livestreams</h1>
               <p className="mt-3 max-w-2xl text-zinc-300">
-                Track active streams in one place. Click any stream row to open the channel in a new tab.
+                Streams are pulled automatically from member-linked Kick, Twitch, and YouTube accounts.
               </p>
             </div>
             <div className="flex gap-3">
@@ -307,34 +250,6 @@ function LivePage() {
             </div>
           </div>
         </header>
-
-        {canManage ? (
-          <section className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6">
-            <h2 className="text-xl font-bold text-zinc-50">Add Livestream Link</h2>
-            <p className="mt-2 text-sm text-zinc-300">Admins can add Twitch channel links, YouTube channel links, and Kick channel links.</p>
-
-            <form onSubmit={handleAddStream} className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
-              <label className="flex flex-col gap-2 text-sm text-zinc-300">
-                <span>Livestream URL</span>
-                <input
-                  type="url"
-                  required
-                  value={url}
-                  onChange={(event) => setUrl(event.target.value)}
-                  className="rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-zinc-100 outline-none transition focus:border-orange-200/70"
-                  placeholder="https://www.twitch.tv/channel, https://www.youtube.com/@channel, or https://kick.com/channel"
-                />
-              </label>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="rounded-lg bg-orange-300 px-4 py-2.5 font-semibold text-zinc-950 transition hover:bg-orange-200 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {submitting ? 'Adding...' : 'Add Stream'}
-              </button>
-            </form>
-          </section>
-        ) : null}
 
         {error ? (
           <p className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{error}</p>
@@ -431,7 +346,7 @@ function LivePage() {
 
           {!loading && streams.length === 0 ? (
             <article className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-5 text-zinc-300">
-              No livestreams have been added yet.
+              No linked livestream profiles found yet.
             </article>
           ) : null}
 
@@ -471,20 +386,6 @@ function LivePage() {
                       >
                         {isLive ? 'Live' : 'Offline'}
                       </span>
-
-                      {canManage ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            void handleDeleteStream(stream.id)
-                          }}
-                          className="rounded-lg border border-zinc-100/25 p-2 text-zinc-200 transition hover:border-rose-300/60 hover:text-rose-200"
-                          aria-label="Remove livestream"
-                          title="Remove livestream"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      ) : null}
                     </div>
 
                     {isLive ? <p className="text-xs text-zinc-300">Viewers: {formatNumber(stream.viewer_count)}</p> : null}

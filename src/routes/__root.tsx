@@ -5,6 +5,7 @@ import { formatRoleLabel, type OrgRole } from '../lib/orgAccess'
 import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 import { getStoredViewAsRole, setStoredViewAsRole } from '../lib/viewAs'
 import { SiteHeader } from '../components/SiteHeader'
+import { useNavigate } from '@tanstack/react-router'
 
 import '../styles.css'
 
@@ -54,6 +55,60 @@ export const Route = createRootRoute({
 function RootDocument({ children }: { children: React.ReactNode }) {
   const [pageReady, setPageReady] = useState(false)
   const [viewingAs, setViewingAs] = useState<OrgRole | null>(null)
+  const navigate = useNavigate()
+
+  // Handle OAuth deep link callback from Android (com.wagesociety.android://login-callback#access_token=...)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    // @ts-expect-error Capacitor is injected at runtime in native apps.
+    const cap = window.Capacitor
+    if (!cap?.isNativePlatform?.()) return
+
+    let cleanupFn: (() => void) | null = null
+
+    void (async () => {
+      try {
+        const { App } = await import('@capacitor/app')
+        const { Browser } = await import('@capacitor/browser')
+
+        const listener = await App.addListener('appUrlOpen', async (event: { url: string }) => {
+          const url = event.url
+          if (!url.startsWith('com.wagesociety.android://login-callback')) return
+
+          // Close the system browser tab.
+          await Browser.close().catch(() => {})
+
+          // Supabase embeds tokens in the hash fragment.
+          const hash = url.includes('#') ? url.split('#')[1] : ''
+          const params = new URLSearchParams(hash)
+          const accessToken = params.get('access_token')
+          const refreshToken = params.get('refresh_token')
+
+          if (accessToken && refreshToken) {
+            const supabase = getSupabaseBrowserClient()
+            const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+            if (!error) {
+              const { data } = await supabase.auth.getUser()
+              const meta = (data?.user?.user_metadata as Record<string, unknown> | undefined) || {}
+              const dest = meta.onboarding_completed === true ? '/dashboard' : '/onboarding'
+              void navigate({ to: dest as '/dashboard' | '/onboarding' })
+            }
+          }
+        })
+
+        cleanupFn = () => {
+          listener.remove().catch(() => {})
+        }
+      } catch {
+        // Not running in Capacitor — safe to ignore.
+      }
+    })()
+
+    return () => {
+      cleanupFn?.()
+    }
+  }, [navigate])
 
   useEffect(() => {
     if (typeof window === 'undefined') return

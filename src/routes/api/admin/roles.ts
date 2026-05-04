@@ -1,13 +1,30 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { canManageRole, ORG_ROLES, type OrgRole } from '../../../lib/orgAccess'
+import { listAuthIndexedUsers } from '../../../lib/authUserIndex'
 import { getBanRecord } from '../../../lib/orgAuth'
 import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../../lib/supabaseAdmin'
 import { getRequesterAccess, requirePermission } from '../../../lib/orgAuth'
-import { getSupabaseServerPublicClient } from '../../../lib/supabaseServer'
+import { getSupabaseServerClientForToken, getSupabaseServerPublicClient } from '../../../lib/supabaseServer'
 
-function getAdminOrPublicClient() {
-  return hasSupabaseAdminConfig() ? getSupabaseAdminClient() : getSupabaseServerPublicClient()
+function getBearerToken(request: Request) {
+  const authHeader = request.headers.get('authorization') || request.headers.get('Authorization') || ''
+  if (!authHeader.toLowerCase().startsWith('bearer ')) return undefined
+  const token = authHeader.slice(7).trim()
+  return token || undefined
+}
+
+function getAdminOrRequestClient(request: Request) {
+  if (hasSupabaseAdminConfig()) {
+    return getSupabaseAdminClient()
+  }
+
+  const token = getBearerToken(request)
+  if (token) {
+    return getSupabaseServerClientForToken(token)
+  }
+
+  return getSupabaseServerPublicClient()
 }
 
 type RoleListRow = {
@@ -19,18 +36,43 @@ type RoleListRow = {
   banned_until: string | null
   updated_at: string
   created_at: string
-}
-
-type ProfileEmailRow = {
-  email: string
-  created_at: string | null
-  updated_at: string | null
+  user_id?: string | null
+  display_name?: string | null
+  membership_plan?: string | null
+  stripe_customer_id?: string | null
+  stripe_subscription_id?: string | null
+  effective_permissions?: string[]
 }
 
 type AuthUserListRow = {
+  id?: string
   email: string | null
   created_at: string
   updated_at?: string
+  user_metadata?: Record<string, unknown> | null
+}
+
+type AuthUserLite = {
+  id: string
+  email: string
+  created_at: string
+  updated_at: string
+  user_metadata: Record<string, unknown> | null
+}
+
+function toStringOrNull(value: unknown) {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  return trimmed || null
+}
+
+function getDisplayName(userMetadata: Record<string, unknown> | null) {
+  return (
+    toStringOrNull(userMetadata?.full_name) ||
+    toStringOrNull(userMetadata?.name) ||
+    toStringOrNull(userMetadata?.username) ||
+    toStringOrNull(userMetadata?.preferred_username)
+  )
 }
 
 const setRoleSchema = z.object({
@@ -51,7 +93,7 @@ export const Route = createFileRoute('/api/admin/roles')({
             return Response.json({ error: 'Manage users permission required' }, { status: 403 })
           }
 
-          const admin = getAdminOrPublicClient()
+          const admin = getAdminOrRequestClient(request)
 
           const { data, error } = await admin.rpc('list_org_member_roles')
 
@@ -66,74 +108,150 @@ export const Route = createFileRoute('/api/admin/roles')({
 
           const inferredRows: RoleListRow[] = []
 
+          let authUsers = await listAuthIndexedUsers(admin)
+
+          // Always merge direct auth schema users when admin credentials are available.
+          // This prevents stale public index data from hiding real signed-up members.
           if (hasSupabaseAdminConfig()) {
             const adminClient = getSupabaseAdminClient()
+            const directAuthUsers: AuthUserListRow[] = []
             let page = 1
             const perPage = 1000
 
             while (page <= 10) {
               const { data: usersData, error: usersError } = await adminClient.auth.admin.listUsers({ page, perPage })
               if (usersError) break
+              const pageUsers = (usersData?.users || []) as AuthUserListRow[]
+              if (!pageUsers.length) break
+              directAuthUsers.push(...pageUsers)
+              if (pageUsers.length < perPage) break
+              page += 1
+            }
 
-              const users = (usersData?.users || []) as AuthUserListRow[]
-              if (!users.length) break
+            if (directAuthUsers.length > 0) {
+              const mergedAuthByEmail = new Map<string, AuthUserLite>()
 
-              for (const user of users) {
-                const email = String(user.email || '').trim().toLowerCase()
-                if (!email || existingEmails.has(email)) continue
-                existingEmails.add(email)
-
-                const createdAt = user.created_at || user.updated_at || new Date().toISOString()
-                const updatedAt = user.updated_at || user.created_at || createdAt
-
-                inferredRows.push({
+              for (const indexedUser of authUsers) {
+                const email = String(indexedUser.email || '').trim().toLowerCase()
+                if (!email) continue
+                mergedAuthByEmail.set(email, {
+                  id: String(indexedUser.id || email),
                   email,
-                  role: 'user',
-                  granted_by: null,
-                  banned_by: null,
-                  ban_reason: null,
-                  banned_until: null,
-                  created_at: createdAt,
-                  updated_at: updatedAt,
+                  created_at: indexedUser.created_at || indexedUser.updated_at || new Date().toISOString(),
+                  updated_at: indexedUser.updated_at || indexedUser.created_at || new Date().toISOString(),
+                  user_metadata: indexedUser.user_metadata as Record<string, unknown> | null,
                 })
               }
 
-              if (users.length < perPage) break
-              page += 1
+              for (const directUser of directAuthUsers) {
+                const email = String(directUser.email || '').trim().toLowerCase()
+                if (!email) continue
+
+                mergedAuthByEmail.set(email, {
+                  id: String(directUser.id || email),
+                  email,
+                  created_at: directUser.created_at || directUser.updated_at || new Date().toISOString(),
+                  updated_at: directUser.updated_at || directUser.created_at || new Date().toISOString(),
+                  user_metadata: (directUser.user_metadata || null) as Record<string, unknown> | null,
+                })
+              }
+
+              authUsers = Array.from(mergedAuthByEmail.values()).map((user) => ({
+                id: user.id,
+                email: user.email,
+                created_at: user.created_at,
+                updated_at: user.updated_at,
+                user_metadata: user.user_metadata,
+                identities: null,
+              }))
             }
           }
 
-          // Best-effort: include signed-up members who have not received explicit role rows yet.
-          const { data: profileRows, error: profileError } = await admin
-            .from('org_member_profiles')
-            .select('email, created_at, updated_at')
-            .limit(10000)
+          if (authUsers.length === 0 && hasSupabaseAdminConfig()) {
+            const adminClient = getSupabaseAdminClient()
+            const fallbackUsers: AuthUserListRow[] = []
+            let page = 1
+            const perPage = 1000
 
-          if (!profileError && Array.isArray(profileRows)) {
-            const profileInferredRows = (profileRows as ProfileEmailRow[])
-              .map((profile) => {
-                const email = String(profile.email || '').trim().toLowerCase()
-                if (!email || existingEmails.has(email)) return null
-                existingEmails.add(email)
+            while (page <= 10) {
+              const { data: usersData, error: usersError } = await adminClient.auth.admin.listUsers({ page, perPage })
+              if (usersError) break
+              const pageUsers = (usersData?.users || []) as AuthUserListRow[]
+              if (!pageUsers.length) break
+              fallbackUsers.push(...pageUsers)
+              if (pageUsers.length < perPage) break
+              page += 1
+            }
 
-                const createdAt = profile.created_at || profile.updated_at || new Date().toISOString()
-                const updatedAt = profile.updated_at || profile.created_at || createdAt
-
-                return {
-                  email,
-                  role: 'user' as OrgRole,
-                  granted_by: null,
-                  banned_by: null,
-                  ban_reason: null,
-                  banned_until: null,
-                  created_at: createdAt,
-                  updated_at: updatedAt,
-                }
-              })
-              .filter((row): row is RoleListRow => Boolean(row))
-
-            inferredRows.push(...profileInferredRows)
+            authUsers = fallbackUsers.map((user) => ({
+              id: String(user.id || user.email || '').toLowerCase(),
+              email: user.email,
+              created_at: user.created_at,
+              updated_at: user.updated_at || user.created_at,
+              user_metadata: user.user_metadata || null,
+              identities: null,
+            }))
           }
+
+          const authUsersByEmail = new Map(
+            authUsers
+              .map((user) => [String(user.email || '').trim().toLowerCase(), user] as const)
+              .filter(([email]) => Boolean(email)),
+          )
+
+          const permissionCache = new Map<OrgRole, string[]>()
+          const collectPermissionsForRole = async (targetRole: OrgRole) => {
+            if (permissionCache.has(targetRole)) {
+              return permissionCache.get(targetRole) || []
+            }
+
+            const { data: permsData, error: permsError } = await admin.rpc('list_org_permissions_for_role', {
+              p_role: targetRole,
+            })
+
+            if (permsError) {
+              permissionCache.set(targetRole, [])
+              return []
+            }
+
+            const keys = Array.isArray(permsData)
+              ? permsData
+                  .map((row) => String((row as { permission_key?: unknown })?.permission_key || '').trim())
+                  .filter(Boolean)
+              : []
+
+            permissionCache.set(targetRole, keys)
+            return keys
+          }
+
+          const indexInferredRows = authUsers
+            .map((row) => {
+              const email = String(row.email || '').trim().toLowerCase()
+              if (!email || existingEmails.has(email)) return null
+              existingEmails.add(email)
+
+              const createdAt = row.created_at || row.updated_at || new Date().toISOString()
+              const updatedAt = row.updated_at || row.created_at || createdAt
+
+              return {
+                email,
+                role: 'user' as OrgRole,
+                granted_by: null,
+                banned_by: null,
+                ban_reason: null,
+                banned_until: null,
+                created_at: createdAt,
+                updated_at: updatedAt,
+                user_id: String(row.id || '').trim() || null,
+                display_name: getDisplayName((row.user_metadata as Record<string, unknown> | null) || null),
+                membership_plan: toStringOrNull((row.user_metadata as Record<string, unknown> | null)?.membership_plan),
+                stripe_customer_id: toStringOrNull((row.user_metadata as Record<string, unknown> | null)?.stripe_customer_id),
+                stripe_subscription_id: toStringOrNull((row.user_metadata as Record<string, unknown> | null)?.stripe_subscription_id),
+              }
+            })
+            .filter((row): row is RoleListRow => Boolean(row))
+
+          inferredRows.push(...indexInferredRows)
 
           if (hasSupabaseAdminConfig() && inferredRows.length > 0) {
             const adminClient = getSupabaseAdminClient()
@@ -151,7 +269,36 @@ export const Route = createFileRoute('/api/admin/roles')({
               )
           }
 
-          mergedRoles = [...roleRows, ...inferredRows].sort((a, b) => a.email.localeCompare(b.email))
+          mergedRoles = [...roleRows, ...inferredRows]
+
+          mergedRoles = await Promise.all(
+            mergedRoles.map(async (row) => {
+              const email = String(row.email || '').trim().toLowerCase()
+              const authUser = authUsersByEmail.get(email)
+              const userMetadata = (authUser?.user_metadata as Record<string, unknown> | null) || null
+              const effectivePermissions = await collectPermissionsForRole(row.role)
+
+              return {
+                ...row,
+                email,
+                user_id: row.user_id || String(authUser?.id || '').trim() || null,
+                display_name: row.display_name || getDisplayName(userMetadata),
+                membership_plan:
+                  row.membership_plan ||
+                  toStringOrNull(userMetadata?.membership_plan) ||
+                  'free',
+                stripe_customer_id:
+                  row.stripe_customer_id ||
+                  toStringOrNull(userMetadata?.stripe_customer_id),
+                stripe_subscription_id:
+                  row.stripe_subscription_id ||
+                  toStringOrNull(userMetadata?.stripe_subscription_id),
+                effective_permissions: effectivePermissions,
+              }
+            }),
+          )
+
+          mergedRoles.sort((a, b) => a.email.localeCompare(b.email))
 
           return Response.json({
             requester: {
@@ -172,7 +319,7 @@ export const Route = createFileRoute('/api/admin/roles')({
       POST: async ({ request }) => {
         try {
           const { requester, role } = await requirePermission(request, 'manage_users')
-          const admin = getAdminOrPublicClient()
+          const admin = getAdminOrRequestClient(request)
           const body = await request.json()
           const parsed = setRoleSchema.safeParse(body)
 

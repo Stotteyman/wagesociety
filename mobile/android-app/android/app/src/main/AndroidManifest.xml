@@ -22,6 +22,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Deep link handler for OAuth callback (Google, Discord, etc.) -->
+            <intent-filter android:label="W.A.G.E. Society Auth">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.wagesociety.android" android:host="login-callback" />
+            </intent-filter>
+
         </activity>
 
         <provider

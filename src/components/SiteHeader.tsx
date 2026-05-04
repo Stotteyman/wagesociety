@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { LogIn, LogOut, Menu, UserCircle, X } from 'lucide-react'
+import { LogOut, Menu, UserCircle, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { endLocalRootSession, getLocalRootUser, isLocalRootSessionActive } from '../lib/localRootSession'
 import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
@@ -18,6 +18,8 @@ export function SiteHeader() {
   const navigate = useNavigate()
 
   useEffect(() => {
+    const supabase = getSupabaseBrowserClient()
+
     const checkAuth = async () => {
       if (isLocalRootSessionActive()) {
         setUser(getLocalRootUser())
@@ -26,7 +28,6 @@ export function SiteHeader() {
       }
 
       try {
-        const supabase = getSupabaseBrowserClient()
         const { data } = await supabase.auth.getSession()
         setUser(data.session?.user || null)
       } catch {
@@ -36,7 +37,37 @@ export function SiteHeader() {
       }
     }
 
-    checkAuth()
+    void checkAuth()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (isLocalRootSessionActive()) {
+        setUser(getLocalRootUser())
+        setAuthLoading(false)
+        return
+      }
+
+      setUser(session?.user || null)
+      setAuthLoading(false)
+    })
+
+    const handleResume = () => {
+      void checkAuth()
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleResume)
+      document.addEventListener('visibilitychange', handleResume)
+    }
+
+    return () => {
+      subscription.unsubscribe()
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', handleResume)
+        document.removeEventListener('visibilitychange', handleResume)
+      }
+    }
   }, [])
 
   const handleLogout = async () => {
