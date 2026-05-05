@@ -1,0 +1,1 @@
+import{j as o}from"./index-qZztiVd-.js";import{A as t}from"./AuthPage-dizXIF_L.js";import"./authRedirect-eYMB2Yj7.js";import"./arrow-left-DKD3j5Tx.js";function e(){return o.jsx(t,{view:"login"})}export{e as component};

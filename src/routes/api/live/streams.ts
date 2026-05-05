@@ -246,6 +246,7 @@ export const Route = createFileRoute('/api/live/streams')({
           let requesterSource = 'none'
           let canManage = false
           let canUseAutoclipper = false
+          const autoclipperEnabled = hasSupabaseAdminConfig()
 
           const authHeader = request.headers.get('authorization') || ''
           const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
@@ -255,14 +256,15 @@ export const Route = createFileRoute('/api/live/streams')({
             requesterEmail = 'root-superadmin@localhost'
             requesterSource = 'localhost-bypass'
             canManage = true
-            canUseAutoclipper = false
+            canUseAutoclipper = autoclipperEnabled
           } else if (token) {
             try {
               const access = await getRequesterAccess(request)
               requesterEmail = access.requester.email
               requesterSource = access.requester.source
               canManage = access.isSuperadmin || access.permissions.includes('manage_livestreams')
-              canUseAutoclipper = access.isSuperadmin || access.permissions.includes('use_autoclipper')
+              canUseAutoclipper =
+                autoclipperEnabled && (access.isSuperadmin || access.permissions.includes('use_autoclipper'))
             } catch {
               // Expired/invalid token — still show public stream list.
             }

@@ -114,6 +114,15 @@ function mergeProviderOptions(
     }
   }
 
+  // Keep critical providers visible even when server discovery is partial.
+  if (!options.has('google')) {
+    options.set('google', providerOptionFromKey('google'))
+  }
+
+  if (!options.has('custom:kick') && !options.has('kick')) {
+    options.set('custom:kick', providerOptionFromKey('custom:kick'))
+  }
+
   return Array.from(options.values()).sort((a, b) => a.label.localeCompare(b.label))
 }
 
@@ -242,7 +251,22 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
     setError('')
     try {
       const redirectTo = getClientAuthRedirectUrl(`/dashboard?view=settings&linked=${normalizedProvider}`)
-      const oauthUrl = await getIdentityLinkUrl(normalizedProvider, redirectTo)
+      let oauthUrl: string
+      try {
+        oauthUrl = await getIdentityLinkUrl(normalizedProvider, redirectTo)
+      } catch (primaryError) {
+        const alternateProvider =
+          normalizedProvider === 'custom:kick'
+            ? 'kick'
+            : normalizedProvider === 'kick'
+            ? 'custom:kick'
+            : null
+
+        if (!alternateProvider) throw primaryError
+        oauthUrl = await getIdentityLinkUrl(alternateProvider, redirectTo)
+      }
+      // Store the intended return tab so the dashboard can restore it after the OAuth redirect.
+      sessionStorage.setItem('dashboard_return_tab', 'settings')
       window.location.href = oauthUrl
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to initiate OAuth linking.')

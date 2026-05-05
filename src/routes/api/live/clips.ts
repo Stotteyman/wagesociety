@@ -3,7 +3,7 @@ import { timingSafeEqual } from 'node:crypto'
 import { z } from 'zod'
 import { createAutoclipperJob, type AutoclipperStatus } from '../../../lib/autoclipper'
 import { requirePermission } from '../../../lib/orgAuth'
-import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin'
+import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../../lib/supabaseAdmin'
 
 const createSchema = z.object({
   commandText: z.string().trim().default('!clip'),
@@ -43,6 +43,9 @@ type DashboardToolEntryRow = {
   updated_at: string
   event_date: string | null
 }
+
+const AUTOCLIPPER_DISABLED_MESSAGE =
+  'Autoclipper is disabled in this environment because SUPABASE_SERVICE_ROLE_KEY is not configured.'
 
 function hasWebhookSecret(request: Request) {
   const secret = process.env.AUTOCLIPPER_WEBHOOK_SECRET
@@ -152,6 +155,10 @@ export const Route = createFileRoute('/api/live/clips')({
     handlers: {
       GET: async ({ request }) => {
         try {
+          if (!hasSupabaseAdminConfig()) {
+            return Response.json({ error: AUTOCLIPPER_DISABLED_MESSAGE }, { status: 503 })
+          }
+
           if (hasWebhookSecret(request)) {
             const rows = await fetchAutoclipRows(20)
             const jobs = mapRowsToJobs(rows)
@@ -178,6 +185,10 @@ export const Route = createFileRoute('/api/live/clips')({
 
       POST: async ({ request }) => {
         try {
+          if (!hasSupabaseAdminConfig()) {
+            return Response.json({ error: AUTOCLIPPER_DISABLED_MESSAGE }, { status: 503 })
+          }
+
           const body = await request.json()
           if (hasWebhookSecret(request)) {
             const parsedChat = chatSchema.safeParse(body)
@@ -237,6 +248,10 @@ export const Route = createFileRoute('/api/live/clips')({
 
       PUT: async ({ request }) => {
         try {
+          if (!hasSupabaseAdminConfig()) {
+            return Response.json({ error: AUTOCLIPPER_DISABLED_MESSAGE }, { status: 503 })
+          }
+
           const body = await request.json()
           const parsed = updateSchema.safeParse(body)
           if (!parsed.success) {

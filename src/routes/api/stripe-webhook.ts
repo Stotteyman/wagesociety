@@ -2,9 +2,30 @@ import { createFileRoute } from '@tanstack/react-router'
 import Stripe from 'stripe'
 import { getSupabaseAdminClient } from '../../lib/supabaseAdmin'
 
+function getStripeSecretKey() {
+  return (
+    process.env.STRIPE_SECRET_KEY ||
+    process.env.STRIPE_API_KEY ||
+    process.env.STRIPE_SECRET ||
+    ''
+  )
+}
+
+function getStripeWebhookSecret() {
+  return (
+    process.env.STRIPE_WEBHOOK_SECRET ||
+    process.env.STRIPE_WEBHOOK_SIGNING_SECRET ||
+    ''
+  )
+}
+
 function getStripe() {
-  const key = process.env.STRIPE_SECRET_KEY
-  if (!key) throw new Error('STRIPE_SECRET_KEY is not set.')
+  const key = getStripeSecretKey()
+  if (!key) {
+    throw new Error(
+      'Billing webhook is not configured. Set STRIPE_SECRET_KEY (or STRIPE_API_KEY / STRIPE_SECRET).',
+    )
+  }
   return new Stripe(key, { apiVersion: '2026-03-25.dahlia' })
 }
 
@@ -76,18 +97,34 @@ export const Route = createFileRoute('/api/stripe-webhook')({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        if (!getStripeSecretKey()) {
+          return Response.json(
+            {
+              error:
+                'Billing webhook is not configured. Missing STRIPE_SECRET_KEY in server environment.',
+            },
+            { status: 503 },
+          )
+        }
+
+        const webhookSecret = getStripeWebhookSecret()
+        if (!webhookSecret) {
+          return Response.json(
+            {
+              error:
+                'Webhook signing secret not configured. Set STRIPE_WEBHOOK_SECRET (or STRIPE_WEBHOOK_SIGNING_SECRET).',
+            },
+            { status: 503 },
+          )
+        }
+
         const stripe = getStripe()
-        const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
         let event: Stripe.Event
 
         try {
           const payload = await request.text()
           const sig = request.headers.get('stripe-signature') || ''
-
-          if (!webhookSecret) {
-            return Response.json({ error: 'Webhook secret not configured.' }, { status: 500 })
-          }
 
           if (!sig) {
             return Response.json({ error: 'Missing stripe-signature header.' }, { status: 400 })

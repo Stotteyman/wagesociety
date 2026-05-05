@@ -1,5 +1,7 @@
+import { Link } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { AlertCircle, Loader } from 'lucide-react'
+import { LEGAL_POLICY_LAST_UPDATED, LEGAL_POLICY_VERSION, writePolicyAcceptance } from '../lib/legalPolicies'
 import { authedFetch, getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 
 interface PlanDetails {
@@ -19,6 +21,7 @@ export function PaymentForm({ plan, onSuccess }: PaymentFormProps) {
   const [error, setError] = useState<string | null>(null)
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
+  const [acceptLegal, setAcceptLegal] = useState(false)
 
   useEffect(() => {
     void (async () => {
@@ -43,6 +46,11 @@ export function PaymentForm({ plan, onSuccess }: PaymentFormProps) {
 
     if (!email) {
       setError('Please enter your account email.')
+      return
+    }
+
+    if (!acceptLegal) {
+      setError('Please accept the Terms and Privacy Policy before continuing.')
       return
     }
 
@@ -75,16 +83,19 @@ export function PaymentForm({ plan, onSuccess }: PaymentFormProps) {
       }
 
       if (checkoutData.free || checkoutData.updated) {
+        writePolicyAcceptance('checkout')
         onSuccess()
         return
       }
 
       if (checkoutData.checkoutUrl) {
+        writePolicyAcceptance('checkout')
         window.location.href = checkoutData.checkoutUrl
         return
       }
 
       if (checkoutData.successUrl) {
+        writePolicyAcceptance('checkout')
         window.location.href = checkoutData.successUrl
         return
       }
@@ -128,6 +139,30 @@ export function PaymentForm({ plan, onSuccess }: PaymentFormProps) {
           <span>{error}</span>
         </div>
       )}
+
+      <label className="flex items-start gap-2 rounded-lg border border-zinc-200/15 bg-zinc-900/40 p-3 text-xs text-zinc-300">
+        <input
+          type="checkbox"
+          checked={acceptLegal}
+          onChange={(e) => setAcceptLegal(e.target.checked)}
+          className="mt-0.5"
+        />
+        <span>
+          I agree to the
+          {' '}
+          <Link to="/terms" className="font-semibold text-orange-200 hover:text-orange-100">
+            Terms of Service
+          </Link>
+          {' '}
+          and
+          {' '}
+          <Link to="/privacy" className="font-semibold text-orange-200 hover:text-orange-100">
+            Privacy Policy
+          </Link>
+          {' '}
+          (v{LEGAL_POLICY_VERSION}, updated {LEGAL_POLICY_LAST_UPDATED}).
+        </span>
+      </label>
 
       <button
         type="submit"

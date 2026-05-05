@@ -42,8 +42,6 @@ export const Route = createFileRoute('/dashboard')({
   component: DashboardGate,
 })
 
-type PlanName = 'FREE' | 'STANDARD' | 'PLUS' | 'UNLIMITED' | 'VIP'
-
 type MembershipPlan = {
   id: string
   slug: string
@@ -102,7 +100,7 @@ const LOCAL_ROOT_PERMISSIONS: OrgPermission[] = [
 const fallbackMembershipPlans: Array<{
   id: string
   slug: string
-  name: PlanName
+  name: string
   display_price: string
   description: string
   features: string[]
@@ -114,54 +112,6 @@ const fallbackMembershipPlans: Array<{
     display_price: '$0',
     description: 'Very limited access for basic account setup and browsing.',
     features: ['Log in and account access', 'Connect social/OAuth accounts', 'Browse public sections'],
-  },
-  {
-    id: 'fallback-standard',
-    slug: 'standard',
-    name: 'STANDARD',
-    display_price: '$20/mo',
-    description: 'Core membership plan for regular creator workflows.',
-    features: [
-      'Expanded workspace access',
-      'Standard member sections',
-      'Routine creator tools',
-    ],
-  },
-  {
-    id: 'fallback-plus',
-    slug: 'plus',
-    name: 'PLUS',
-    display_price: '$50/mo',
-    description: 'Higher-tier access for serious operators and teams.',
-    features: [
-      'Broader tool access',
-      'Priority support',
-      'Advanced workspace options',
-    ],
-  },
-  {
-    id: 'fallback-unlimited',
-    slug: 'unlimited',
-    name: 'UNLIMITED',
-    display_price: '$100/mo',
-    description: 'Full platform access for high-output creators and founders.',
-    features: [
-      'Complete creator tool access',
-      'Premium sections and workflows',
-      'Top-tier performance features',
-    ],
-  },
-  {
-    id: 'fallback-vip',
-    slug: 'vip',
-    name: 'VIP',
-    display_price: '$1000/mo',
-    description: 'Elite private tier for highest-priority access and support.',
-    features: [
-      'VIP-level access',
-      'Private insider channels',
-      'Highest support priority',
-    ],
   },
 ]
 
@@ -334,6 +284,20 @@ function CreatorDashboard({
   ban: BanRecord | null
 }) {
   const [dashboardTab, setDashboardTab] = useState<'motd' | 'news' | 'workspace' | 'settings'>('motd')
+
+  // Restore the intended tab after an OAuth redirect (e.g. Kick account linking).
+  // Priority: ?view= URL param → sessionStorage key set before the redirect.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const viewParam = params.get('view')
+    const storedTab = sessionStorage.getItem('dashboard_return_tab')
+    sessionStorage.removeItem('dashboard_return_tab')
+    const tab = viewParam || storedTab
+    if (tab === 'settings' || tab === 'news' || tab === 'workspace' || tab === 'motd') {
+      setDashboardTab(tab as 'motd' | 'news' | 'workspace' | 'settings')
+    }
+  }, [])
+
   const [latestNews, setLatestNews] = useState<NewsItem[]>([])
   const [newsLoading, setNewsLoading] = useState(false)
   const [plans, setPlans] = useState<MembershipPlan[]>(fallbackMembershipPlans)

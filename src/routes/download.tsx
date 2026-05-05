@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Download, Smartphone } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 export const Route = createFileRoute('/download')({
   head: () => ({
@@ -22,6 +23,28 @@ export const Route = createFileRoute('/download')({
 })
 
 function DownloadPage() {
+  const [apkUrl, setApkUrl] = useState('/wage-society.apk')
+  const [apkVersion, setApkVersion] = useState<string | null>(null)
+  const [apkUpdatedAt, setApkUpdatedAt] = useState<string | null>(null)
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch('/api/public-apk')
+        const data = (await res.json()) as {
+          release?: { url?: string; version?: string; uploadedAt?: string } | null
+        }
+        const release = data.release
+        if (!res.ok || !release?.url) return
+        setApkUrl(release.url)
+        setApkVersion(release.version || null)
+        setApkUpdatedAt(release.uploadedAt || null)
+      } catch {
+        // Keep fallback static APK URL.
+      }
+    })()
+  }, [])
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <div className="mx-auto max-w-2xl px-6 py-20 text-center">
@@ -49,13 +72,19 @@ function DownloadPage() {
             </div>
             <div className="w-full">
               <a
-                href="/wage-society.apk"
+                href={apkUrl}
                 download
                 className="group flex items-center justify-center gap-2 rounded-xl bg-zinc-800 px-4 py-3 text-sm font-medium text-zinc-300 ring-1 ring-zinc-700 transition hover:bg-zinc-700 hover:text-white"
               >
                 <Download className="h-4 w-4" />
                 Download APK (sideload)
               </a>
+              {apkVersion ? (
+                <p className="mt-2 text-xs text-zinc-400">
+                  Latest: v{apkVersion}
+                  {apkUpdatedAt ? ` · Updated ${new Date(apkUpdatedAt).toLocaleDateString()}` : ''}
+                </p>
+              ) : null}
             </div>
           </div>
 

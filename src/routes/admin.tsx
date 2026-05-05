@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useLocation } from '@tanstack/react-router'
-import { ArrowLeft, Store, Users, RadioTower, CircleHelp } from 'lucide-react'
+import { ArrowLeft, Store, Users, RadioTower, CircleHelp, Smartphone } from 'lucide-react'
 import { requireAuthenticatedRoute } from '../lib/routeAuth'
 
 const adminLinks = [
@@ -20,6 +20,12 @@ const adminLinks = [
     description: 'Add/remove stream channels and monitor live status.',
     to: '/live' as const,
     icon: RadioTower,
+  },
+  {
+    title: 'APK Manager',
+    description: 'Upload and publish the latest Android APK without redeploying the website.',
+    to: '/admin/apk' as const,
+    icon: Smartphone,
   },
   {
     title: 'FAQ Page',

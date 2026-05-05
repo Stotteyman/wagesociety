@@ -44,3 +44,32 @@ npm run cap:open
 ```bash
 $env:MOBILE_APP_FALLBACK_URL="https://your-domain.com"; npm run cap:sync
 ```
+
+## Build Release APK
+
+From this folder:
+
+```bash
+npm run cap:sync
+cd android
+./gradlew assembleRelease
+```
+
+The release artifact is generated at:
+
+`android/app/build/outputs/apk/release/app-release.apk`
+
+If Gradle reports `JAVA_HOME is not set`, install a JDK (17+ recommended) and configure:
+
+```powershell
+$env:JAVA_HOME="C:\Path\To\JDK"
+$env:Path="$env:JAVA_HOME\bin;$env:Path"
+```
+
+## Publish APK Without Website Redeploy
+
+1. Open the admin APK manager at `/admin/apk`
+2. Upload the new APK file and set the release version/notes
+3. Submit "Upload and Publish APK"
+
+The public download page (`/download`) will automatically use the latest uploaded APK metadata from storage via `/api/public-apk`.

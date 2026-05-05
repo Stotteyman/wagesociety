@@ -172,8 +172,14 @@ function AdminUsersPage() {
   useEffect(() => {
     void (async () => {
       setLoading(true)
-      await Promise.all([loadRoles(), loadPermissions(), loadPlans()])
-      setLoading(false)
+      setError('')
+      try {
+        await Promise.all([loadRoles(), loadPermissions(), loadPlans()])
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load admin user data')
+      } finally {
+        setLoading(false)
+      }
     })()
   }, [])
 

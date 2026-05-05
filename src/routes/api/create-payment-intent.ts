@@ -4,9 +4,22 @@ import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../lib/supaba
 import { getRequesterAccess } from '../../lib/orgAuth'
 import { getSupabaseServerClientForToken, getSupabaseServerPublicClient } from '../../lib/supabaseServer'
 
+function getStripeSecretKey() {
+  return (
+    process.env.STRIPE_SECRET_KEY ||
+    process.env.STRIPE_API_KEY ||
+    process.env.STRIPE_SECRET ||
+    ''
+  )
+}
+
 function getStripe() {
-  const key = process.env.STRIPE_SECRET_KEY
-  if (!key) throw new Error('STRIPE_SECRET_KEY is not set.')
+  const key = getStripeSecretKey()
+  if (!key) {
+    throw new Error(
+      'Billing is not configured. Set STRIPE_SECRET_KEY (or STRIPE_API_KEY / STRIPE_SECRET) in Netlify environment variables.',
+    )
+  }
   return new Stripe(key, { apiVersion: '2026-03-25.dahlia' })
 }
 
@@ -111,6 +124,16 @@ export const Route = createFileRoute('/api/create-payment-intent')({
     handlers: {
       POST: async ({ request }) => {
         try {
+          if (!getStripeSecretKey()) {
+            return Response.json(
+              {
+                error:
+                  'Billing is not configured. Missing STRIPE_SECRET_KEY in server environment.',
+              },
+              { status: 503 },
+            )
+          }
+
           // Require an authenticated member — prevents anonymous abuse.
           const access = await getRequesterAccess(request)
 
@@ -120,9 +143,10 @@ export const Route = createFileRoute('/api/create-payment-intent')({
             name?: string
           }
 
-          const { planSlug, email, name } = body
+          const normalizedPlanSlug = String(body.planSlug || '').trim().toLowerCase()
+          const { email, name } = body
 
-          if (!planSlug || !email) {
+          if (!normalizedPlanSlug || !email) {
             return Response.json({ error: 'planSlug and email are required.' }, { status: 400 })
           }
 
@@ -141,7 +165,7 @@ export const Route = createFileRoute('/api/create-payment-intent')({
           const { data: _plan, error: planError } = await serverClient
             .from('org_shop_membership_plans')
             .select('id, slug, name, price_cents, display_price')
-            .eq('slug', planSlug)
+            .eq('slug', normalizedPlanSlug)
             .eq('is_active', true)
             .single()
 
@@ -154,7 +178,14 @@ export const Route = createFileRoute('/api/create-payment-intent')({
           } | null
 
           if (planError || !plan) {
-            return Response.json({ error: 'Plan not found.' }, { status: 404 })
+            return Response.json(
+              {
+                error: 'Plan not found.',
+                planSlug: normalizedPlanSlug,
+                details: planError?.message || null,
+              },
+              { status: 404 },
+            )
           }
 
           const stripe = getStripe()
@@ -297,6 +328,9 @@ export const Route = createFileRoute('/api/create-payment-intent')({
             displayPrice: plan.display_price,
           })
         } catch (err) {
+          if (err instanceof Response) {
+            return err
+          }
           const message = err instanceof Error ? err.message : 'Unexpected server error.'
           return Response.json({ error: message }, { status: 500 })
         }

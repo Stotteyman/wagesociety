@@ -79,6 +79,17 @@ function MerchPage() {
               >
                 Coming Soon
               </button>
+              <p className="mt-3 text-xs text-zinc-400">
+                Purchases are governed by our{' '}
+                <Link to="/terms" className="font-semibold text-orange-200 hover:text-orange-100">
+                  Terms
+                </Link>{' '}
+                and{' '}
+                <Link to="/privacy" className="font-semibold text-orange-200 hover:text-orange-100">
+                  Privacy Policy
+                </Link>
+                .
+              </p>
             </article>
           ))}
 

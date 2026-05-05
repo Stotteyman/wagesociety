@@ -1,6 +1,7 @@
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { isLocalRootSessionActive } from '../lib/localRootSession'
+import { LEGAL_POLICY_LAST_UPDATED, LEGAL_POLICY_VERSION } from '../lib/legalPolicies'
 import { formatRoleLabel, type OrgRole } from '../lib/orgAccess'
 import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 import { getStoredViewAsRole, setStoredViewAsRole } from '../lib/viewAs'
@@ -210,6 +211,16 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <div className="mx-auto flex w-full max-w-6xl flex-col px-4 pb-12 pt-5 sm:px-6 lg:px-8">
             <SiteHeader />
             {children}
+            <footer className="mt-10 border-t border-zinc-200/10 pt-5 text-xs text-zinc-400">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p>Policy v{LEGAL_POLICY_VERSION} · Updated {LEGAL_POLICY_LAST_UPDATED}</p>
+                <div className="flex items-center gap-3">
+                  <a href="/privacy" className="transition hover:text-zinc-200">Privacy</a>
+                  <span aria-hidden="true">·</span>
+                  <a href="/terms" className="transition hover:text-zinc-200">Terms</a>
+                </div>
+              </div>
+            </footer>
           </div>
         </div>
         {viewingAs ? (

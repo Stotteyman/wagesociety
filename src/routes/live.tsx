@@ -71,6 +71,7 @@ function LivePage() {
   const [error, setError] = useState('')
   const [canManage, setCanManage] = useState(false)
   const [canUseAutoclipper, setCanUseAutoclipper] = useState(false)
+  const [autoclipperError, setAutoclipperError] = useState('')
   const [autoJobs, setAutoJobs] = useState<AutoclipperJob[]>([])
   const [autoLoading, setAutoLoading] = useState(true)
   const [autoBusy, setAutoBusy] = useState(false)
@@ -133,15 +134,16 @@ function LivePage() {
 
   const loadAutoclipperJobs = async () => {
     try {
+      setAutoclipperError('')
       const response = await authedFetch('/api/live/clips')
       const data = (await response.json()) as AutoclipperApiResponse | { error?: string }
       if (!response.ok) {
-        setError((data as { error?: string }).error || 'Failed to load autoclipper queue')
+        setAutoclipperError((data as { error?: string }).error || 'Failed to load autoclipper queue')
         return
       }
       setAutoJobs((data as AutoclipperApiResponse).jobs || [])
     } catch {
-      setError('Failed to load autoclipper queue')
+      setAutoclipperError('Failed to load autoclipper queue')
     } finally {
       setAutoLoading(false)
     }
@@ -281,6 +283,11 @@ function LivePage() {
 
           <div className="mt-4 rounded-xl border border-zinc-200/10 bg-zinc-950/40 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Clip Queue</p>
+            {autoclipperError ? (
+              <p className="mt-2 rounded-md border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+                {autoclipperError}
+              </p>
+            ) : null}
             {autoLoading ? (
               <p className="mt-2 text-sm text-zinc-400">Loading clip jobs...</p>
             ) : autoJobs.length === 0 ? (

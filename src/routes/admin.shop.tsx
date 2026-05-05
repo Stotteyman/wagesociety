@@ -1,8 +1,25 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { ArrowLeft, RefreshCcw, ShoppingBag, Store, Trash2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { ArrowLeft, CheckCircle, ChevronDown, ChevronUp, ExternalLink, ImageOff, Link2, Loader2, RefreshCcw, ShoppingBag, Store, Trash2, XCircle } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { authedFetch } from '../lib/supabaseBrowser'
 import { requireAuthenticatedRoute } from '../lib/routeAuth'
+
+type ImportedProduct = {
+  name: string
+  price: string
+  description: string
+  imageUrl: string | null
+  images: string[]
+  sourceUrl: string
+  brand: string | null
+  availability: string | null
+  currency: string | null
+  rating: number | null
+  reviewCount: number | null
+  sku: string | null
+  confidence: 'high' | 'medium' | 'low'
+  signals: string[]
+}
 
 type MerchItem = {
   id: string
@@ -66,6 +83,262 @@ export const Route = createFileRoute('/admin/shop')({
   }),
   component: AdminShopPage,
 })
+
+// ---------------------------------------------------------------------------
+// URL Import Panel
+// ---------------------------------------------------------------------------
+
+function ConfidenceBadge({ confidence }: { confidence: ImportedProduct['confidence'] }) {
+  const map = {
+    high: 'border-emerald-400/50 bg-emerald-500/10 text-emerald-300',
+    medium: 'border-amber-400/50 bg-amber-500/10 text-amber-300',
+    low: 'border-rose-400/50 bg-rose-500/10 text-rose-300',
+  } as const
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${map[confidence]}`}>
+      {confidence === 'high' ? <CheckCircle size={11} /> : confidence === 'low' ? <XCircle size={11} /> : null}
+      {confidence.toUpperCase()} confidence
+    </span>
+  )
+}
+
+function ImportPanel({
+  onApplyToMerch,
+}: {
+  onApplyToMerch: (data: { name: string; price: string; description: string }) => void
+}) {
+  const [url, setUrl] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [product, setProduct] = useState<ImportedProduct | null>(null)
+  const [showSignals, setShowSignals] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editPrice, setEditPrice] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleImport = async () => {
+    const trimmed = url.trim()
+    if (!trimmed) return
+    setLoading(true)
+    setError('')
+    setProduct(null)
+
+    try {
+      const res = await authedFetch('/api/admin/shop/import-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: trimmed }),
+      })
+      const data = (await res.json()) as { product?: ImportedProduct; error?: string }
+      if (!res.ok || !data.product) {
+        setError(data.error || 'Could not extract product data.')
+        return
+      }
+      setProduct(data.product)
+      setEditName(data.product.name)
+      setEditPrice(data.product.price)
+      setEditDescription(data.product.description)
+      setSelectedImage(data.product.imageUrl)
+    } catch {
+      setError('Request failed. Check your connection.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleReset = () => {
+    setProduct(null)
+    setError('')
+    setUrl('')
+    setEditName('')
+    setEditPrice('')
+    setEditDescription('')
+    setSelectedImage(null)
+    inputRef.current?.focus()
+  }
+
+  return (
+    <section className="rounded-2xl border border-indigo-400/20 bg-indigo-950/30 p-6">
+      <div className="mb-4 flex items-center gap-2">
+        <Link2 size={18} className="text-indigo-300" />
+        <h2 className="text-xl font-bold text-zinc-50">Import from URL</h2>
+        <span className="ml-2 rounded-full border border-indigo-400/40 px-2 py-0.5 text-xs font-semibold text-indigo-300">BETA</span>
+      </div>
+      <p className="mb-4 text-sm text-zinc-400">Paste any product listing URL (Amazon, Shopify, Etsy, etc.) and we'll extract the title, price, and description automatically.</p>
+
+      <div className="flex gap-2">
+        <input
+          ref={inputRef}
+          type="url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') void handleImport() }}
+          placeholder="https://www.amazon.com/dp/..."
+          className="flex-1 rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+          disabled={loading}
+        />
+        <button
+          type="button"
+          onClick={() => void handleImport()}
+          disabled={loading || !url.trim()}
+          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {loading ? <Loader2 size={15} className="animate-spin" /> : <Link2 size={15} />}
+          {loading ? 'Extracting...' : 'Extract'}
+        </button>
+        {product ? (
+          <button
+            type="button"
+            onClick={handleReset}
+            className="rounded-lg border border-zinc-200/20 px-3 py-2 text-sm text-zinc-400 hover:text-zinc-100"
+          >
+            Clear
+          </button>
+        ) : null}
+      </div>
+
+      {error ? (
+        <p className="mt-3 rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{error}</p>
+      ) : null}
+
+      {product ? (
+        <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_280px]">
+          {/* Editable fields */}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <ConfidenceBadge confidence={product.confidence} />
+              {product.brand ? <span className="text-xs text-zinc-400">Brand: <strong className="text-zinc-200">{product.brand}</strong></span> : null}
+              {product.availability ? <span className="text-xs text-zinc-400">Availability: <strong className="text-zinc-200">{product.availability}</strong></span> : null}
+              {product.rating ? <span className="text-xs text-zinc-400">⭐ {product.rating} {product.reviewCount ? `(${product.reviewCount.toLocaleString()} reviews)` : ''}</span> : null}
+              <a
+                href={product.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-auto inline-flex items-center gap-1 text-xs text-indigo-400 hover:underline"
+              >
+                <ExternalLink size={11} /> View source
+              </a>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-zinc-400">Product Name</label>
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-zinc-400">Price</label>
+              <input
+                type="text"
+                value={editPrice}
+                onChange={(e) => setEditPrice(e.target.value)}
+                placeholder="e.g. $29.99"
+                className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-zinc-400">Description <span className="text-zinc-500">(editable before saving)</span></label>
+              <textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                rows={4}
+                className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowSignals((s) => !s)}
+              className="inline-flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300"
+            >
+              {showSignals ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              {showSignals ? 'Hide' : 'Show'} extraction signals ({product.signals.length})
+            </button>
+            {showSignals ? (
+              <div className="rounded-lg border border-zinc-200/10 bg-zinc-950/40 px-3 py-2">
+                <ul className="space-y-0.5">
+                  {product.signals.map((s, i) => (
+                    <li key={i} className="text-xs text-zinc-400">✓ {s}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => onApplyToMerch({ name: editName, price: editPrice, description: editDescription })}
+                className="rounded-lg bg-orange-300 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-orange-200"
+              >
+                → Fill Merch Form
+              </button>
+              <p className="self-center text-xs text-zinc-500">Review and save in the Merch Items form below.</p>
+            </div>
+          </div>
+
+          {/* Image picker */}
+          <div>
+            <label className="mb-2 block text-xs font-medium text-zinc-400">Product Images</label>
+            {product.images.length === 0 ? (
+              <div className="flex h-40 items-center justify-center rounded-lg border border-zinc-200/10 bg-zinc-950/40">
+                <div className="text-center text-zinc-600">
+                  <ImageOff size={24} className="mx-auto mb-1" />
+                  <p className="text-xs">No images found</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {selectedImage ? (
+                  <div className="overflow-hidden rounded-lg border border-zinc-200/15">
+                    <img
+                      src={selectedImage}
+                      alt="Selected product"
+                      className="h-48 w-full object-contain bg-zinc-950"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                    />
+                  </div>
+                ) : null}
+                {product.images.length > 1 ? (
+                  <div className="grid grid-cols-4 gap-1">
+                    {product.images.slice(0, 8).map((img, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setSelectedImage(img)}
+                        className={`overflow-hidden rounded border-2 transition ${
+                          selectedImage === img ? 'border-indigo-400' : 'border-zinc-200/10 hover:border-zinc-200/30'
+                        }`}
+                      >
+                        <img
+                          src={img}
+                          alt={`Product image ${i + 1}`}
+                          className="h-12 w-full object-cover bg-zinc-950"
+                          onError={(e) => { (e.target as HTMLImageElement).parentElement!.style.display = 'none' }}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                {selectedImage ? (
+                  <p className="break-all text-xs text-zinc-500">{selectedImage}</p>
+                ) : null}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
 
 function AdminShopPage() {
   const [loading, setLoading] = useState(true)
@@ -268,8 +541,16 @@ function AdminShopPage() {
           <p className="rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{error}</p>
         ) : null}
 
+        <ImportPanel
+          onApplyToMerch={({ name, price, description }) => {
+            setMerchForm((prev) => ({ ...prev, id: '', name, price, description }))
+            // Scroll to merch form
+            document.getElementById('merch-form-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }}
+        />
+
         <section className="grid gap-6 lg:grid-cols-2">
-          <article className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6">
+          <article id="merch-form-section" className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6">
             <div className="mb-4 flex items-center gap-2 text-orange-100">
               <ShoppingBag size={18} />
               <h2 className="text-xl font-bold text-zinc-50">Merch Items</h2>
