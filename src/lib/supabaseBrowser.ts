@@ -49,3 +49,45 @@ export async function authedFetch(input: string, init?: RequestInit) {
     headers,
   })
 }
+
+/**
+ * Initiates OAuth identity linking by calling Supabase's GoTrue endpoint directly
+ * with the user's current access token. This is more reliable than
+ * supabase.auth.linkIdentity() in SSR / TanStack Start contexts where the
+ * Supabase JS client's internal session may not be fully hydrated.
+ *
+ * Returns the OAuth provider URL to redirect the browser to.
+ */
+export async function getIdentityLinkUrl(provider: string, redirectTo: string): Promise<string> {
+  const token = await getSupabaseAccessToken()
+  if (!token) {
+    throw new Error('No active session. Please log out and log back in, then try again.')
+  }
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+  const anonKey = (
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY
+  ) as string
+
+  const params = new URLSearchParams({
+    provider,
+    redirect_to: redirectTo,
+    skip_http_redirect: 'true',
+  })
+
+  const response = await fetch(`${supabaseUrl}/auth/v1/user/identities/authorize?${params.toString()}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      apikey: anonKey,
+    },
+  })
+
+  const data = (await response.json()) as { url?: string; error_description?: string; msg?: string; code?: string }
+
+  if (!response.ok || !data.url) {
+    throw new Error(data.error_description || data.msg || `Could not start ${provider} account linking.`)
+  }
+
+  return data.url
+}

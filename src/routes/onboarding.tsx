@@ -52,6 +52,7 @@ function OnboardingPage() {
   const [email, setEmail] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
+  const [avatarUploading, setAvatarUploading] = useState(false)
   const [bio, setBio] = useState('')
   const [skillsInput, setSkillsInput] = useState('')
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle')
@@ -171,6 +172,30 @@ function OnboardingPage() {
         }
       })()
     }, 400)
+  }
+
+  const uploadAvatar = async (file: File) => {
+    const maxSize = 8 * 1024 * 1024
+    const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+    if (file.size > maxSize) { setError('Image is too large. Maximum size is 8 MB.'); return }
+    if (file.type && !allowedTypes.has(file.type)) { setError('Unsupported image type. Use JPG, PNG, WEBP, or GIF.'); return }
+    setAvatarUploading(true)
+    setError('')
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const uploadResponse = await authedFetch('/api/profile-photo-upload', { method: 'POST', body: formData })
+      const uploadData = (await uploadResponse.json()) as { url?: string; error?: string }
+      if (!uploadResponse.ok || !uploadData.url) {
+        setError(uploadData.error || 'Could not upload profile photo.')
+        return
+      }
+      setAvatarUrl(uploadData.url)
+    } catch {
+      setError('Could not upload profile photo.')
+    } finally {
+      setAvatarUploading(false)
+    }
   }
 
   const ensureUsernameAvailable = async () => {
@@ -371,22 +396,30 @@ function OnboardingPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-400">Avatar URL (optional)</label>
-              <div className="flex items-center gap-3">
+              <label className="mb-1.5 block text-xs font-medium text-zinc-400">Profile Photo (optional)</label>
+              <div className="flex flex-wrap items-center gap-3 rounded-lg border border-zinc-200/20 bg-zinc-950/40 p-3">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="Avatar" className="h-10 w-10 rounded-full border border-zinc-200/20 object-cover" />
+                  <img src={avatarUrl} alt="Avatar" className="h-14 w-14 flex-shrink-0 rounded-full border border-zinc-200/20 object-cover" />
                 ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200/20 bg-zinc-800 text-zinc-400">
-                    <UserRound size={16} />
+                  <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full border border-zinc-200/20 bg-zinc-800 text-zinc-400">
+                    <UserRound size={18} />
                   </div>
                 )}
-                <input
-                  type="url"
-                  value={avatarUrl}
-                  onChange={(event) => setAvatarUrl(event.target.value)}
-                  className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-orange-200/70"
-                  placeholder="https://example.com/avatar.jpg"
-                />
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    disabled={avatarUploading}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0]
+                      if (file) void uploadAvatar(file)
+                      event.currentTarget.value = ''
+                    }}
+                    className="block w-full text-sm text-zinc-300 file:mr-3 file:rounded-md file:border-0 file:bg-orange-300 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-zinc-950 hover:file:bg-orange-200 disabled:opacity-60"
+                  />
+                  <p className="mt-1 text-xs text-zinc-500">Upload JPG, PNG, WEBP, or GIF (max 8 MB).</p>
+                  {avatarUploading ? <p className="mt-1 text-xs text-zinc-400">Uploading photo...</p> : null}
+                </div>
               </div>
             </div>
 

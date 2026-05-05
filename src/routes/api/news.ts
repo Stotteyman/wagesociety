@@ -14,6 +14,17 @@ const NewsPostSchema = z.object({
   embed_links: z.array(z.string().url()).max(20).default([]),
 })
 
+function isMissingBlogTableError(error: { code?: string; message?: string } | null | undefined) {
+  const code = String(error?.code || '').toUpperCase()
+  const message = String(error?.message || '').toLowerCase()
+  return (
+    code === '42P01' ||
+    code === 'PGRST205' ||
+    message.includes('org_blog_posts') ||
+    message.includes('schema cache')
+  )
+}
+
 export const Route = createFileRoute('/api/news')({
   server: {
     handlers: {
@@ -26,7 +37,13 @@ export const Route = createFileRoute('/api/news')({
             .eq('is_published', true)
             .order('created_at', { ascending: false })
 
-          if (error) return Response.json({ error: error.message }, { status: 500 })
+          if (error) {
+            // Missing table in some environments should degrade gracefully.
+            if (isMissingBlogTableError(error)) {
+              return Response.json([])
+            }
+            return Response.json({ error: error.message }, { status: 500 })
+          }
 
           const posts = (data || []).map((row) => ({
             id: row.id,
@@ -104,6 +121,12 @@ export const Route = createFileRoute('/api/news')({
             .select('id, title, body, author_email, image_urls, video_urls, embed_links, created_at, updated_at')
 
           if (error) {
+            if (isMissingBlogTableError(error)) {
+              return Response.json(
+                { error: 'Blog storage table is not set up yet. Please run the blog schema migration first.' },
+                { status: 503 },
+              )
+            }
             return Response.json({ error: error.message }, { status: 500 })
           }
 

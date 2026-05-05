@@ -340,6 +340,7 @@ function CreatorDashboard({
   const [plansLoading, setPlansLoading] = useState(true)
   const [upgradingPlan, setUpgradingPlan] = useState<string | null>(null)
   const [subscriptionError, setSubscriptionError] = useState('')
+  const [memberAvatarUrl, setMemberAvatarUrl] = useState<string | null>(null)
   const isSuperadmin = role === 'superadmin'
   const canUseViewAs = actorRole === 'superadmin' || canManageRole(actorRole, 'user')
   const selectableRoles: OrgRole[] = [
@@ -453,6 +454,20 @@ function CreatorDashboard({
 
   const visibleFunctions = dashboardFunctions.filter((fn) => hasPermission(fn.requiredPermission))
   const dashboardDisplayName = getDashboardUsername(member)
+
+  useEffect(() => {
+    if (isLocalRootSessionActive()) return
+    void (async () => {
+      try {
+        const response = await authedFetch('/api/me/profile')
+        if (!response.ok) return
+        const data = (await response.json()) as { profile?: { avatar_url?: string | null } }
+        setMemberAvatarUrl(data.profile?.avatar_url || null)
+      } catch {
+        // avatar is optional, ignore errors
+      }
+    })()
+  }, [])
 
   useEffect(() => {
     if (isLocalRootSessionActive()) {
@@ -570,10 +585,25 @@ function CreatorDashboard({
         <header className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6 md:p-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Organization Dashboard</p>
-              <h1 className="mt-2 text-3xl font-black text-zinc-50 md:text-4xl">
-                Welcome back, {dashboardDisplayName}
-              </h1>
+              <div className="flex items-center gap-4">
+                {memberAvatarUrl ? (
+                  <img
+                    src={memberAvatarUrl}
+                    alt={dashboardDisplayName}
+                    className="h-16 w-16 flex-shrink-0 rounded-full border border-zinc-200/20 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-full border border-zinc-200/20 bg-zinc-800 text-xl font-bold text-zinc-400">
+                    {dashboardDisplayName.slice(0, 1).toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">Organization Dashboard</p>
+                  <h1 className="mt-1 text-3xl font-black text-zinc-50 md:text-4xl">
+                    Welcome back, {dashboardDisplayName}
+                  </h1>
+                </div>
+              </div>
               <p className="mt-3 max-w-2xl text-zinc-300">
                 Run your creator pipeline, marketing campaigns, and entrepreneurial execution with a focused operating system.
               </p>
@@ -856,6 +886,25 @@ function CreatorDashboard({
                 </div>
               </div>
               <div className="mt-4 rounded-xl border border-zinc-200/15 bg-zinc-950/60 p-4 space-y-2">
+                {memberAvatarUrl ? (
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={memberAvatarUrl}
+                      alt={getDashboardUsername(member)}
+                      className="h-12 w-12 rounded-full border border-zinc-200/20 object-cover"
+                    />
+                    <p className="text-xs text-zinc-500">
+                      Change your photo in{' '}
+                      <button
+                        type="button"
+                        onClick={() => setDashboardTab('settings')}
+                        className="text-orange-200 underline hover:text-orange-100"
+                      >
+                        Profile Settings
+                      </button>
+                    </p>
+                  </div>
+                ) : null}
                 <div>
                   <p className="text-xs font-medium text-zinc-400">Email</p>
                   <p className="mt-0.5 text-sm text-zinc-100">{member.email || '—'}</p>

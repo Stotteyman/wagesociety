@@ -1,21 +1,22 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { getSupabaseAdminClient } from '../../lib/supabaseAdmin'
+import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../lib/supabaseAdmin'
+import { getSupabaseServerPublicClient } from '../../lib/supabaseServer'
 
 export const Route = createFileRoute('/api/shop')({
   server: {
     handlers: {
       GET: async () => {
         try {
-          const admin = getSupabaseAdminClient()
+          const db = hasSupabaseAdminConfig() ? getSupabaseAdminClient() : getSupabaseServerPublicClient()
 
           const [{ data: merchData, error: merchError }, { data: plansData, error: plansError }] = await Promise.all([
-            admin
+            db
               .from('org_shop_merch_items')
               .select('id, name, price, description, sort_order, is_active, created_at, updated_at')
               .eq('is_active', true)
               .order('sort_order', { ascending: true })
               .order('created_at', { ascending: true }),
-            admin
+            db
               .from('org_shop_membership_plans')
               .select('id, slug, name, display_price, price_cents, description, features, sort_order, is_active, created_at, updated_at')
               .eq('is_active', true)
@@ -30,8 +31,11 @@ export const Route = createFileRoute('/api/shop')({
             merchItems: merchData || [],
             membershipPlans: plansData || [],
           })
-        } catch {
-          return Response.json({ error: 'Unexpected server error' }, { status: 500 })
+        } catch (error) {
+          return Response.json(
+            { error: error instanceof Error ? error.message : 'Unexpected server error' },
+            { status: 500 },
+          )
         }
       },
     },

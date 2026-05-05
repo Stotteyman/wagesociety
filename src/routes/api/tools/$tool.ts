@@ -2,7 +2,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { requirePermission } from '../../../lib/orgAuth'
 import type { OrgPermission } from '../../../lib/orgAccess'
-import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin'
+import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../../lib/supabaseAdmin'
+import { getSupabaseServerClientForToken, getSupabaseServerPublicClient } from '../../../lib/supabaseServer'
 
 const toolSchema = z.enum([
   'bulletin-board',
@@ -59,6 +60,29 @@ function resolveToolAndPermission(rawTool: string) {
   return { tool, permission }
 }
 
+function getBearerToken(request: Request) {
+  const authHeader = request.headers.get('authorization') || ''
+  if (!authHeader.toLowerCase().startsWith('bearer ')) return undefined
+  const token = authHeader.slice(7).trim()
+  return token || undefined
+}
+
+function getDbClient(request: Request) {
+  if (hasSupabaseAdminConfig()) return getSupabaseAdminClient()
+
+  const token = getBearerToken(request)
+  if (token) return getSupabaseServerClientForToken(token)
+
+  // Local-root dev sessions can be authorized without a Supabase JWT.
+  // In that case, fall back to the server public client.
+  return getSupabaseServerPublicClient()
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message.trim()) return error.message
+  return fallback
+}
+
 async function authorizeForTool(request: Request, rawTool: string) {
   const { tool, permission } = resolveToolAndPermission(rawTool)
   const access = await requirePermission(request, permission)
@@ -82,7 +106,7 @@ export const Route = createFileRoute('/api/tools/$tool')({
       GET: async ({ request, params }) => {
         try {
           const { tool, access } = await authorizeForTool(request, params.tool)
-          const admin = getSupabaseAdminClient()
+          const admin = getDbClient(request)
 
           // Revenue tracker is personalized — each member only sees their own entries
           // Admins/superadmins can view all by passing ?all=1
@@ -117,13 +141,13 @@ export const Route = createFileRoute('/api/tools/$tool')({
           })
         } catch (error) {
           if (error instanceof Response) return error
-          return Response.json({ error: 'Unexpected server error' }, { status: 500 })
+          return Response.json({ error: errorMessage(error, 'Unexpected server error') }, { status: 500 })
         }
       },
       POST: async ({ request, params }) => {
         try {
           const { tool, access } = await authorizeForTool(request, params.tool)
-          const admin = getSupabaseAdminClient()
+          const admin = getDbClient(request)
           const body = await request.json()
           const parsed = createEntrySchema.safeParse(body)
 
@@ -152,13 +176,13 @@ export const Route = createFileRoute('/api/tools/$tool')({
           return Response.json({ entry: data })
         } catch (error) {
           if (error instanceof Response) return error
-          return Response.json({ error: 'Unexpected server error' }, { status: 500 })
+          return Response.json({ error: errorMessage(error, 'Unexpected server error') }, { status: 500 })
         }
       },
       PUT: async ({ request, params }) => {
         try {
           const { tool, access } = await authorizeForTool(request, params.tool)
-          const admin = getSupabaseAdminClient()
+          const admin = getDbClient(request)
           const body = await request.json()
           const parsed = updateEntrySchema.safeParse(body)
 
@@ -199,13 +223,13 @@ export const Route = createFileRoute('/api/tools/$tool')({
           return Response.json({ entry: data })
         } catch (error) {
           if (error instanceof Response) return error
-          return Response.json({ error: 'Unexpected server error' }, { status: 500 })
+          return Response.json({ error: errorMessage(error, 'Unexpected server error') }, { status: 500 })
         }
       },
       DELETE: async ({ request, params }) => {
         try {
           const { tool, access } = await authorizeForTool(request, params.tool)
-          const admin = getSupabaseAdminClient()
+          const admin = getDbClient(request)
           const body = await request.json()
           const parsed = deleteEntrySchema.safeParse(body)
 
@@ -225,18 +249,17 @@ export const Route = createFileRoute('/api/tools/$tool')({
             deleteQuery = deleteQuery.eq('created_by', access.requester.email)
           }
 
-          const { error, count } = await deleteQuery
-            .select('id', { count: 'exact', head: true })
+          const { data, error } = await deleteQuery.select('id')
 
           if (error) return Response.json({ error: error.message }, { status: 500 })
-          if (!count) {
+          if (!Array.isArray(data) || data.length === 0) {
             return Response.json({ error: 'Entry not found or not allowed.' }, { status: 404 })
           }
 
           return Response.json({ deleted: true })
         } catch (error) {
           if (error instanceof Response) return error
-          return Response.json({ error: 'Unexpected server error' }, { status: 500 })
+          return Response.json({ error: errorMessage(error, 'Unexpected server error') }, { status: 500 })
         }
       },
     },

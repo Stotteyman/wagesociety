@@ -7,7 +7,7 @@ import {
   Save,
   User,
 } from 'lucide-react'
-import { authedFetch, getSupabaseBrowserClient } from '../lib/supabaseBrowser'
+import { authedFetch, getIdentityLinkUrl, getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 import { getClientAuthRedirectUrl } from '../lib/authRedirect'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
@@ -29,20 +29,38 @@ type OAuthProviderOption = {
   description: string
 }
 
+type StreamAccountOption = {
+  key: string
+  label: string
+  url: string
+}
+
+type StreamAccounts = {
+  kick: {
+    connected: boolean
+    username: string | null
+    url: string | null
+  }
+  youtube: {
+    connected: boolean
+    selected: string | null
+    options: StreamAccountOption[]
+  }
+}
+
 type ProfileApiResponse = {
   profile: MemberProfile
   oauth_providers?: OAuthProviderOption[]
+  stream_accounts?: StreamAccounts
 }
 
 const FALLBACK_OAUTH_PROVIDERS: OAuthProviderOption[] = [
   { key: 'discord', label: 'Discord', description: 'Link your Discord account' },
   { key: 'google', label: 'Google / YouTube', description: 'Link your Google account' },
-  { key: 'kick', label: 'Kick', description: 'Link your Kick account' },
+  { key: 'custom:kick', label: 'Kick', description: 'Link your Kick account' },
   { key: 'apple', label: 'Apple', description: 'Link your Apple account' },
   { key: 'facebook', label: 'Facebook', description: 'Link your Facebook account' },
 ]
-
-const REQUIRED_OAUTH_PROVIDER_KEYS = ['google', 'kick'] as const
 
 function toTitleCase(value: string) {
   return value
@@ -90,12 +108,6 @@ function mergeProviderOptions(
     }
   }
 
-  for (const requiredKey of REQUIRED_OAUTH_PROVIDER_KEYS) {
-    if (!options.has(requiredKey)) {
-      options.set(requiredKey, providerOptionFromKey(requiredKey))
-    }
-  }
-
   if (options.size === 0) {
     for (const provider of FALLBACK_OAUTH_PROVIDERS) {
       options.set(provider.key, provider)
@@ -127,7 +139,11 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [bio, setBio] = useState('')
   const [skillsInput, setSkillsInput] = useState('')
-  const [livestreamLinksInput, setLivestreamLinksInput] = useState('')
+  const [kickConnectedUrl, setKickConnectedUrl] = useState<string | null>(null)
+  const [kickConnectedUsername, setKickConnectedUsername] = useState<string | null>(null)
+  const [youtubeConnected, setYoutubeConnected] = useState(false)
+  const [youtubeOptions, setYoutubeOptions] = useState<StreamAccountOption[]>([])
+  const [selectedYouTubeChannel, setSelectedYouTubeChannel] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -156,7 +172,14 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
           setAvatarUrl(p.avatar_url || '')
           setBio(p.bio || '')
           setSkillsInput((p.skills || []).join(', '))
-          setLivestreamLinksInput((p.livestream_links || []).join('\n'))
+          const streamAccounts = data.stream_accounts
+          setKickConnectedUrl(streamAccounts?.kick?.url || null)
+          setKickConnectedUsername(streamAccounts?.kick?.username || null)
+          setYoutubeConnected(Boolean(streamAccounts?.youtube?.connected))
+          const nextYouTubeOptions = streamAccounts?.youtube?.options || []
+          setYoutubeOptions(nextYouTubeOptions)
+          const selected = streamAccounts?.youtube?.selected || nextYouTubeOptions[0]?.key || ''
+          setSelectedYouTubeChannel(selected)
         } else {
           setOauthProviders(mergeProviderOptions(undefined, currentUser))
           setDisplayName(metadataName)
@@ -193,10 +216,10 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
         avatarUrl: avatarUrl.trim() || '',
         bio: bio.trim() || undefined,
         skills: skillsInput.split(',').map((s) => s.trim()).filter(Boolean),
-        livestreamLinks: livestreamLinksInput
-          .split(/\r?\n|,/)
-          .map((value) => value.trim())
-          .filter(Boolean),
+        selectedYouTubeChannel: youtubeConnected
+          ? (selectedYouTubeChannel || null)
+          : null,
+        connectedKickUsername: kickConnectedUsername || null,
       }),
     })
     if (response.ok) {
@@ -218,51 +241,23 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
     setLinkingProvider(provider)
     setError('')
     try {
-      if (normalizedProvider === 'kick') {
-        window.location.href = '/api/kick-login'
-        return
-      }
-
-      const supabase = getSupabaseBrowserClient()
-      const { error: linkError } = await supabase.auth.linkIdentity({
-        provider: normalizedProvider as any,
-        options: {
-          redirectTo: getClientAuthRedirectUrl(`/dashboard?view=settings&linked=${normalizedProvider}`),
-        },
-      })
-      if (linkError) {
-        setError(linkError.message)
-        setLinkingProvider(null)
-      }
-      // On success the page is redirected to the OAuth provider
-    } catch {
-      setError('Failed to initiate OAuth linking.')
+      const redirectTo = getClientAuthRedirectUrl(`/dashboard?view=settings&linked=${normalizedProvider}`)
+      const oauthUrl = await getIdentityLinkUrl(normalizedProvider, redirectTo)
+      window.location.href = oauthUrl
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to initiate OAuth linking.')
       setLinkingProvider(null)
     }
   }
 
-  const isKickLinked = () => {
-    const metadata = (user?.user_metadata as Record<string, unknown> | undefined) || {}
-    const kickId = String(metadata.kick_id || '').trim()
-    const kickUsername = String(metadata.kick_username || '').trim()
-    return Boolean(kickId || kickUsername)
-  }
-
   const isLinked = (provider: string) => {
     const normalizedProvider = provider.trim().toLowerCase()
-    if (normalizedProvider === 'kick') {
-      return isKickLinked()
-    }
     return user?.identities?.some((i) => String(i.provider || '').trim().toLowerCase() === normalizedProvider) ?? false
   }
 
   const linkedIdentityProviders = (user?.identities || [])
     .map((identity) => String(identity.provider || '').toLowerCase())
     .filter(Boolean)
-
-  if (isKickLinked() && !linkedIdentityProviders.includes('kick')) {
-    linkedIdentityProviders.push('kick')
-  }
 
   const checkUsername = (value: string) => {
     if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current)
@@ -492,16 +487,55 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
 
           <div className="sm:col-span-2">
             <label className="mb-1.5 block text-xs font-medium text-zinc-400">
-              Livestream Links <span className="text-zinc-500">(Kick, Twitch, YouTube)</span>
+              Livestream Sources <span className="text-zinc-500">(from connected accounts)</span>
             </label>
-            <textarea
-              value={livestreamLinksInput}
-              onChange={(e) => setLivestreamLinksInput(e.target.value)}
-              rows={4}
-              placeholder="https://kick.com/yourname\nhttps://www.twitch.tv/yourname\nhttps://www.youtube.com/@yourname"
-              className="w-full resize-y rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-orange-200/70"
-            />
-            <p className="mt-0.5 text-xs text-zinc-500">One URL per line. Your best stream will be auto-selected by viewers.</p>
+            <div className="space-y-3 rounded-lg border border-zinc-200/20 bg-zinc-950/40 p-3">
+              <div className="rounded-lg border border-zinc-200/10 bg-zinc-900/50 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Kick</p>
+                {kickConnectedUrl ? (
+                  <p className="mt-1 text-sm text-zinc-200">
+                    Connected stream: <a href={kickConnectedUrl} target="_blank" rel="noreferrer" className="text-orange-200 underline">{kickConnectedUrl}</a>
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-zinc-500">No Kick account linked yet. Link your Kick account below to enable Kick streams.</p>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-zinc-200/10 bg-zinc-900/50 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">YouTube</p>
+                {youtubeConnected ? (
+                  <>
+                    <label className="mt-2 block text-xs text-zinc-500">Select the YouTube channel for your livestream profile</label>
+                    <select
+                      value={selectedYouTubeChannel}
+                      onChange={(e) => setSelectedYouTubeChannel(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-orange-200/70"
+                    >
+                      {youtubeOptions.length === 0 ? (
+                        <option value="">No channels detected from your Google connection</option>
+                      ) : (
+                        youtubeOptions.map((option) => (
+                          <option key={option.key} value={option.key}>
+                            {option.label}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    {youtubeOptions.find((option) => option.key === selectedYouTubeChannel)?.url ? (
+                      <p className="mt-1 text-xs text-zinc-500">
+                        Selected URL: {youtubeOptions.find((option) => option.key === selectedYouTubeChannel)?.url}
+                      </p>
+                    ) : null}
+                  </>
+                ) : (
+                  <p className="mt-1 text-xs text-zinc-500">No Google account linked yet. Link Google below to select a YouTube channel.</p>
+                )}
+              </div>
+
+              <p className="text-xs text-zinc-500">
+                Twitch will appear here automatically once you add the Twitch OAuth connection in Supabase.
+              </p>
+            </div>
           </div>
         </div>
       </section>

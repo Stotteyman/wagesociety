@@ -111,43 +111,31 @@ function toYouTubeHandleUrl(value: unknown) {
 function collectCandidateUrls(meta: Record<string, unknown> | null | undefined, profile: ProfileRow | undefined) {
   const urls = new Set<string>()
 
-  const metadataUrlKeys = [
-    'livestream_url',
-    'livestream_urls',
-    'livestream_link',
-    'livestream_links',
-    'stream_url',
-    'stream_urls',
-    'stream_link',
-    'stream_links',
-    'kick_url',
-    'twitch_url',
-    'youtube_url',
-    'youtube_channel_url',
-  ] as const
-
-  for (const key of metadataUrlKeys) {
-    const source = meta?.[key]
-    for (const url of extractUrls(source)) {
-      urls.add(url)
-    }
-  }
-
   const kickFromUsername = toKickUrl(meta?.kick_username)
   if (kickFromUsername) urls.add(kickFromUsername)
 
   const twitchFromUsername = toTwitchUrl(meta?.twitch_username)
   if (twitchFromUsername) urls.add(twitchFromUsername)
 
-  const youtubeFromHandle = toYouTubeHandleUrl(meta?.youtube_handle)
-  if (youtubeFromHandle) urls.add(youtubeFromHandle)
-
-  const profileSources = [profile?.bio]
-  for (const source of profileSources) {
-    for (const url of extractUrls(source)) {
-      urls.add(url)
+  const selectedYouTubeChannel = String(meta?.selected_youtube_channel || '').trim()
+  if (selectedYouTubeChannel) {
+    if (selectedYouTubeChannel.startsWith('handle:')) {
+      urls.add(`https://www.youtube.com/@${selectedYouTubeChannel.slice('handle:'.length)}`)
+    } else if (selectedYouTubeChannel.startsWith('channel:')) {
+      urls.add(`https://www.youtube.com/channel/${selectedYouTubeChannel.slice('channel:'.length)}`)
+    } else if (selectedYouTubeChannel.startsWith('user:')) {
+      urls.add(`https://www.youtube.com/user/${selectedYouTubeChannel.slice('user:'.length)}`)
+    } else if (selectedYouTubeChannel.startsWith('custom:')) {
+      urls.add(`https://www.youtube.com/c/${selectedYouTubeChannel.slice('custom:'.length)}`)
+    } else {
+      for (const url of extractUrls(selectedYouTubeChannel)) {
+        urls.add(url)
+      }
     }
   }
+
+  const youtubeFromHandle = toYouTubeHandleUrl(meta?.youtube_handle)
+  if (youtubeFromHandle) urls.add(youtubeFromHandle)
 
   return Array.from(urls)
 }

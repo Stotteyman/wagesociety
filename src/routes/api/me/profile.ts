@@ -21,7 +21,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { requirePermission } from '../../../lib/orgAuth'
 import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../../lib/supabaseAdmin'
-import { getSupabaseServerClientForToken } from '../../../lib/supabaseServer'
+import { getSupabaseServerClientForToken, getSupabaseServerPublicClient } from '../../../lib/supabaseServer'
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,20}$/
 
@@ -30,13 +30,16 @@ const updateSchema = z.object({
   avatarUrl: z.string().url().optional().or(z.literal('')),
   bio: z.string().trim().max(500).optional(),
   skills: z.array(z.string().trim().max(40)).max(30).optional(),
-  livestreamLinks: z.array(z.string().url()).max(20).optional(),
+  selectedYouTubeChannel: z.string().trim().max(200).nullable().optional(),
+  connectedKickUsername: z.string().trim().max(120).nullable().optional(),
 })
 
 type AuthUserMeta = {
   username?: string
   preferred_username?: string
   livestream_links?: string[]
+  selected_youtube_channel?: string
+  kick_username?: string
 }
 
 function readDisplayNameFromMeta(meta: AuthUserMeta | null | undefined) {
@@ -83,8 +86,28 @@ type OAuthProviderOption = {
   description: string
 }
 
+type StreamAccountOption = {
+  key: string
+  label: string
+  url: string
+}
+
+type StreamAccounts = {
+  kick: {
+    connected: boolean
+    username: string | null
+    url: string | null
+  }
+  youtube: {
+    connected: boolean
+    selected: string | null
+    options: StreamAccountOption[]
+  }
+}
+
 type AuthIdentityRow = {
   provider?: string | null
+  identity_data?: Record<string, unknown> | null
 }
 
 type CustomOAuthProviderRow = {
@@ -97,6 +120,7 @@ const BUILTIN_OAUTH_PROVIDER_META: Record<string, { label: string; description: 
   discord: { label: 'Discord', description: 'Link your Discord account' },
   google: { label: 'Google / YouTube', description: 'Link your Google account' },
   kick: { label: 'Kick', description: 'Link your Kick account' },
+  'custom:kick': { label: 'Kick', description: 'Link your Kick account' },
   apple: { label: 'Apple', description: 'Link your Apple account' },
   facebook: { label: 'Facebook', description: 'Link your Facebook account' },
 }
@@ -125,20 +149,18 @@ function providerOptionFromKey(key: string, explicitLabel?: string | null): OAut
   }
 }
 
-async function getAvailableOAuthProviders() {
-  if (!hasSupabaseAdminConfig()) {
-    return [] as OAuthProviderOption[]
-  }
-
-  const admin = getSupabaseAdminClient() as any
-
-  const [{ data: identityRows, error: identityError }, { data: customRows, error: customError }] = await Promise.all([
-    admin
+async function getAvailableOAuthProviders(client: any, includeIdentityProviderScan: boolean) {
+  const identityPromise = includeIdentityProviderScan
+    ? client
       .schema('auth')
       .from('identities')
       .select('provider')
-      .neq('provider', 'email'),
-    admin
+      .neq('provider', 'email')
+    : Promise.resolve({ data: null, error: null })
+
+  const [{ data: identityRows, error: identityError }, { data: customRows, error: customError }] = await Promise.all([
+    identityPromise,
+    client
       .schema('auth')
       .from('custom_oauth_providers')
       .select('identifier, name, enabled')
@@ -167,14 +189,125 @@ async function getAvailableOAuthProviders() {
   return Array.from(optionsByKey.values()).sort((a, b) => a.label.localeCompare(b.label))
 }
 
-function readLivestreamLinks(meta: AuthUserMeta | null | undefined) {
-  const raw = Array.isArray(meta?.livestream_links) ? meta?.livestream_links : []
-  const unique = new Set<string>()
-  for (const value of raw) {
-    const trimmed = String(value || '').trim()
-    if (trimmed) unique.add(trimmed)
+function normalizeYouTubeSelection(raw: string | null | undefined) {
+  const value = String(raw || '').trim()
+  if (!value) return null
+
+  if (value.startsWith('handle:') || value.startsWith('channel:') || value.startsWith('user:') || value.startsWith('custom:')) {
+    return value
   }
-  return Array.from(unique)
+
+  try {
+    const url = new URL(value)
+    const host = url.hostname.toLowerCase()
+    if (host.includes('youtube.com') || host === 'youtu.be') {
+      const segments = url.pathname.split('/').filter(Boolean)
+      if (segments[0]?.startsWith('@')) {
+        return `handle:${segments[0].slice(1).toLowerCase()}`
+      }
+      if (segments[0] === 'channel' && segments[1]) return `channel:${segments[1]}`
+      if (segments[0] === 'user' && segments[1]) return `user:${segments[1]}`
+      if (segments[0] === 'c' && segments[1]) return `custom:${segments[1]}`
+    }
+  } catch {
+    // Ignore parse errors and fail validation below.
+  }
+
+  return null
+}
+
+function streamKeyToYouTubeUrl(key: string) {
+  if (key.startsWith('handle:')) return `https://www.youtube.com/@${key.slice('handle:'.length)}`
+  if (key.startsWith('channel:')) return `https://www.youtube.com/channel/${key.slice('channel:'.length)}`
+  if (key.startsWith('user:')) return `https://www.youtube.com/user/${key.slice('user:'.length)}`
+  if (key.startsWith('custom:')) return `https://www.youtube.com/c/${key.slice('custom:'.length)}`
+  return key
+}
+
+function buildYouTubeOptions(meta: AuthUserMeta | null | undefined, authUser: any | null | undefined) {
+  const options = new Map<string, StreamAccountOption>()
+
+  const selected = normalizeYouTubeSelection(meta?.selected_youtube_channel)
+  if (selected) {
+    options.set(selected, {
+      key: selected,
+      label: `Selected channel (${selected})`,
+      url: streamKeyToYouTubeUrl(selected),
+    })
+  }
+
+  const identities = Array.isArray(authUser?.identities) ? authUser.identities : []
+  const googleIdentity = identities.find((identity: any) => String(identity?.provider || '').toLowerCase() === 'google')
+  const googleData = (googleIdentity?.identity_data as Record<string, unknown> | undefined) || {}
+
+  const candidates = new Set<string>()
+  const metaUsername = String(meta?.username || meta?.preferred_username || '').trim().replace(/^@/, '')
+  if (metaUsername) candidates.add(metaUsername)
+
+  const googleEmail = String(googleData.email || '').trim().toLowerCase()
+  const emailPrefix = googleEmail.split('@')[0]?.replace(/^@/, '')
+  if (emailPrefix) candidates.add(emailPrefix)
+
+  const fullName = String(googleData.full_name || googleData.name || '').trim()
+  if (fullName) {
+    const compact = fullName.toLowerCase().replace(/[^a-z0-9]/g, '')
+    if (compact.length >= 3) candidates.add(compact)
+  }
+
+  for (const candidate of candidates) {
+    const key = `handle:${candidate.toLowerCase()}`
+    if (!options.has(key)) {
+      options.set(key, {
+        key,
+        label: `@${candidate}`,
+        url: streamKeyToYouTubeUrl(key),
+      })
+    }
+  }
+
+  return Array.from(options.values())
+}
+
+function buildConnectedStreamAccounts(meta: AuthUserMeta | null | undefined, authUser: any | null | undefined): StreamAccounts {
+  const identities = Array.isArray(authUser?.identities) ? authUser.identities : []
+  const kickIdentity = identities.find((identity: any) => {
+    const provider = String(identity?.provider || '').trim().toLowerCase()
+    return provider === 'kick' || provider === 'custom:kick'
+  })
+  const googleIdentity = identities.find((identity: any) => String(identity?.provider || '').trim().toLowerCase() === 'google')
+
+  const kickData = (kickIdentity?.identity_data as Record<string, unknown> | undefined) || {}
+  const kickUsernameCandidates = [
+    meta?.kick_username,
+    kickData.preferred_username,
+    kickData.username,
+    kickData.login,
+  ]
+
+  let kickUsername: string | null = null
+  for (const candidate of kickUsernameCandidates) {
+    const normalized = String(candidate || '').trim().replace(/^@/, '')
+    if (normalized) {
+      kickUsername = normalized
+      break
+    }
+  }
+
+  const selected = normalizeYouTubeSelection(meta?.selected_youtube_channel)
+  const youtubeOptions = buildYouTubeOptions(meta, authUser)
+
+  return {
+    kick: {
+      connected: Boolean(kickIdentity),
+      username: kickUsername,
+      url: kickUsername ? `https://kick.com/${kickUsername}` : null,
+    },
+    youtube: {
+      connected: Boolean(googleIdentity),
+      selected,
+      options: youtubeOptions,
+    },
+  }
 }
 
 export const Route = createFileRoute('/api/me/profile')({
@@ -185,7 +318,11 @@ export const Route = createFileRoute('/api/me/profile')({
           const access = await requirePermission(request, 'view_dashboard')
           const canUseAdmin = hasSupabaseAdminConfig()
           const token = getBearerToken(request)
-          const client = canUseAdmin ? getSupabaseAdminClient() : getSupabaseServerClientForToken(token)
+          const client = canUseAdmin
+            ? getSupabaseAdminClient()
+            : token
+              ? getSupabaseServerClientForToken(token)
+              : getSupabaseServerPublicClient()
 
           const profilePromise = (client as any)
               .from('org_member_profiles')
@@ -197,10 +334,12 @@ export const Route = createFileRoute('/api/me/profile')({
             ? (getSupabaseAdminClient() as any)
               .schema('auth')
               .from('users')
-              .select('raw_user_meta_data')
+              .select('id, raw_user_meta_data')
               .eq('email', access.requester.email)
               .maybeSingle()
-            : Promise.resolve({ data: null, error: null })
+            : token
+              ? (getSupabaseServerClientForToken(token) as any).auth.getUser(token)
+              : Promise.resolve({ data: { user: null }, error: null })
 
           const [{ data: profileRaw, error: profileError }, { data: authUser, error: authUserError }] = await Promise.all([
             profilePromise,
@@ -217,22 +356,48 @@ export const Route = createFileRoute('/api/me/profile')({
             return Response.json({ error: authUserError.message }, { status: 500 })
           }
 
-          const oauthProviders = await getAvailableOAuthProviders()
+          const oauthProviders = await getAvailableOAuthProviders(client as any, canUseAdmin)
 
-          const meta = (authUser?.raw_user_meta_data as AuthUserMeta | null | undefined) ?? null
+          const authUserRecord = canUseAdmin ? authUser : authUser?.user
+
+          if (canUseAdmin && authUserRecord?.id) {
+            const { data: identityRows, error: identityError } = await (getSupabaseAdminClient() as any)
+              .schema('auth')
+              .from('identities')
+              .select('provider, identity_data')
+              .eq('user_id', authUserRecord.id)
+
+            if (identityError) {
+              return Response.json({ error: identityError.message }, { status: 500 })
+            }
+
+            authUserRecord.identities = Array.isArray(identityRows) ? identityRows : []
+          }
+
+          const meta = (authUserRecord?.raw_user_meta_data as AuthUserMeta | null | undefined)
+            ?? (authUserRecord?.user_metadata as AuthUserMeta | null | undefined)
+            ?? null
+          const streamAccounts = buildConnectedStreamAccounts(meta, authUserRecord)
           const authDisplayName = readDisplayNameFromMeta(meta)
 
           return Response.json({
             oauth_providers: oauthProviders,
+            stream_accounts: streamAccounts,
             profile: profile
               ? {
                   ...profile,
                   display_name: profile.display_name || authDisplayName,
-                  livestream_links: readLivestreamLinks(meta),
+                  livestream_links: [
+                    ...(streamAccounts.kick.url ? [streamAccounts.kick.url] : []),
+                    ...(streamAccounts.youtube.selected ? [streamKeyToYouTubeUrl(streamAccounts.youtube.selected)] : []),
+                  ],
                 }
               : {
                   ...createFallbackProfile(access.requester.email, authDisplayName),
-                  livestream_links: readLivestreamLinks(meta),
+                  livestream_links: [
+                    ...(streamAccounts.kick.url ? [streamAccounts.kick.url] : []),
+                    ...(streamAccounts.youtube.selected ? [streamKeyToYouTubeUrl(streamAccounts.youtube.selected)] : []),
+                  ],
                 },
           })
         } catch (error) {
@@ -253,10 +418,17 @@ export const Route = createFileRoute('/api/me/profile')({
             return Response.json({ error: 'Invalid payload', details: parsed.error.flatten() }, { status: 400 })
           }
 
-          const normalizedLivestreamLinks =
-            parsed.data.livestreamLinks !== undefined
-              ? Array.from(new Set(parsed.data.livestreamLinks.map((link) => link.trim()).filter(Boolean)))
-              : undefined
+          const selectedYouTubeChannel = parsed.data.selectedYouTubeChannel !== undefined
+            ? normalizeYouTubeSelection(parsed.data.selectedYouTubeChannel)
+            : undefined
+
+          if (parsed.data.selectedYouTubeChannel !== undefined && parsed.data.selectedYouTubeChannel !== null && !selectedYouTubeChannel) {
+            return Response.json({ error: 'Invalid YouTube channel selection.' }, { status: 400 })
+          }
+
+          const connectedKickUsername = parsed.data.connectedKickUsername !== undefined
+            ? String(parsed.data.connectedKickUsername || '').trim().replace(/^@/, '') || null
+            : undefined
 
           const canUseAdmin = hasSupabaseAdminConfig()
           const token = getBearerToken(request)
@@ -324,21 +496,64 @@ export const Route = createFileRoute('/api/me/profile')({
             (userRow) => String(userRow.email || '').toLowerCase() === access.requester.email,
           )
 
-          if (canUseAdmin && currentAuthUser?.id && (parsed.data.displayName !== undefined || parsed.data.livestreamLinks !== undefined)) {
+          if (canUseAdmin && currentAuthUser?.id && (parsed.data.displayName !== undefined || selectedYouTubeChannel !== undefined || connectedKickUsername !== undefined)) {
             const existingMeta = (currentAuthUser.raw_user_meta_data as AuthUserMeta | null | undefined) ?? {}
             const trimmedDisplayName = parsed.data.displayName?.trim() || ''
             const nextName = trimmedDisplayName || readDisplayNameFromMeta(existingMeta) || ''
-            const nextLinks =
-              normalizedLivestreamLinks !== undefined
-                ? normalizedLivestreamLinks
-                : readLivestreamLinks(existingMeta)
 
             const { error: updateAuthError } = await getSupabaseAdminClient().auth.admin.updateUserById(currentAuthUser.id, {
               user_metadata: {
                 ...existingMeta,
                 username: nextName,
                 preferred_username: nextName,
-                livestream_links: nextLinks,
+                selected_youtube_channel:
+                  selectedYouTubeChannel !== undefined
+                    ? selectedYouTubeChannel
+                    : (existingMeta.selected_youtube_channel || null),
+                kick_username:
+                  connectedKickUsername !== undefined
+                    ? connectedKickUsername
+                    : (existingMeta.kick_username || null),
+              },
+            })
+
+            if (updateAuthError) {
+              return Response.json({ error: updateAuthError.message }, { status: 500 })
+            }
+          }
+
+          if (!canUseAdmin && token && (parsed.data.displayName !== undefined || selectedYouTubeChannel !== undefined || connectedKickUsername !== undefined)) {
+            const userClient = getSupabaseServerClientForToken(token)
+            const {
+              data: { user: tokenUser },
+              error: tokenUserError,
+            } = await userClient.auth.getUser(token)
+
+            if (tokenUserError || !tokenUser?.email) {
+              return Response.json({ error: tokenUserError?.message || 'Could not resolve current user' }, { status: 401 })
+            }
+
+            if (String(tokenUser.email).trim().toLowerCase() !== access.requester.email) {
+              return Response.json({ error: 'Metadata update email mismatch' }, { status: 403 })
+            }
+
+            const existingMeta = ((tokenUser.user_metadata as AuthUserMeta | null | undefined) ?? {})
+            const trimmedDisplayName = parsed.data.displayName?.trim() || ''
+            const nextName = trimmedDisplayName || readDisplayNameFromMeta(existingMeta) || ''
+
+            const { error: updateAuthError } = await userClient.auth.updateUser({
+              data: {
+                ...existingMeta,
+                username: nextName,
+                preferred_username: nextName,
+                selected_youtube_channel:
+                  selectedYouTubeChannel !== undefined
+                    ? selectedYouTubeChannel
+                    : (existingMeta.selected_youtube_channel || null),
+                kick_username:
+                  connectedKickUsername !== undefined
+                    ? connectedKickUsername
+                    : (existingMeta.kick_username || null),
               },
             })
 
@@ -371,10 +586,14 @@ export const Route = createFileRoute('/api/me/profile')({
 
           if (data) {
             const ownAuthMeta = (currentAuthUser?.raw_user_meta_data as AuthUserMeta | null | undefined) ?? null
+            const streamAccounts = buildConnectedStreamAccounts(ownAuthMeta, null)
             return Response.json({
               profile: {
                 ...data,
-                livestream_links: normalizedLivestreamLinks ?? readLivestreamLinks(ownAuthMeta),
+                livestream_links: [
+                  ...(streamAccounts.kick.url ? [streamAccounts.kick.url] : []),
+                  ...(streamAccounts.youtube.selected ? [streamKeyToYouTubeUrl(streamAccounts.youtube.selected)] : []),
+                ],
               },
             })
           }
@@ -386,7 +605,12 @@ export const Route = createFileRoute('/api/me/profile')({
           return Response.json({
             profile: {
               ...createFallbackProfile(access.requester.email, fallbackDisplayName || null),
-              livestream_links: normalizedLivestreamLinks ?? readLivestreamLinks(ownAuthMeta),
+              livestream_links: [
+                ...(ownAuthMeta?.kick_username ? [`https://kick.com/${String(ownAuthMeta.kick_username).replace(/^@/, '')}`] : []),
+                ...(ownAuthMeta?.selected_youtube_channel
+                  ? [streamKeyToYouTubeUrl(String(ownAuthMeta.selected_youtube_channel))]
+                  : []),
+              ],
             },
           })
         } catch (error) {
