@@ -284,17 +284,24 @@ function CreatorDashboard({
   ban: BanRecord | null
 }) {
   const [dashboardTab, setDashboardTab] = useState<'motd' | 'news' | 'workspace' | 'settings'>('motd')
+  const [linkedProvider, setLinkedProvider] = useState<string | null>(null)
 
   // Restore the intended tab after an OAuth redirect (e.g. Kick account linking).
   // Priority: ?view= URL param → sessionStorage key set before the redirect.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const viewParam = params.get('view')
+    const linkedParam = params.get('linked')
     const storedTab = sessionStorage.getItem('dashboard_return_tab')
     sessionStorage.removeItem('dashboard_return_tab')
     const tab = viewParam || storedTab
     if (tab === 'settings' || tab === 'news' || tab === 'workspace' || tab === 'motd') {
       setDashboardTab(tab as 'motd' | 'news' | 'workspace' | 'settings')
+    }
+    if (linkedParam) {
+      setLinkedProvider(linkedParam)
+      // Clear the linked param from the URL to avoid multiple refreshes
+      window.history.replaceState({}, '', window.location.pathname)
     }
   }, [])
 
@@ -755,7 +762,7 @@ function CreatorDashboard({
 
         {dashboardTab === 'settings' ? (
           <section className="mt-6 space-y-6">
-            <ProfileSettings member={member} />
+            <ProfileSettings member={member} linkedProvider={linkedProvider} />
             <div className="grid gap-6 md:grid-cols-2">
               <article className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6">
                 <div className="flex items-center gap-3">

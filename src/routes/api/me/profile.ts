@@ -19,7 +19,7 @@
 
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
-import { requirePermission } from '../../../lib/orgAuth'
+import { resolveRequester } from '../../../lib/orgAuth'
 import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../../lib/supabaseAdmin'
 import { getSupabaseServerClientForToken, getSupabaseServerPublicClient } from '../../../lib/supabaseServer'
 
@@ -315,7 +315,7 @@ export const Route = createFileRoute('/api/me/profile')({
     handlers: {
       GET: async ({ request }) => {
         try {
-          const access = await requirePermission(request, 'view_dashboard')
+          const requester = await resolveRequester(request)
           const canUseAdmin = hasSupabaseAdminConfig()
           const token = getBearerToken(request)
           const client = canUseAdmin
@@ -327,7 +327,7 @@ export const Route = createFileRoute('/api/me/profile')({
           const profilePromise = (client as any)
               .from('org_member_profiles')
               .select('email, display_name, avatar_url, bio, skills, updated_at')
-              .eq('email', access.requester.email)
+              .eq('email', requester.email)
               .maybeSingle()
 
           const authUserPromise = canUseAdmin
@@ -335,7 +335,7 @@ export const Route = createFileRoute('/api/me/profile')({
               .schema('auth')
               .from('users')
               .select('id, raw_user_meta_data')
-              .eq('email', access.requester.email)
+              .eq('email', requester.email)
               .maybeSingle()
             : token
               ? (getSupabaseServerClientForToken(token) as any).auth.getUser(token)
@@ -393,7 +393,7 @@ export const Route = createFileRoute('/api/me/profile')({
                   ],
                 }
               : {
-                  ...createFallbackProfile(access.requester.email, authDisplayName),
+                  ...createFallbackProfile(requester.email, authDisplayName),
                   livestream_links: [
                     ...(streamAccounts.kick.url ? [streamAccounts.kick.url] : []),
                     ...(streamAccounts.youtube.selected ? [streamKeyToYouTubeUrl(streamAccounts.youtube.selected)] : []),
@@ -411,7 +411,7 @@ export const Route = createFileRoute('/api/me/profile')({
 
       PUT: async ({ request }) => {
         try {
-          const access = await requirePermission(request, 'view_dashboard')
+          const requester = await resolveRequester(request)
           const body = await request.json()
           const parsed = updateSchema.safeParse(body)
           if (!parsed.success) {
@@ -464,7 +464,7 @@ export const Route = createFileRoute('/api/me/profile')({
                 .from('org_member_profiles')
                 .select('email')
                 .ilike('display_name', newName)
-                .neq('email', access.requester.email)
+                .neq('email', requester.email)
                 .limit(1)
 
               if (checkError && checkError.code !== '42P01') {
@@ -479,7 +479,7 @@ export const Route = createFileRoute('/api/me/profile')({
                 const normalized = newName.toLowerCase()
                 const takenInAuth = authUserList.some((userRow) => {
                   const rowEmail = String(userRow.email || '').toLowerCase()
-                  if (!rowEmail || rowEmail === access.requester.email) return false
+                  if (!rowEmail || rowEmail === requester.email) return false
                   const metadata = (userRow.raw_user_meta_data as AuthUserMeta | null | undefined) ?? null
                   const candidates = [metadata?.username, metadata?.preferred_username]
                   return candidates.some((candidate) => candidate?.trim().toLowerCase() === normalized)
@@ -493,7 +493,7 @@ export const Route = createFileRoute('/api/me/profile')({
           }
 
           const currentAuthUser = authUserList.find(
-            (userRow) => String(userRow.email || '').toLowerCase() === access.requester.email,
+            (userRow) => String(userRow.email || '').toLowerCase() === requester.email,
           )
 
           if (canUseAdmin && currentAuthUser?.id && (parsed.data.displayName !== undefined || selectedYouTubeChannel !== undefined || connectedKickUsername !== undefined)) {
@@ -533,7 +533,7 @@ export const Route = createFileRoute('/api/me/profile')({
               return Response.json({ error: tokenUserError?.message || 'Could not resolve current user' }, { status: 401 })
             }
 
-            if (String(tokenUser.email).trim().toLowerCase() !== access.requester.email) {
+            if (String(tokenUser.email).trim().toLowerCase() !== requester.email) {
               return Response.json({ error: 'Metadata update email mismatch' }, { status: 403 })
             }
 
@@ -563,7 +563,7 @@ export const Route = createFileRoute('/api/me/profile')({
           }
 
           const payload: Record<string, unknown> = {
-            email: access.requester.email,
+            email: requester.email,
             updated_at: new Date().toISOString(),
           }
 
@@ -582,6 +582,43 @@ export const Route = createFileRoute('/api/me/profile')({
 
           if (error && error.code !== '42P01') {
             return Response.json({ error: error.message }, { status: 500 })
+          }
+
+          // Save livestream selection to database if YouTube channel is selected
+          if (selectedYouTubeChannel) {
+            const youtubeUrl = streamKeyToYouTubeUrl(selectedYouTubeChannel)
+            const displayName = data?.display_name || parsed.data.displayName?.trim() || requester.email.split('@')[0]
+            const avatarUrl = data?.avatar_url || parsed.data.avatarUrl || null
+
+            const { error: livestreamError } = await (client as any)
+              .from('org_member_livestreams')
+              .upsert(
+                {
+                  email: requester.email,
+                  platform: 'youtube',
+                  stream_key: selectedYouTubeChannel,
+                  stream_url: youtubeUrl,
+                  display_name: displayName,
+                  avatar_url: avatarUrl,
+                },
+                { onConflict: 'email' }
+              )
+
+            if (livestreamError && livestreamError.code !== '42P01') {
+              console.error('Failed to save livestream selection:', livestreamError)
+              // Don't fail the whole request if livestream save fails
+            }
+          } else if (selectedYouTubeChannel === null) {
+            // Delete livestream entry if explicitly set to null
+            const { error: deleteError } = await (client as any)
+              .from('org_member_livestreams')
+              .delete()
+              .eq('email', requester.email)
+              .eq('platform', 'youtube')
+
+            if (deleteError) {
+              console.error('Failed to delete livestream selection:', deleteError)
+            }
           }
 
           if (data) {
@@ -604,7 +641,7 @@ export const Route = createFileRoute('/api/me/profile')({
 
           return Response.json({
             profile: {
-              ...createFallbackProfile(access.requester.email, fallbackDisplayName || null),
+              ...createFallbackProfile(requester.email, fallbackDisplayName || null),
               livestream_links: [
                 ...(ownAuthMeta?.kick_username ? [`https://kick.com/${String(ownAuthMeta.kick_username).replace(/^@/, '')}`] : []),
                 ...(ownAuthMeta?.selected_youtube_channel

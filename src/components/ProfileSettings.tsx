@@ -138,7 +138,12 @@ function deriveUsername(user: SupabaseUser | null, memberEmail: string) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function ProfileSettings({ member }: { member: { email: string } }) {
+type ProfileSettingsProps = {
+  member: { email: string }
+  linkedProvider?: string | null
+}
+
+export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps) {
   const [profile, setProfile] = useState<MemberProfile | null>(null)
   const [displayName, setDisplayName] = useState('')
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle')
@@ -157,6 +162,7 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+  const [linkingSuccess, setLinkingSuccess] = useState<string | null>(null)
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [linkingProvider, setLinkingProvider] = useState<string | null>(null)
   const [oauthProviders, setOauthProviders] = useState<OAuthProviderOption[]>(FALLBACK_OAUTH_PROVIDERS)
@@ -201,6 +207,41 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
       }
     })()
   }, [])
+
+  // Handle OAuth identity linking callback: refresh profile when linkedProvider is set
+  useEffect(() => {
+    if (!linkedProvider) return
+
+    const refreshProfileAfterLinking = async () => {
+      try {
+        setError('')
+        const supabase = getSupabaseBrowserClient()
+        const [profileResponse, { data: { user: currentUser } }] = await Promise.all([
+          authedFetch('/api/me/profile'),
+          supabase.auth.getUser(),
+        ])
+
+        if (profileResponse.ok && currentUser) {
+          const data = (await profileResponse.json()) as ProfileApiResponse
+          const p = data.profile
+          setProfile(p)
+          setOauthProviders(mergeProviderOptions(data.oauth_providers, currentUser))
+          setUser(currentUser)
+
+          // Show success message with the linked provider name
+          const providerLabel = oauthProviders.find(
+            (p) => p.key.toLowerCase() === linkedProvider.toLowerCase(),
+          )?.label || linkedProvider
+          setLinkingSuccess(`${providerLabel} account linked successfully!`)
+          setTimeout(() => setLinkingSuccess(null), 4000)
+        }
+      } catch (err) {
+        console.error('Failed to refresh profile after linking:', err)
+      }
+    }
+
+    void refreshProfileAfterLinking()
+  }, [linkedProvider, oauthProviders])
 
   const handleSave = async () => {
     setSaving(true)
@@ -623,6 +664,12 @@ export function ProfileSettings({ member }: { member: { email: string } }) {
       {error ? (
         <div className="flex items-center gap-2 rounded-xl border border-rose-400/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
           <AlertCircle size={16} /> {error}
+        </div>
+      ) : null}
+
+      {linkingSuccess ? (
+        <div className="flex items-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+          <Check size={16} /> {linkingSuccess}
         </div>
       ) : null}
 

@@ -192,6 +192,42 @@ export const Route = createFileRoute('/api/live/streams')({
           // Auth is only used to determine canManage / canUseAutoclipper flags.
           const client = hasSupabaseAdminConfig() ? getSupabaseAdminClient() : getSupabaseServerPublicClient()
 
+          // First, fetch livestreams from the database (more reliable)
+          const { data: dbLivestreams, error: liveError } = await (client as any)
+            .from('org_member_livestreams')
+            .select('*')
+            .limit(10000)
+
+          const autoStreams: DbStream[] = []
+
+          // Process database livestreams
+          if (!liveError && Array.isArray(dbLivestreams)) {
+            for (const livestream of dbLivestreams) {
+              try {
+                const snapshot = await getLivestreamSnapshot(livestream.platform, livestream.stream_key)
+
+                autoStreams.push({
+                  id: `db-${livestream.id}`,
+                  url: livestream.stream_url,
+                  title: livestream.display_name || livestream.email.split('@')[0] || null,
+                  platform: livestream.platform,
+                  stream_key: livestream.stream_key,
+                  created_by: livestream.email,
+                  created_at: livestream.created_at,
+                  updated_at: livestream.updated_at,
+                  status: snapshot.status,
+                  viewer_count: snapshot.viewerCount,
+                  follower_count: snapshot.followerCount,
+                  account_created_at: snapshot.accountCreatedAt,
+                })
+              } catch (err) {
+                console.error('Failed to fetch livestream snapshot:', err)
+                // Skip failed livestreams, continue with others
+              }
+            }
+          }
+
+          // Fallback: Also fetch from user_metadata for backwards compatibility
           const users = await listAuthIndexedUsers(client)
 
           const { data: profileRows } = await client
@@ -203,11 +239,14 @@ export const Route = createFileRoute('/api/live/streams')({
             ((profileRows || []) as ProfileRow[]).map((row) => [String(row.email || '').trim().toLowerCase(), row])
           )
 
-          const autoStreams: DbStream[] = []
+          const dbEmailSet = new Set(dbLivestreams?.map((ls: any) => String(ls.email || '').trim().toLowerCase()) || [])
 
           for (const row of users as AuthUserRow[]) {
             const email = String(row.email || '').trim().toLowerCase()
             if (!row.id || !email) continue
+
+            // Skip if already in database livestreams
+            if (dbEmailSet.has(email)) continue
 
             const profile = profileByEmail.get(email)
             const candidates = parseAutoCandidates(collectCandidateUrls((row.user_metadata as Record<string, unknown> | null | undefined) ?? null, profile))
