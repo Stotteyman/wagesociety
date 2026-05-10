@@ -1,0 +1,1 @@
+import{j as o}from"./index-B2BNORnn.js";import{A as t}from"./AuthPage-fichXgk6.js";import"./authRedirect-eYMB2Yj7.js";import"./arrow-left-9WUcjgBZ.js";function n(){return o.jsx(t,{view:"signup"})}export{n as component};

@@ -23,7 +23,7 @@ export const Route = createFileRoute('/download')({
 })
 
 function DownloadPage() {
-  const [apkUrl, setApkUrl] = useState('/wage-society.apk')
+  const [apkUrl, setApkUrl] = useState('/wagesociety.apk')
   const [apkVersion, setApkVersion] = useState<string | null>(null)
   const [apkUpdatedAt, setApkUpdatedAt] = useState<string | null>(null)
 
@@ -73,7 +73,7 @@ function DownloadPage() {
             <div className="w-full">
               <a
                 href={apkUrl}
-                download
+                download="wagesociety.apk"
                 className="group flex items-center justify-center gap-2 rounded-xl bg-zinc-800 px-4 py-3 text-sm font-medium text-zinc-300 ring-1 ring-zinc-700 transition hover:bg-zinc-700 hover:text-white"
               >
                 <Download className="h-4 w-4" />

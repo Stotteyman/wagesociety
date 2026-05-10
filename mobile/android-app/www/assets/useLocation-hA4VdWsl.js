@@ -1,0 +1,1 @@
+import{q as u,r as n,t as a,v as c}from"./index-B2BNORnn.js";function l(i){const t=u(),e=n.useRef(void 0);return a(t.stores.location,s=>{const r=s;if(t.options.defaultStructuralSharing){const o=c(e.current,r);return e.current=o,o}return r})}export{l as u};

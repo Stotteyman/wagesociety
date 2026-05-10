@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "build": "vite build",
-    "check:env": "node ./scripts/check-env.mjs"
+    "check:env": "node ./scripts/check-env.mjs",
+    "apk:update-local": "node ./scripts/update-local-apk.mjs"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.0",
