@@ -208,7 +208,7 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
     })()
   }, [])
 
-  // Handle OAuth identity linking callback: refresh profile when linkedProvider is set
+  // Handle OAuth identity linking callback: refresh profile when linkedProvider is set (from URL param)
   useEffect(() => {
     if (!linkedProvider) return
 
@@ -236,20 +236,6 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
           setYoutubeOptions(nextYouTubeOptions)
           const selected = streamAccounts?.youtube?.selected || nextYouTubeOptions[0]?.key || ''
           setSelectedYouTubeChannel(selected)
-
-          // After OAuth linking, persist stream metadata immediately so livestream listing can discover it.
-          const persistKick = Boolean(streamAccounts?.kick?.connected && streamAccounts?.kick?.username)
-          const persistYouTube = Boolean(streamAccounts?.youtube?.connected && selected)
-          if (persistKick || persistYouTube) {
-            await authedFetch('/api/me/profile', {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                connectedKickUsername: persistKick ? streamAccounts?.kick?.username || null : undefined,
-                selectedYouTubeChannel: persistYouTube ? selected : undefined,
-              }),
-            })
-          }
 
           // Show success message with the linked provider name
           const providerLabel = oauthProviders.find(
@@ -314,7 +300,9 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
     setLinkingProvider(provider)
     setError('')
     try {
+      const isKick = normalizedProvider === 'custom:kick' || normalizedProvider === 'kick'
       const redirectTo = getClientAuthRedirectUrl(`/dashboard?view=settings&linked=${normalizedProvider}`)
+      
       let oauthUrl: string
       try {
         oauthUrl = await getIdentityLinkUrl(normalizedProvider, redirectTo)
@@ -329,9 +317,65 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
         if (!alternateProvider) throw primaryError
         oauthUrl = await getIdentityLinkUrl(alternateProvider, redirectTo)
       }
-      // Store the intended return tab so the dashboard can restore it after the OAuth redirect.
-      sessionStorage.setItem('dashboard_return_tab', 'settings')
-      window.location.href = oauthUrl
+
+      if (isKick) {
+        // Open Kick OAuth in a popup window
+        sessionStorage.setItem('dashboard_return_tab', 'settings')
+        const popupWindow = window.open(oauthUrl, 'kickOAuthPopup', 'width=500,height=700,menubar=no,location=no,resizable=yes,scrollbars=yes')
+        
+        if (!popupWindow) {
+          setError('Failed to open popup window. Please check your browser popup settings.')
+          setLinkingProvider(null)
+          return
+        }
+
+        // Poll the popup until it closes
+        const pollInterval = setInterval(() => {
+          if (popupWindow.closed) {
+            clearInterval(pollInterval)
+            setLinkingProvider(null)
+            
+            // After popup closes, refresh the profile to show updated connection status
+            void (async () => {
+              try {
+                const supabase = getSupabaseBrowserClient()
+                const [profileResponse, { data: { user: currentUser } }] = await Promise.all([
+                  authedFetch('/api/me/profile'),
+                  supabase.auth.getUser(),
+                ])
+
+                if (profileResponse.ok && currentUser) {
+                  const data = (await profileResponse.json()) as ProfileApiResponse
+                  const p = data.profile
+                  const streamAccounts = data.stream_accounts
+                  
+                  setProfile(p)
+                  setOauthProviders(mergeProviderOptions(data.oauth_providers, currentUser))
+                  setUser(currentUser)
+                  setKickConnectedUrl(streamAccounts?.kick?.url || null)
+                  setKickConnectedUsername(streamAccounts?.kick?.username || null)
+                  setYoutubeConnected(Boolean(streamAccounts?.youtube?.connected))
+                  
+                  const nextYouTubeOptions = streamAccounts?.youtube?.options || []
+                  setYoutubeOptions(nextYouTubeOptions)
+                  const selected = streamAccounts?.youtube?.selected || nextYouTubeOptions[0]?.key || ''
+                  setSelectedYouTubeChannel(selected)
+                  
+                  // Show success message
+                  setLinkingSuccess('Kick account linked successfully!')
+                  setTimeout(() => setLinkingSuccess(null), 4000)
+                }
+              } catch (err) {
+                console.error('Failed to refresh profile after Kick linking:', err)
+              }
+            })()
+          }
+        }, 500)
+      } else {
+        // For other providers (Google, Discord, etc.), do full-page redirect
+        sessionStorage.setItem('dashboard_return_tab', 'settings')
+        window.location.href = oauthUrl
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to initiate OAuth linking.')
       setLinkingProvider(null)

@@ -636,6 +636,7 @@ export const Route = createFileRoute('/api/me/profile')({
           }
 
           // Save livestream selection to database if YouTube channel is selected
+          // With the new schema, (email, platform) is unique, so Kick and YouTube rows coexist
           if (selectedYouTubeChannel) {
             const youtubeUrl = streamKeyToYouTubeUrl(selectedYouTubeChannel)
             const displayName = data?.display_name || parsed.data.displayName?.trim() || requester.email.split('@')[0]
@@ -652,7 +653,7 @@ export const Route = createFileRoute('/api/me/profile')({
                   display_name: displayName,
                   avatar_url: avatarUrl,
                 },
-                { onConflict: 'email' }
+                { onConflict: 'email,platform' }
               )
 
             if (livestreamError && livestreamError.code !== '42P01') {

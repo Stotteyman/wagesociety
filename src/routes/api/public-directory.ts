@@ -99,6 +99,7 @@ export const Route = createFileRoute('/api/public-directory')({
           const profileByEmail = new Map(profileRows.map((row) => [String(row.email || '').trim().toLowerCase(), row]))
 
           const usernameMap = assignDeterministicUsernames(users as AuthUserLike[])
+
           let entries = users
             .map((user) => {
               const email = String(user.email || '').trim().toLowerCase()
@@ -114,12 +115,31 @@ export const Route = createFileRoute('/api/public-directory')({
                 readDisplayNameFromMetadata((user.user_metadata as any) || null) ||
                 username
 
+              // Count connected providers from metadata and identities
+              // Metadata includes: kick_username, selected_youtube_channel, twitch_username, youtube_handle
+              const metadata = (user.user_metadata as Record<string, unknown>) || {}
+              const connectedProviders = new Set<string>()
+              
+              if (metadata.kick_username) connectedProviders.add('kick')
+              if (metadata.selected_youtube_channel) connectedProviders.add('youtube')
+              if (metadata.twitch_username) connectedProviders.add('twitch')
+              if (metadata.youtube_handle) connectedProviders.add('youtube')
+              
+              // Also count from identities if available (includes google, discord, apple, facebook)
+              const identities = Array.isArray(user.identities) ? user.identities : []
+              for (const identity of identities) {
+                const provider = String(identity?.provider || '').trim().toLowerCase()
+                if (provider && provider !== 'email') {
+                  connectedProviders.add(provider)
+                }
+              }
+
               return {
                 username,
                 displayName,
                 avatarUrl: profile?.avatar_url || readAvatarFromMetadata((user.user_metadata as any) || null),
                 bio: profile?.bio || null,
-                connectedCount: 0,
+                connectedCount: connectedProviders.size,
               }
             })
             .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
@@ -153,6 +173,8 @@ export const Route = createFileRoute('/api/public-directory')({
                 const username = normalizeUsername(rawUsername)
                 if (!username) return null
 
+                // For fallback, we don't have user_id, so connectedCount will be 0
+                // This is a fallback path and should rarely be used
                 return {
                   username,
                   displayName: profile?.display_name?.trim() || username,

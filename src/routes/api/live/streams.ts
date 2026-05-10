@@ -54,6 +54,15 @@ function normalizeUrl(value: string) {
   return value.trim().replace(/[),.;]+$/g, '')
 }
 
+function normalizeStreamKey(platform: string, streamKey: string): string {
+  // Normalize YouTube handles to always exclude @ for consistent deduplication
+  if (platform === 'youtube' && streamKey.startsWith('handle:')) {
+    const handle = streamKey.slice('handle:'.length).replace(/^@/, '')
+    return `${platform}:handle:${handle}`
+  }
+  return `${platform}:${streamKey}`
+}
+
 function collectStringValues(input: unknown, depth = 0): string[] {
   if (depth > 3 || input == null) return []
 
@@ -200,30 +209,50 @@ export const Route = createFileRoute('/api/live/streams')({
 
           const autoStreams: DbStream[] = []
 
-          // Process database livestreams
+          // Process database livestreams - group by email to handle multi-platform users
+          // For each user with multiple streams, pick the most recently updated one (their preference)
+          const dbStreamsByEmail = new Map<string, typeof dbLivestreams[number][]>()
           if (!liveError && Array.isArray(dbLivestreams)) {
             for (const livestream of dbLivestreams) {
-              try {
-                const snapshot = await getLivestreamSnapshot(livestream.platform, livestream.stream_key)
-
-                autoStreams.push({
-                  id: `db-${livestream.id}`,
-                  url: livestream.stream_url,
-                  title: livestream.display_name || livestream.email.split('@')[0] || null,
-                  platform: livestream.platform,
-                  stream_key: livestream.stream_key,
-                  created_by: livestream.email,
-                  created_at: livestream.created_at,
-                  updated_at: livestream.updated_at,
-                  status: snapshot.status,
-                  viewer_count: snapshot.viewerCount,
-                  follower_count: snapshot.followerCount,
-                  account_created_at: snapshot.accountCreatedAt,
-                })
-              } catch (err) {
-                console.error('Failed to fetch livestream snapshot:', err)
-                // Skip failed livestreams, continue with others
+              const email = String(livestream.email || '').trim().toLowerCase()
+              if (!email) continue
+              if (!dbStreamsByEmail.has(email)) {
+                dbStreamsByEmail.set(email, [])
               }
+              dbStreamsByEmail.get(email)!.push(livestream)
+            }
+          }
+
+          // For each email, pick the preferred stream (most recently updated)
+          for (const [, streams] of dbStreamsByEmail) {
+            const preferred = streams.sort((a, b) => {
+              const aTime = new Date(a.updated_at).getTime()
+              const bTime = new Date(b.updated_at).getTime()
+              return bTime - aTime // Most recent first
+            })[0]
+
+            if (!preferred) continue
+
+            try {
+              const snapshot = await getLivestreamSnapshot(preferred.platform, preferred.stream_key)
+
+              autoStreams.push({
+                id: `db-${preferred.id}`,
+                url: preferred.stream_url,
+                title: preferred.display_name || preferred.email.split('@')[0] || null,
+                platform: preferred.platform,
+                stream_key: preferred.stream_key,
+                created_by: preferred.email,
+                created_at: preferred.created_at,
+                updated_at: preferred.updated_at,
+                status: snapshot.status,
+                viewer_count: snapshot.viewerCount,
+                follower_count: snapshot.followerCount,
+                account_created_at: snapshot.accountCreatedAt,
+              })
+            } catch (err) {
+              console.error('Failed to fetch livestream snapshot:', err)
+              // Skip failed livestreams, continue with others
             }
           }
 
@@ -239,18 +268,27 @@ export const Route = createFileRoute('/api/live/streams')({
             ((profileRows || []) as ProfileRow[]).map((row) => [String(row.email || '').trim().toLowerCase(), row])
           )
 
+          // Build normalized dedup set from existing streams (database ones)
           const existingStreamKeys = new Set(
-            autoStreams.map((stream) => `${stream.platform}:${stream.stream_key}`)
+            autoStreams.map((stream) => normalizeStreamKey(stream.platform, stream.stream_key))
+          )
+
+          // Also track existing user emails from database
+          const existingEmails = new Set(
+            autoStreams.map((stream) => String(stream.created_by || '').trim().toLowerCase())
           )
 
           for (const row of users as AuthUserRow[]) {
             const email = String(row.email || '').trim().toLowerCase()
             if (!row.id || !email) continue
 
+            // Skip users who already have a database stream
+            if (existingEmails.has(email)) continue
+
             const profile = profileByEmail.get(email)
             const candidates = parseAutoCandidates(
               collectCandidateUrls((row.user_metadata as Record<string, unknown> | null | undefined) ?? null, profile)
-            ).filter((candidate) => !existingStreamKeys.has(`${candidate.platform}:${candidate.stream_key}`))
+            ).filter((candidate) => !existingStreamKeys.has(normalizeStreamKey(candidate.platform, candidate.stream_key)))
 
             if (candidates.length === 0) continue
 
@@ -278,7 +316,7 @@ export const Route = createFileRoute('/api/live/streams')({
             const best = pickMostEngaged(streamCandidates)
             if (best) {
               autoStreams.push(best)
-              existingStreamKeys.add(`${best.platform}:${best.stream_key}`)
+              existingStreamKeys.add(normalizeStreamKey(best.platform, best.stream_key))
             }
           }
 
