@@ -87,6 +87,13 @@ const setSubscriptionSchema = z.object({
   membershipPlan: z.string().trim().min(1).max(80),
 })
 
+const USERNAME_REGEX = /^[a-zA-Z0-9_-]{3,20}$/
+
+const setUsernameSchema = z.object({
+  targetEmail: z.string().email(),
+  username: z.string().trim().min(3).max(20).regex(USERNAME_REGEX),
+})
+
 async function findAuthUserByEmail(email: string) {
   if (!hasSupabaseAdminConfig()) return null
 
@@ -501,6 +508,126 @@ export const Route = createFileRoute('/api/admin/roles')({
               membership_plan: membershipPlan,
               stripe_subscription_id: membershipPlan === 'free' ? null : (nextMeta.stripe_subscription_id || null),
             },
+          })
+        } catch (error) {
+          if (error instanceof Response) return error
+          return Response.json(
+            { error: error instanceof Error ? error.message : 'Unexpected server error' },
+            { status: 500 },
+          )
+        }
+      },
+      PATCH: async ({ request }) => {
+        try {
+          const access = await requirePermission(request, 'manage_users')
+          const admin = getAdminOrRequestClient(request)
+          const body = await request.json()
+          const parsed = setUsernameSchema.safeParse(body)
+
+          if (!parsed.success) {
+            return Response.json(
+              {
+                error: 'Invalid payload',
+                details: parsed.error.flatten(),
+              },
+              { status: 400 },
+            )
+          }
+
+          const normalizedEmail = parsed.data.targetEmail.toLowerCase()
+          const nextUsername = parsed.data.username.trim()
+
+          const { data: currentMember, error: currentMemberError } = await admin
+            .from('org_user_roles')
+            .select('role')
+            .eq('email', normalizedEmail)
+            .maybeSingle()
+
+          if (currentMemberError) {
+            return Response.json({ error: currentMemberError.message }, { status: 500 })
+          }
+
+          if (currentMember?.role && !canManageRole(access.role, currentMember.role as OrgRole)) {
+            return Response.json({ error: 'You cannot change a member at your role level or above' }, { status: 403 })
+          }
+
+          const { data: existingProfileUser, error: profileCheckError } = await admin
+            .from('org_member_profiles')
+            .select('email')
+            .ilike('display_name', nextUsername)
+            .neq('email', normalizedEmail)
+            .limit(1)
+
+          if (profileCheckError && profileCheckError.code !== '42P01') {
+            return Response.json({ error: profileCheckError.message }, { status: 500 })
+          }
+
+          if (Array.isArray(existingProfileUser) && existingProfileUser.length > 0) {
+            return Response.json({ error: 'That username is already taken. Please choose another.' }, { status: 409 })
+          }
+
+          const authUsers = await listAuthIndexedUsers(admin)
+          const normalizedCandidate = nextUsername.toLowerCase()
+          const takenInMetadata = authUsers.some((userRow) => {
+            const rowEmail = String(userRow.email || '').toLowerCase()
+            if (!rowEmail || rowEmail === normalizedEmail) return false
+
+            const metadata = (userRow.user_metadata as Record<string, unknown> | null) || null
+            const candidates = [metadata?.username, metadata?.preferred_username]
+            return candidates.some((value) => String(value || '').trim().toLowerCase() === normalizedCandidate)
+          })
+
+          if (takenInMetadata) {
+            return Response.json({ error: 'That username is already taken. Please choose another.' }, { status: 409 })
+          }
+
+          const { error: profileUpdateError } = await admin
+            .from('org_member_profiles')
+            .upsert(
+              {
+                email: normalizedEmail,
+                display_name: nextUsername,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: 'email' },
+            )
+
+          if (profileUpdateError && profileUpdateError.code !== '42P01') {
+            return Response.json({ error: profileUpdateError.message }, { status: 500 })
+          }
+
+          let authSyncWarning: string | null = null
+          if (hasSupabaseAdminConfig()) {
+            const adminClient = getSupabaseAdminClient()
+            const authUser = await findAuthUserByEmail(normalizedEmail)
+            if (authUser?.id) {
+              const currentMeta = ((authUser.user_metadata as Record<string, unknown> | null | undefined) ?? {})
+              const nextMeta: Record<string, unknown> = {
+                ...currentMeta,
+                username: nextUsername,
+                preferred_username: nextUsername,
+              }
+
+              const { error: updateAuthError } = await adminClient.auth.admin.updateUserById(authUser.id, {
+                user_metadata: nextMeta,
+              })
+
+              if (updateAuthError) {
+                authSyncWarning = `Profile username updated, but auth metadata sync failed: ${updateAuthError.message}`
+              }
+            } else {
+              authSyncWarning = 'Profile username updated, but auth user record was not found for metadata sync.'
+            }
+          } else {
+            authSyncWarning = 'Profile username updated in local fallback mode (service-role key missing), so auth metadata sync was skipped.'
+          }
+
+          return Response.json({
+            updated: {
+              email: normalizedEmail,
+              username: nextUsername,
+            },
+            warning: authSyncWarning,
           })
         } catch (error) {
           if (error instanceof Response) return error

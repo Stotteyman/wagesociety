@@ -239,17 +239,18 @@ export const Route = createFileRoute('/api/live/streams')({
             ((profileRows || []) as ProfileRow[]).map((row) => [String(row.email || '').trim().toLowerCase(), row])
           )
 
-          const dbEmailSet = new Set(dbLivestreams?.map((ls: any) => String(ls.email || '').trim().toLowerCase()) || [])
+          const existingStreamKeys = new Set(
+            autoStreams.map((stream) => `${stream.platform}:${stream.stream_key}`)
+          )
 
           for (const row of users as AuthUserRow[]) {
             const email = String(row.email || '').trim().toLowerCase()
             if (!row.id || !email) continue
 
-            // Skip if already in database livestreams
-            if (dbEmailSet.has(email)) continue
-
             const profile = profileByEmail.get(email)
-            const candidates = parseAutoCandidates(collectCandidateUrls((row.user_metadata as Record<string, unknown> | null | undefined) ?? null, profile))
+            const candidates = parseAutoCandidates(
+              collectCandidateUrls((row.user_metadata as Record<string, unknown> | null | undefined) ?? null, profile)
+            ).filter((candidate) => !existingStreamKeys.has(`${candidate.platform}:${candidate.stream_key}`))
 
             if (candidates.length === 0) continue
 
@@ -277,6 +278,7 @@ export const Route = createFileRoute('/api/live/streams')({
             const best = pickMostEngaged(streamCandidates)
             if (best) {
               autoStreams.push(best)
+              existingStreamKeys.add(`${best.platform}:${best.stream_key}`)
             }
           }
 

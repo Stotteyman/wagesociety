@@ -19,7 +19,7 @@ const SUPERADMIN_FALLBACK_PERMISSIONS: OrgPermission[] = [
 
 export function isLocalRequest(request: Request) {
   const host = request.headers.get('host') || ''
-  return host.includes('localhost') || host.includes('127.0.0.1')
+  return host.includes('localhost') || host.includes('127.0.0.1') || host.includes('[::1]') || host.includes('::1')
 }
 
 export async function resolveRequester(request: Request) {

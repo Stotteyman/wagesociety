@@ -58,6 +58,57 @@ function getBearerToken(request: Request) {
   return token || undefined
 }
 
+function getSupabaseServerAuthConfig() {
+  const url =
+    process.env.SUPABASE_URL ||
+    process.env.VITE_SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL
+
+  const publishableKey =
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  return {
+    url: url || null,
+    publishableKey: publishableKey || null,
+  }
+}
+
+async function updateAuthUserMetadataWithToken(accessToken: string, metadata: Record<string, unknown>) {
+  const { url, publishableKey } = getSupabaseServerAuthConfig()
+
+  if (!url || !publishableKey) {
+    return { error: 'Supabase auth update config is missing on server.' }
+  }
+
+  const response = await fetch(`${url}/auth/v1/user`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      apikey: publishableKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ data: metadata }),
+  })
+
+  if (response.ok) {
+    return { error: null as string | null }
+  }
+
+  let detail = 'Could not update auth profile metadata.'
+  try {
+    const payload = (await response.json()) as { msg?: string; error_description?: string; message?: string }
+    detail = payload.error_description || payload.msg || payload.message || detail
+  } catch {
+    // Keep default message when response body is not JSON.
+  }
+
+  return { error: detail }
+}
+
 function createFallbackProfile(email: string, displayName: string | null) {
   return {
     email,
@@ -541,24 +592,24 @@ export const Route = createFileRoute('/api/me/profile')({
             const trimmedDisplayName = parsed.data.displayName?.trim() || ''
             const nextName = trimmedDisplayName || readDisplayNameFromMeta(existingMeta) || ''
 
-            const { error: updateAuthError } = await userClient.auth.updateUser({
-              data: {
-                ...existingMeta,
-                username: nextName,
-                preferred_username: nextName,
-                selected_youtube_channel:
-                  selectedYouTubeChannel !== undefined
-                    ? selectedYouTubeChannel
-                    : (existingMeta.selected_youtube_channel || null),
-                kick_username:
-                  connectedKickUsername !== undefined
-                    ? connectedKickUsername
-                    : (existingMeta.kick_username || null),
-              },
-            })
+            const nextMeta = {
+              ...existingMeta,
+              username: nextName,
+              preferred_username: nextName,
+              selected_youtube_channel:
+                selectedYouTubeChannel !== undefined
+                  ? selectedYouTubeChannel
+                  : (existingMeta.selected_youtube_channel || null),
+              kick_username:
+                connectedKickUsername !== undefined
+                  ? connectedKickUsername
+                  : (existingMeta.kick_username || null),
+            }
 
-            if (updateAuthError) {
-              return Response.json({ error: updateAuthError.message }, { status: 500 })
+            const { error: authMetadataError } = await updateAuthUserMetadataWithToken(token, nextMeta)
+
+            if (authMetadataError) {
+              return Response.json({ error: authMetadataError }, { status: 500 })
             }
           }
 

@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import {
   assignDeterministicUsernames,
+  normalizeMemberUsername,
   readAvatarFromMetadata,
   readDisplayNameFromMetadata,
   type AuthUserLike,
@@ -104,7 +105,8 @@ export const Route = createFileRoute('/api/public-directory')({
               if (!email || !user.id) return null
 
               const profile = profileByEmail.get(email)
-              const username = usernameMap.get(String(user.id))
+              const profileUsername = normalizeMemberUsername(profile?.display_name || '')
+              const username = profileUsername || usernameMap.get(String(user.id))
               if (!username) return null
 
               const displayName =

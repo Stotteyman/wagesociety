@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import {
   assignDeterministicUsernames,
+  normalizeMemberUsername,
   readAvatarFromMetadata,
   readDisplayNameFromMetadata,
   type AuthUserLike,
@@ -101,17 +102,24 @@ export const Route = createFileRoute('/api/public-profile')({
           const client = hasSupabaseAdminConfig() ? getSupabaseAdminClient() : getSupabaseServerPublicClient()
           const users = await listAuthIndexedUsers(client)
 
+          const { data: profileRows, error: profileRowsError } = await client
+            .from('org_member_profiles')
+            .select('email, display_name, avatar_url, bio, skills, updated_at')
+            .limit(10000)
+
+          if (profileRowsError && profileRowsError.code !== '42P01') {
+            return Response.json({ error: profileRowsError.message }, { status: 500 })
+          }
+
+          const profiles = (Array.isArray(profileRows) ? profileRows : []) as Array<PublicProfileRow & { email?: string | null }>
+          const profileByEmail = new Map(
+            profiles
+              .map((row) => [String(row.email || '').trim().toLowerCase(), row] as const)
+              .filter(([email]) => Boolean(email)),
+          )
+
           if (users.length === 0) {
-            const { data: profiles, error: profilesError } = await client
-              .from('org_member_profiles')
-              .select('email, display_name, avatar_url, bio, skills, updated_at')
-              .limit(5000)
-
-            if (profilesError) {
-              return Response.json({ error: profilesError.message }, { status: 500 })
-            }
-
-            const match = (Array.isArray(profiles) ? profiles : []).find((row) => {
+            const match = profiles.find((row) => {
               const email = String((row as any).email || '').toLowerCase().trim()
               const emailUsername = email.split('@')[0] || ''
               const display = String((row as any).display_name || '').trim()
@@ -143,9 +151,21 @@ export const Route = createFileRoute('/api/public-profile')({
           const userByUsername = new Map<string, AuthUserLike>()
 
           for (const user of users) {
-            const username = usernameMap.get(String(user.id || ''))
-            if (!username) continue
-            userByUsername.set(normalizeUsername(username), user)
+            const email = String(user.email || '').trim().toLowerCase()
+            if (!email) continue
+
+            const profile = profileByEmail.get(email)
+            const profileUsername = normalizeMemberUsername(profile?.display_name || '')
+            const deterministicUsername = usernameMap.get(String(user.id || ''))
+            const username = profileUsername || deterministicUsername
+
+            if (username) {
+              userByUsername.set(normalizeUsername(username), user)
+            }
+
+            if (deterministicUsername && deterministicUsername !== username) {
+              userByUsername.set(normalizeUsername(deterministicUsername), user)
+            }
           }
 
           const authUser = userByUsername.get(normalizedRequestedUsername)
@@ -155,11 +175,10 @@ export const Route = createFileRoute('/api/public-profile')({
           }
 
           const admin = hasSupabaseAdminConfig() ? getSupabaseAdminClient() : null
-          const profilePromise = client
-            .from('org_member_profiles')
-            .select('display_name, avatar_url, bio, skills, updated_at')
-            .eq('email', String(authUser.email).toLowerCase())
-            .maybeSingle()
+          const profilePromise = Promise.resolve({
+            data: profileByEmail.get(String(authUser.email).toLowerCase()) || null,
+            error: null,
+          })
 
           const identitiesPromise = admin
             ? admin
@@ -184,7 +203,8 @@ export const Route = createFileRoute('/api/public-profile')({
           const profile = (rawProfile as PublicProfileRow | null) || null
           const identities = (Array.isArray(rawIdentities) ? (rawIdentities as IdentityRow[]) : [])
           const meta = (authUser.user_metadata as AuthUserMeta | null | undefined) ?? null
-          const username = usernameMap.get(String(authUser.id)) || normalizedRequestedUsername
+          const profileUsername = normalizeMemberUsername(profile?.display_name || '')
+          const username = profileUsername || usernameMap.get(String(authUser.id)) || normalizedRequestedUsername
           const connectedAccounts = identities
             .map((row) => {
               const handle =

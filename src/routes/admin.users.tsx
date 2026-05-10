@@ -92,6 +92,8 @@ function AdminUsersPage() {
   const [availablePlans, setAvailablePlans] = useState<string[]>(['free'])
   const [planDraftByEmail, setPlanDraftByEmail] = useState<Record<string, string>>({})
   const [planSavingEmail, setPlanSavingEmail] = useState('')
+  const [usernameDraftByEmail, setUsernameDraftByEmail] = useState<Record<string, string>>({})
+  const [usernameSavingEmail, setUsernameSavingEmail] = useState('')
 
   // Permission panel
   const [activePermRole, setActivePermRole] = useState<OrgRole>('admin')
@@ -137,6 +139,15 @@ function AdminUsersPage() {
         if (!row.email) continue
         const currentPlan = String(row.membership_plan || 'free').trim().toLowerCase()
         next[row.email] = currentPlan || 'free'
+      }
+      return next
+    })
+    setUsernameDraftByEmail((prev) => {
+      const next = { ...prev }
+      for (const row of nextRoles) {
+        if (!row.email) continue
+        const fallback = row.email.split('@')[0] || ''
+        next[row.email] = String(row.display_name || fallback).trim()
       }
       return next
     })
@@ -257,6 +268,41 @@ function AdminUsersPage() {
 
     await loadRoles()
     setPlanSavingEmail('')
+  }
+
+  const updateUsername = async (email: string) => {
+    if (!canManageUsers) return
+
+    const requestedUsername = String(usernameDraftByEmail[email] || '').trim()
+    if (!requestedUsername) {
+      setError('Please enter a username before saving.')
+      return
+    }
+
+    setUsernameSavingEmail(email)
+    setError('')
+
+    const res = await authedFetch('/api/admin/roles', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        targetEmail: email,
+        username: requestedUsername,
+      }),
+    })
+
+    const json = await res.json()
+    if (!res.ok) {
+      const detailText = Array.isArray(json.details)
+        ? json.details.filter((item: unknown) => typeof item === 'string').join(' ')
+        : ''
+      setError([json.error || 'Failed to update username', detailText].filter(Boolean).join(' '))
+      setUsernameSavingEmail('')
+      return
+    }
+
+    await loadRoles()
+    setUsernameSavingEmail('')
   }
 
   // Permissions for the currently selected role tab
@@ -449,28 +495,51 @@ function AdminUsersPage() {
                       <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${roleBadgeClass[row.role]}`}>
                         {row.role === 'banned' ? <span className="flex items-center gap-1"><Ban size={10} />{ORG_ROLE_LABELS[row.role]}</span> : ORG_ROLE_LABELS[row.role]}
                       </span>
-                      <div className="flex items-center gap-1.5">
-                        <select
-                          value={planDraftByEmail[row.email] || 'free'}
-                          onChange={(event) => {
-                            const value = event.target.value
-                            setPlanDraftByEmail((prev) => ({ ...prev, [row.email]: value }))
-                          }}
-                          disabled={!canManageUsers || planSavingEmail === row.email}
-                          className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 outline-none"
-                        >
-                          {availablePlans.map((plan) => (
-                            <option key={plan} value={plan}>{plan.toUpperCase()}</option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => { void updateSubscription(row.email) }}
-                          disabled={!canManageUsers || planSavingEmail === row.email}
-                          className="rounded-md border border-zinc-500/60 px-2 py-1 text-xs font-semibold text-zinc-100 transition hover:border-orange-300/70 hover:text-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {planSavingEmail === row.email ? 'Saving...' : 'Save Plan'}
-                        </button>
+                      <div className="flex flex-col items-end gap-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            value={usernameDraftByEmail[row.email] || ''}
+                            onChange={(event) => {
+                              const value = event.target.value
+                              setUsernameDraftByEmail((prev) => ({ ...prev, [row.email]: value }))
+                            }}
+                            disabled={!canManageUsers || usernameSavingEmail === row.email}
+                            className="w-32 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 outline-none"
+                            placeholder="username"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => { void updateUsername(row.email) }}
+                            disabled={!canManageUsers || usernameSavingEmail === row.email}
+                            className="rounded-md border border-zinc-500/60 px-2 py-1 text-xs font-semibold text-zinc-100 transition hover:border-orange-300/70 hover:text-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {usernameSavingEmail === row.email ? 'Saving...' : 'Save @'}
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <select
+                            value={planDraftByEmail[row.email] || 'free'}
+                            onChange={(event) => {
+                              const value = event.target.value
+                              setPlanDraftByEmail((prev) => ({ ...prev, [row.email]: value }))
+                            }}
+                            disabled={!canManageUsers || planSavingEmail === row.email}
+                            className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 outline-none"
+                          >
+                            {availablePlans.map((plan) => (
+                              <option key={plan} value={plan}>{plan.toUpperCase()}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => { void updateSubscription(row.email) }}
+                            disabled={!canManageUsers || planSavingEmail === row.email}
+                            className="rounded-md border border-zinc-500/60 px-2 py-1 text-xs font-semibold text-zinc-100 transition hover:border-orange-300/70 hover:text-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {planSavingEmail === row.email ? 'Saving...' : 'Save Plan'}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </li>

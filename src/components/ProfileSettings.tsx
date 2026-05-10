@@ -224,9 +224,32 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
         if (profileResponse.ok && currentUser) {
           const data = (await profileResponse.json()) as ProfileApiResponse
           const p = data.profile
+          const streamAccounts = data.stream_accounts
           setProfile(p)
           setOauthProviders(mergeProviderOptions(data.oauth_providers, currentUser))
           setUser(currentUser)
+          setKickConnectedUrl(streamAccounts?.kick?.url || null)
+          setKickConnectedUsername(streamAccounts?.kick?.username || null)
+          setYoutubeConnected(Boolean(streamAccounts?.youtube?.connected))
+
+          const nextYouTubeOptions = streamAccounts?.youtube?.options || []
+          setYoutubeOptions(nextYouTubeOptions)
+          const selected = streamAccounts?.youtube?.selected || nextYouTubeOptions[0]?.key || ''
+          setSelectedYouTubeChannel(selected)
+
+          // After OAuth linking, persist stream metadata immediately so livestream listing can discover it.
+          const persistKick = Boolean(streamAccounts?.kick?.connected && streamAccounts?.kick?.username)
+          const persistYouTube = Boolean(streamAccounts?.youtube?.connected && selected)
+          if (persistKick || persistYouTube) {
+            await authedFetch('/api/me/profile', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                connectedKickUsername: persistKick ? streamAccounts?.kick?.username || null : undefined,
+                selectedYouTubeChannel: persistYouTube ? selected : undefined,
+              }),
+            })
+          }
 
           // Show success message with the linked provider name
           const providerLabel = oauthProviders.find(
