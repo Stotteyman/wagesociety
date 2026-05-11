@@ -23,6 +23,7 @@ export const Route = createFileRoute('/api/kick-login')({
         }
 
         const state = crypto.randomUUID()
+        const popup = new URL(request.url).searchParams.get('popup') === '1' ? '1' : '0'
 
         const params = new URLSearchParams({
           response_type: 'code',
@@ -35,9 +36,10 @@ export const Route = createFileRoute('/api/kick-login')({
         const authUrl = `https://kick.com/oauth/authorize?${params.toString()}`
 
         const response = Response.redirect(authUrl, 302)
+        // Store both state and popup flag together in one cookie (state|popup)
         response.headers.set(
           'Set-Cookie',
-          `kick_oauth_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
+          `kick_oauth_state=${state}|${popup}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`
         )
         return response
       },

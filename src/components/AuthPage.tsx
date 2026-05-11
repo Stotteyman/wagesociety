@@ -77,31 +77,45 @@ export function AuthPage({ view }: { view: AuthView }) {
       return
     }
 
-    const { error: authError } = await (supabase.auth as any).signInWithOAuth({
+    const { data, error: authError } = await (supabase.auth as any).signInWithOAuth({
       provider,
       options: {
         redirectTo: getClientAuthRedirectUrl('/dashboard'),
+        skipBrowserRedirect: true,
       },
     })
 
     if (authError) throw authError
+
+    if (!data?.url) {
+      throw new Error(`Could not start OAuth flow for ${provider}.`)
+    }
+
+    window.location.assign(data.url)
   }
 
   const handleOAuth = async (provider: 'google' | 'kick') => {
     try {
       setError('')
+
+      // Pre-auth check: if the user already has a session, send them to the dashboard.
+      const supabase = getSupabaseBrowserClient()
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (sessionData.session?.user) {
+        const userMeta = (sessionData.session.user.user_metadata as Record<string, unknown> | undefined) || undefined
+        void navigate({ to: getPostAuthPath(userMeta) as '/dashboard' | '/onboarding' })
+        return
+      }
+
       setBusyAction('login')
 
-      // Some Supabase projects expose Kick as "custom:kick" while others use "kick".
       if (provider === 'kick') {
-        try {
-          await startOAuthSignIn('kick')
-        } catch {
-          await startOAuthSignIn('custom:kick')
-        }
-      } else {
-        await startOAuthSignIn(provider)
+        // Route Kick through our custom server-side OAuth flow (avoids Supabase provider config dependency).
+        window.location.assign('/api/kick-login')
+        return
       }
+
+      await startOAuthSignIn(provider)
     } catch (err) {
       setError(err instanceof Error ? err.message : `Could not sign in with ${provider}.`)
       setBusyAction(null)

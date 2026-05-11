@@ -41,18 +41,38 @@ export function OAuthCallbackHandler() {
         const linkedProvider = urlParams.get('linked')
         if (!linkedProvider) return
 
+        const supabase = getSupabaseBrowserClient()
+
         // Check if there are OAuth tokens in the hash
         const hash = window.location.hash.slice(1)
-        if (!hash) return
+        const code = urlParams.get('code')
 
-        const params = new URLSearchParams(hash)
-        const accessToken = params.get('access_token')
-        const refreshToken = params.get('refresh_token')
+        let accessToken: string | null = null
+        let refreshToken: string | null = null
+
+        if (hash) {
+          const params = new URLSearchParams(hash)
+          accessToken = params.get('access_token')
+          refreshToken = params.get('refresh_token')
+        }
+
+        if (!accessToken && !refreshToken && code) {
+          const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+          if (exchangeError) {
+            postPopupResult({
+              status: 'error',
+              provider: linkedProvider,
+              message: exchangeError.message,
+            })
+            return
+          }
+
+          accessToken = exchangeData.session?.access_token || null
+          refreshToken = exchangeData.session?.refresh_token || null
+        }
 
         // Identity linking flow: tokens indicate a successful OAuth identity linking
         if (accessToken && refreshToken) {
-          const supabase = getSupabaseBrowserClient()
-
           // Update the session with the new tokens from identity linking
           const { error } = await supabase.auth.setSession({
             access_token: accessToken,
@@ -94,7 +114,34 @@ export function OAuthCallbackHandler() {
             // Use window.location to force a page reload with fresh user state
             window.location.href = redirectUrl
           }
+          return
         }
+
+        // Some providers/flows can complete without exposing hash tokens after exchange.
+        // If we can resolve a signed-in user here, treat linking as successful.
+        const { data: fallbackUserData, error: fallbackUserError } = await supabase.auth.getUser()
+        if (fallbackUserError || !fallbackUserData?.user) {
+          postPopupResult({
+            status: 'error',
+            provider: linkedProvider,
+            message: fallbackUserError?.message || 'OAuth callback completed without a valid session.',
+          })
+          return
+        }
+
+        setProcessed(true)
+        const redirectUrl = `/settings?linked=${linkedProvider}`
+
+        if (window.opener && !window.opener.closed) {
+          postPopupResult({
+            status: 'success',
+            provider: linkedProvider,
+          })
+          window.close()
+          return
+        }
+
+        window.location.href = redirectUrl
       } catch (err) {
         console.error('OAuth callback handler error:', err)
         if (typeof window !== 'undefined') {

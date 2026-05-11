@@ -311,28 +311,22 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
     setLinkingProvider(provider)
     setError('')
     try {
-      const isKick = normalizedProvider === 'custom:kick' || normalizedProvider === 'kick'
-      const redirectTo = getClientAuthRedirectUrl(`/settings?linked=${normalizedProvider}`)
-      
-      let oauthUrl: string
-      try {
-        oauthUrl = await getIdentityLinkUrl(normalizedProvider, redirectTo)
-      } catch (primaryError) {
-        const alternateProvider =
-          normalizedProvider === 'custom:kick'
-            ? 'kick'
-            : normalizedProvider === 'kick'
-            ? 'custom:kick'
-            : null
-
-        if (!alternateProvider) throw primaryError
-        oauthUrl = await getIdentityLinkUrl(alternateProvider, redirectTo)
+      // Pre-auth check: ensure the user is still logged in before starting OAuth.
+      const supabase = getSupabaseBrowserClient()
+      const { data: sessionData } = await supabase.auth.getSession()
+      if (!sessionData.session?.user) {
+        setError('You must be logged in to link accounts. Please sign in first.')
+        setLinkingProvider(null)
+        return
       }
 
+      const isKick = normalizedProvider === 'custom:kick' || normalizedProvider === 'kick'
+
       if (isKick) {
-        // Open Kick OAuth in a popup window
-        const popupWindow = window.open(oauthUrl, 'kickOAuthPopup', 'width=500,height=700,menubar=no,location=no,resizable=yes,scrollbars=yes')
-        
+        // Route Kick through our custom server-side OAuth flow in a popup.
+        const popupUrl = '/api/kick-login?popup=1'
+        const popupWindow = window.open(popupUrl, 'kickOAuthPopup', 'width=500,height=700,menubar=no,location=no,resizable=yes,scrollbars=yes')
+
         if (!popupWindow) {
           setError('Failed to open popup window. Please check your browser popup settings.')
           setLinkingProvider(null)
@@ -350,40 +344,31 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
           const payload = event.data as {
             type?: string
             status?: 'success' | 'error'
-            provider?: string
-            accessToken?: string
-            refreshToken?: string
-            message?: string
+            kickUsername?: string
+            magicLink?: string
+            error?: string
           }
 
-          if (payload?.type !== 'oauth-link-complete') return
+          if (payload?.type !== 'kick-oauth-complete') return
 
           removePopupListener()
-          if (pollInterval) {
-            clearInterval(pollInterval)
-          }
+          if (pollInterval) clearInterval(pollInterval)
           setLinkingProvider(null)
 
           void (async () => {
             try {
               if (payload.status === 'error') {
-                setError(payload.message || 'Kick OAuth linking failed. Please try again.')
+                setError(`Kick linking failed: ${payload.error || 'Unknown error'}`)
                 return
               }
 
-              if (payload.accessToken && payload.refreshToken) {
-                const supabase = getSupabaseBrowserClient()
-                const { error: setSessionError } = await supabase.auth.setSession({
-                  access_token: payload.accessToken,
-                  refresh_token: payload.refreshToken,
-                })
-
-                if (setSessionError) {
-                  setError(setSessionError.message)
-                  return
-                }
+              // If the callback returned a magic link, navigate to it to establish the session.
+              if (payload.magicLink) {
+                window.location.assign(payload.magicLink)
+                return
               }
 
+              // Otherwise just refresh user state (kick_username added to metadata by callback).
               await refreshLinkedState()
               setLinkingSuccess('Kick account linked successfully!')
               setTimeout(() => setLinkingSuccess(null), 4000)
@@ -395,18 +380,18 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
 
         window.addEventListener('message', onPopupMessage)
 
-        // Poll the popup until it closes
+        // Poll the popup until it closes (fallback if postMessage doesn't fire).
         pollInterval = setInterval(() => {
           if (popupWindow.closed) {
-            if (pollInterval) {
-              clearInterval(pollInterval)
-            }
+            if (pollInterval) clearInterval(pollInterval)
             removePopupListener()
             setLinkingProvider(null)
           }
         }, 500)
       } else {
-        // For other providers (Google, Discord, etc.), do full-page redirect
+        // For other providers (Google, Discord, etc.), use Supabase identity-link with full-page redirect.
+        const redirectTo = getClientAuthRedirectUrl(`/settings?linked=${normalizedProvider}`)
+        const oauthUrl = await getIdentityLinkUrl(normalizedProvider, redirectTo)
         window.location.href = oauthUrl
       }
     } catch (err) {
