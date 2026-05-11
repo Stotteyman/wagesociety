@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   CalendarDays,
   ClipboardList,
-  CreditCard,
   DollarSign,
   LayoutDashboard,
   LogOut,
@@ -23,7 +22,6 @@ import { endLocalRootSession, getLocalRootUser, isLocalRootSessionActive } from 
 import { authedFetch, getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 import { requireAuthenticatedRoute } from '../lib/routeAuth'
 import { setStoredViewAsRole } from '../lib/viewAs'
-import { ProfileSettings } from '../components/ProfileSettings'
 
 export const Route = createFileRoute('/dashboard')({
   beforeLoad: async () => {
@@ -42,15 +40,6 @@ export const Route = createFileRoute('/dashboard')({
   component: DashboardGate,
 })
 
-type MembershipPlan = {
-  id: string
-  slug: string
-  name: string
-  display_price: string
-  description: string
-  features: string[]
-}
-
 type AccessResponse = {
   role: OrgRole
   actorRole: OrgRole
@@ -65,7 +54,6 @@ type AppUser = {
   user_metadata?: {
     username?: string
     preferred_username?: string
-    membership_plan?: string
   }
 }
 
@@ -95,24 +83,6 @@ const LOCAL_ROOT_PERMISSIONS: OrgPermission[] = [
   'manage_users',
   'manage_permissions',
   'access_admin_dashboard',
-]
-
-const fallbackMembershipPlans: Array<{
-  id: string
-  slug: string
-  name: string
-  display_price: string
-  description: string
-  features: string[]
-}> = [
-  {
-    id: 'fallback-free',
-    slug: 'free',
-    name: 'FREE',
-    display_price: '$0',
-    description: 'Very limited access for basic account setup and browsing.',
-    features: ['Log in and account access', 'Connect social/OAuth accounts', 'Browse public sections'],
-  },
 ]
 
 function DashboardGate() {
@@ -283,34 +253,18 @@ function CreatorDashboard({
   permissions: OrgPermission[]
   ban: BanRecord | null
 }) {
-  const [dashboardTab, setDashboardTab] = useState<'motd' | 'news' | 'workspace' | 'settings'>('motd')
-  const [linkedProvider, setLinkedProvider] = useState<string | null>(null)
+  const [dashboardTab, setDashboardTab] = useState<'motd' | 'news' | 'workspace'>('motd')
 
-  // Restore the intended tab after an OAuth redirect (e.g. Kick account linking).
-  // Priority: ?view= URL param → sessionStorage key set before the redirect.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const viewParam = params.get('view')
-    const linkedParam = params.get('linked')
-    const storedTab = sessionStorage.getItem('dashboard_return_tab')
-    sessionStorage.removeItem('dashboard_return_tab')
-    const tab = viewParam || storedTab
-    if (tab === 'settings' || tab === 'news' || tab === 'workspace' || tab === 'motd') {
-      setDashboardTab(tab as 'motd' | 'news' | 'workspace' | 'settings')
-    }
-    if (linkedParam) {
-      setLinkedProvider(linkedParam)
-      // Clear the linked param from the URL to avoid multiple refreshes
-      window.history.replaceState({}, '', window.location.pathname)
+    if (viewParam === 'news' || viewParam === 'workspace' || viewParam === 'motd') {
+      setDashboardTab(viewParam)
     }
   }, [])
 
   const [latestNews, setLatestNews] = useState<NewsItem[]>([])
   const [newsLoading, setNewsLoading] = useState(false)
-  const [plans, setPlans] = useState<MembershipPlan[]>(fallbackMembershipPlans)
-  const [plansLoading, setPlansLoading] = useState(true)
-  const [upgradingPlan, setUpgradingPlan] = useState<string | null>(null)
-  const [subscriptionError, setSubscriptionError] = useState('')
   const [memberAvatarUrl, setMemberAvatarUrl] = useState<string | null>(null)
   const isSuperadmin = role === 'superadmin'
   const canUseViewAs = actorRole === 'superadmin' || canManageRole(actorRole, 'user')
@@ -442,26 +396,6 @@ function CreatorDashboard({
 
   useEffect(() => {
     if (isLocalRootSessionActive()) {
-      setPlansLoading(false)
-      return
-    }
-
-    void (async () => {
-      try {
-        const response = await fetch('/api/shop')
-        if (!response.ok) return
-        const data = (await response.json()) as { membershipPlans?: MembershipPlan[] }
-        if (data.membershipPlans?.length) setPlans(data.membershipPlans)
-      } catch {
-        // keep fallback plans
-      } finally {
-        setPlansLoading(false)
-      }
-    })()
-  }, [])
-
-  useEffect(() => {
-    if (isLocalRootSessionActive()) {
       setLatestNews([])
       setNewsLoading(false)
       return
@@ -493,60 +427,6 @@ function CreatorDashboard({
     setStoredViewAsRole(targetRole ? (targetRole as OrgRole) : null)
     if (typeof window !== 'undefined') {
       window.location.reload()
-    }
-  }
-
-  const updateMembership = async (plan: MembershipPlan) => {
-    const email = String(member?.email || '').trim().toLowerCase()
-    if (!email) {
-      setSubscriptionError('Missing account email. Please refresh and try again.')
-      return
-    }
-
-    try {
-      setUpgradingPlan(plan.slug)
-      setSubscriptionError('')
-
-      const response = await authedFetch('/api/create-payment-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          planSlug: plan.slug,
-          email,
-          name: getDashboardUsername(member),
-        }),
-      })
-
-      const data = (await response.json()) as {
-        checkoutUrl?: string
-        successUrl?: string
-        updated?: boolean
-        free?: boolean
-        error?: string
-      }
-
-      if (!response.ok || data.error) {
-        setSubscriptionError(data.error || 'Could not update your subscription right now.')
-        return
-      }
-
-      if (data.checkoutUrl) {
-        window.location.href = data.checkoutUrl
-        return
-      }
-
-      if (data.successUrl) {
-        window.location.href = data.successUrl
-        return
-      }
-
-      if (data.updated || data.free) {
-        window.location.reload()
-      }
-    } catch {
-      setSubscriptionError('Could not update your subscription right now.')
-    } finally {
-      setUpgradingPlan(null)
     }
   }
 
@@ -665,18 +545,13 @@ function CreatorDashboard({
                   <LayoutDashboard size={15} />
                   Workspace
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setDashboardTab('settings')}
-                  className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                    dashboardTab === 'settings'
-                      ? 'bg-orange-300 text-zinc-950'
-                      : 'text-zinc-300 hover:text-zinc-50'
-                  }`}
+                <Link
+                  to="/settings"
+                  className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:text-zinc-50"
                 >
                   <Settings size={15} />
                   Settings
-                </button>
+                </Link>
                 {hasPermission('access_admin_dashboard') && (
                   <Link
                     to="/admin"
@@ -760,142 +635,6 @@ function CreatorDashboard({
           </section>
         ) : null}
 
-        {dashboardTab === 'settings' ? (
-          <section className="mt-6 space-y-6">
-            <ProfileSettings member={member} linkedProvider={linkedProvider} />
-            <div className="grid gap-6 md:grid-cols-2">
-              <article className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6">
-                <div className="flex items-center gap-3">
-                  <div className="inline-flex rounded-md border border-zinc-200/20 bg-zinc-950/70 p-2 text-orange-200">
-                    <CreditCard size={18} />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-zinc-50">Subscription</h2>
-                    <p className="text-xs text-zinc-400">Manage your membership plan</p>
-                  </div>
-                </div>
-
-                {plansLoading ? (
-                  <p className="mt-4 text-sm text-zinc-400">Loading plans...</p>
-                ) : (
-                  <div className="mt-4 space-y-2">
-                    {plans.map((plan) => {
-                      const isCurrent =
-                        member.user_metadata?.membership_plan === plan.slug ||
-                        (plan.slug === 'free' && !member.user_metadata?.membership_plan)
-                      return (
-                        <div
-                          key={plan.slug}
-                          className={`rounded-xl border p-4 transition ${
-                            isCurrent
-                              ? 'border-orange-200/60 bg-orange-200/10'
-                              : 'border-zinc-200/15 bg-zinc-950/40'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="font-semibold text-zinc-50">{plan.name}</p>
-                                {isCurrent ? (
-                                  <span className="rounded-full bg-orange-300 px-2 py-0.5 text-xs font-bold text-zinc-950">
-                                    Current
-                                  </span>
-                                ) : null}
-                              </div>
-                              <p className="text-sm font-black text-orange-200">{plan.display_price}</p>
-                              <p className="mt-0.5 text-xs text-zinc-400">{plan.description}</p>
-                            </div>
-                            {!isCurrent ? (
-                              <button
-                                type="button"
-                                onClick={() => { void updateMembership(plan) }}
-                                disabled={Boolean(upgradingPlan)}
-                                className="flex-shrink-0 rounded-lg border border-zinc-100/25 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition hover:border-orange-200/70 hover:text-orange-100 disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                {upgradingPlan === plan.slug
-                                  ? 'Processing...'
-                                  : plan.slug === 'free'
-                                  ? 'Downgrade'
-                                  : 'Choose Plan'}
-                              </button>
-                            ) : null}
-                          </div>
-                          {plan.features.length > 0 ? (
-                            <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5">
-                              {plan.features.map((feature) => (
-                                <li key={feature} className="flex items-center gap-1 text-xs text-zinc-400">
-                                  <span className="text-orange-300">*</span> {feature}
-                                </li>
-                              ))}
-                            </ul>
-                          ) : null}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-
-                {subscriptionError ? (
-                  <p className="mt-3 rounded-lg border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
-                    {subscriptionError}
-                  </p>
-                ) : null}
-
-                <p className="mt-3 text-xs text-zinc-500">
-                  Payments are processed securely via Stripe. Cancel anytime from your billing settings.
-                </p>
-              </article>
-
-            <article className="rounded-2xl border border-zinc-200/15 bg-zinc-900/60 p-6">
-              <div className="flex items-center gap-3">
-                <div className="inline-flex rounded-md border border-zinc-200/20 bg-zinc-950/70 p-2 text-orange-200">
-                  <Settings size={18} />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-zinc-50">Account</h2>
-                  <p className="text-xs text-zinc-400">Your profile and sign-in details</p>
-                </div>
-              </div>
-              <div className="mt-4 rounded-xl border border-zinc-200/15 bg-zinc-950/60 p-4 space-y-2">
-                {memberAvatarUrl ? (
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={memberAvatarUrl}
-                      alt={getDashboardUsername(member)}
-                      className="h-12 w-12 rounded-full border border-zinc-200/20 object-cover"
-                    />
-                    <p className="text-xs text-zinc-500">
-                      Change your photo in{' '}
-                      <button
-                        type="button"
-                        onClick={() => setDashboardTab('settings')}
-                        className="text-orange-200 underline hover:text-orange-100"
-                      >
-                        Profile Settings
-                      </button>
-                    </p>
-                  </div>
-                ) : null}
-                <div>
-                  <p className="text-xs font-medium text-zinc-400">Email</p>
-                  <p className="mt-0.5 text-sm text-zinc-100">{member.email || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-zinc-400">Username</p>
-                  <p className="mt-0.5 text-sm text-zinc-100">{getDashboardUsername(member)}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-zinc-400">Role</p>
-                  <p className="mt-0.5 text-sm text-zinc-100">{formatRoleLabel(role)}</p>
-                </div>
-              </div>
-              <p className="mt-4 text-xs text-zinc-500">
-                To update your email or password, contact an admin or use the password reset flow.
-              </p>
-            </article>
-            </div>
-          </section>
-        ) : null}
       </div>
     </div>
   )

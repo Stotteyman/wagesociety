@@ -58,39 +58,50 @@ export function AuthPage({ view }: { view: AuthView }) {
     })()
   }, [navigate, view])
 
+  const startOAuthSignIn = async (provider: 'google' | 'kick' | 'custom:kick') => {
+    const supabase = getSupabaseBrowserClient()
+
+    if (isNativeApp()) {
+      const { data, error: authError } = await (supabase.auth as any).signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: NATIVE_OAUTH_REDIRECT,
+          skipBrowserRedirect: true,
+        },
+      })
+      if (authError) throw authError
+      if (data?.url) {
+        const { Browser } = await import('@capacitor/browser')
+        await Browser.open({ url: data.url })
+      }
+      return
+    }
+
+    const { error: authError } = await (supabase.auth as any).signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: getClientAuthRedirectUrl('/dashboard'),
+      },
+    })
+
+    if (authError) throw authError
+  }
+
   const handleOAuth = async (provider: 'google' | 'kick') => {
     try {
       setError('')
       setBusyAction('login')
-      const supabase = getSupabaseBrowserClient()
 
-      if (isNativeApp()) {
-        // On Android/iOS: get the OAuth URL from Supabase without auto-redirecting,
-        // then open it in a system browser (Chrome Custom Tabs). After auth, the
-        // provider redirects to the custom scheme which Android routes back to the app.
-        const { data, error: authError } = await (supabase.auth as any).signInWithOAuth({
-          provider,
-          options: {
-            redirectTo: NATIVE_OAUTH_REDIRECT,
-            skipBrowserRedirect: true,
-          },
-        })
-        if (authError) throw authError
-        if (data?.url) {
-          const { Browser } = await import('@capacitor/browser')
-          await Browser.open({ url: data.url })
+      // Some Supabase projects expose Kick as "custom:kick" while others use "kick".
+      if (provider === 'kick') {
+        try {
+          await startOAuthSignIn('kick')
+        } catch {
+          await startOAuthSignIn('custom:kick')
         }
-        setBusyAction(null)
-        return
+      } else {
+        await startOAuthSignIn(provider)
       }
-
-      const { error: authError } = await (supabase.auth as any).signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: getClientAuthRedirectUrl('/dashboard'),
-        },
-      })
-      if (authError) throw authError
     } catch (err) {
       setError(err instanceof Error ? err.message : `Could not sign in with ${provider}.`)
       setBusyAction(null)
@@ -349,6 +360,11 @@ export function AuthPage({ view }: { view: AuthView }) {
                   Kick
                 </button>
               </div>
+              {!isSignup ? (
+                <div className="mt-3 rounded-lg border border-emerald-300/35 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+                  Linked methods enabled: connect providers in Settings once, then sign in with any linked method on the same account.
+                </div>
+              ) : null}
             </div>
             {isSignup ? (
               <p className="mt-4 text-xs text-zinc-400">

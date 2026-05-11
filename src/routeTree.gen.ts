@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as NewsRouteImport } from './routes/news'
@@ -71,6 +72,11 @@ const TermsRoute = TermsRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyRoute = PrivacyRouteImport.update({
@@ -346,6 +352,7 @@ export interface FileRoutesByFullPath {
   '/news': typeof NewsRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/admin/apk': typeof AdminApkRoute
@@ -401,6 +408,7 @@ export interface FileRoutesByTo {
   '/news': typeof NewsRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/admin/apk': typeof AdminApkRoute
@@ -457,6 +465,7 @@ export interface FileRoutesById {
   '/news': typeof NewsRoute
   '/onboarding': typeof OnboardingRoute
   '/privacy': typeof PrivacyRoute
+  '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/admin/apk': typeof AdminApkRoute
@@ -514,6 +523,7 @@ export interface FileRouteTypes {
     | '/news'
     | '/onboarding'
     | '/privacy'
+    | '/settings'
     | '/signup'
     | '/terms'
     | '/admin/apk'
@@ -569,6 +579,7 @@ export interface FileRouteTypes {
     | '/news'
     | '/onboarding'
     | '/privacy'
+    | '/settings'
     | '/signup'
     | '/terms'
     | '/admin/apk'
@@ -624,6 +635,7 @@ export interface FileRouteTypes {
     | '/news'
     | '/onboarding'
     | '/privacy'
+    | '/settings'
     | '/signup'
     | '/terms'
     | '/admin/apk'
@@ -680,6 +692,7 @@ export interface RootRouteChildren {
   NewsRoute: typeof NewsRoute
   OnboardingRoute: typeof OnboardingRoute
   PrivacyRoute: typeof PrivacyRoute
+  SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   TermsRoute: typeof TermsRoute
   ApiCheckUsernameRoute: typeof ApiCheckUsernameRoute
@@ -728,6 +741,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy': {
@@ -1146,6 +1166,7 @@ const rootRouteChildren: RootRouteChildren = {
   NewsRoute: NewsRoute,
   OnboardingRoute: OnboardingRoute,
   PrivacyRoute: PrivacyRoute,
+  SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   TermsRoute: TermsRoute,
   ApiCheckUsernameRoute: ApiCheckUsernameRoute,

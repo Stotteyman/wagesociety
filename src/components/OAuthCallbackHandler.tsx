@@ -12,11 +12,35 @@ import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 export function OAuthCallbackHandler() {
   const [processed, setProcessed] = useState(false)
 
+  const postPopupResult = (payload: {
+    status: 'success' | 'error'
+    provider: string
+    accessToken?: string
+    refreshToken?: string
+    message?: string
+  }) => {
+    if (!window.opener || window.opener.closed) return
+
+    window.opener.postMessage(
+      {
+        type: 'oauth-link-complete',
+        ...payload,
+      },
+      window.location.origin,
+    )
+  }
+
   useEffect(() => {
     if (typeof window === 'undefined' || processed) return
 
     const handleCallback = async () => {
       try {
+        // This handler is for identity-linking callbacks only.
+        // Normal OAuth login callbacks should continue through the standard auth flow.
+        const urlParams = new URLSearchParams(window.location.search)
+        const linkedProvider = urlParams.get('linked')
+        if (!linkedProvider) return
+
         // Check if there are OAuth tokens in the hash
         const hash = window.location.hash.slice(1)
         if (!hash) return
@@ -37,6 +61,11 @@ export function OAuthCallbackHandler() {
 
           if (error) {
             console.error('Failed to set session after identity linking:', error)
+            postPopupResult({
+              status: 'error',
+              provider: linkedProvider,
+              message: error.message,
+            })
             return
           }
 
@@ -45,20 +74,37 @@ export function OAuthCallbackHandler() {
           if (data?.user) {
             console.log('Identity linking successful. User identities:', data.user.identities)
 
-            // Get the linked provider from the URL search params
-            const urlParams = new URLSearchParams(window.location.search)
-            const linkedProvider = urlParams.get('linked') || 'unknown'
-
             setProcessed(true)
+
+            const redirectUrl = `/settings?linked=${linkedProvider}`
+
+            // Popup flow for Kick linking: signal opener then close itself.
+            if (window.opener && !window.opener.closed) {
+              postPopupResult({
+                status: 'success',
+                provider: linkedProvider,
+                accessToken,
+                refreshToken,
+              })
+              window.close()
+              return
+            }
 
             // Redirect back to settings, clearing the hash
             // Use window.location to force a page reload with fresh user state
-            const redirectUrl = `/dashboard?view=settings&linked=${linkedProvider}`
             window.location.href = redirectUrl
           }
         }
       } catch (err) {
         console.error('OAuth callback handler error:', err)
+        if (typeof window !== 'undefined') {
+          const linkedProvider = new URLSearchParams(window.location.search).get('linked') || 'unknown'
+          postPopupResult({
+            status: 'error',
+            provider: linkedProvider,
+            message: err instanceof Error ? err.message : 'OAuth callback processing failed.',
+          })
+        }
       }
     }
 

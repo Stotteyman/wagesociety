@@ -84,6 +84,12 @@ function providerOptionFromKey(key: string): OAuthProviderOption {
   }
 }
 
+function normalizeProviderKey(key: string) {
+  const normalized = String(key || '').trim().toLowerCase()
+  if (normalized === 'kick' || normalized === 'custom:kick') return 'kick'
+  return normalized
+}
+
 function mergeProviderOptions(
   fromServer: OAuthProviderOption[] | undefined,
   user: SupabaseUser | null,
@@ -167,6 +173,32 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
   const [linkingProvider, setLinkingProvider] = useState<string | null>(null)
   const [oauthProviders, setOauthProviders] = useState<OAuthProviderOption[]>(FALLBACK_OAUTH_PROVIDERS)
 
+  const refreshLinkedState = async () => {
+    const supabase = getSupabaseBrowserClient()
+    const [profileResponse, { data: { user: currentUser } }] = await Promise.all([
+      authedFetch('/api/me/profile'),
+      supabase.auth.getUser(),
+    ])
+
+    if (profileResponse.ok && currentUser) {
+      const data = (await profileResponse.json()) as ProfileApiResponse
+      const p = data.profile
+      const streamAccounts = data.stream_accounts
+
+      setProfile(p)
+      setOauthProviders(mergeProviderOptions(data.oauth_providers, currentUser))
+      setUser(currentUser)
+      setKickConnectedUrl(streamAccounts?.kick?.url || null)
+      setKickConnectedUsername(streamAccounts?.kick?.username || null)
+      setYoutubeConnected(Boolean(streamAccounts?.youtube?.connected))
+
+      const nextYouTubeOptions = streamAccounts?.youtube?.options || []
+      setYoutubeOptions(nextYouTubeOptions)
+      const selected = streamAccounts?.youtube?.selected || nextYouTubeOptions[0]?.key || ''
+      setSelectedYouTubeChannel(selected)
+    }
+  }
+
   useEffect(() => {
     void (async () => {
       try {
@@ -215,35 +247,14 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
     const refreshProfileAfterLinking = async () => {
       try {
         setError('')
-        const supabase = getSupabaseBrowserClient()
-        const [profileResponse, { data: { user: currentUser } }] = await Promise.all([
-          authedFetch('/api/me/profile'),
-          supabase.auth.getUser(),
-        ])
+        await refreshLinkedState()
 
-        if (profileResponse.ok && currentUser) {
-          const data = (await profileResponse.json()) as ProfileApiResponse
-          const p = data.profile
-          const streamAccounts = data.stream_accounts
-          setProfile(p)
-          setOauthProviders(mergeProviderOptions(data.oauth_providers, currentUser))
-          setUser(currentUser)
-          setKickConnectedUrl(streamAccounts?.kick?.url || null)
-          setKickConnectedUsername(streamAccounts?.kick?.username || null)
-          setYoutubeConnected(Boolean(streamAccounts?.youtube?.connected))
-
-          const nextYouTubeOptions = streamAccounts?.youtube?.options || []
-          setYoutubeOptions(nextYouTubeOptions)
-          const selected = streamAccounts?.youtube?.selected || nextYouTubeOptions[0]?.key || ''
-          setSelectedYouTubeChannel(selected)
-
-          // Show success message with the linked provider name
-          const providerLabel = oauthProviders.find(
-            (p) => p.key.toLowerCase() === linkedProvider.toLowerCase(),
-          )?.label || linkedProvider
-          setLinkingSuccess(`${providerLabel} account linked successfully!`)
-          setTimeout(() => setLinkingSuccess(null), 4000)
-        }
+        const targetKey = normalizeProviderKey(linkedProvider)
+        const providerLabel = oauthProviders.find(
+          (p) => normalizeProviderKey(p.key) === targetKey,
+        )?.label || linkedProvider
+        setLinkingSuccess(`${providerLabel} account linked successfully!`)
+        setTimeout(() => setLinkingSuccess(null), 4000)
       } catch (err) {
         console.error('Failed to refresh profile after linking:', err)
       }
@@ -301,7 +312,7 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
     setError('')
     try {
       const isKick = normalizedProvider === 'custom:kick' || normalizedProvider === 'kick'
-      const redirectTo = getClientAuthRedirectUrl(`/dashboard?view=settings&linked=${normalizedProvider}`)
+      const redirectTo = getClientAuthRedirectUrl(`/settings?linked=${normalizedProvider}`)
       
       let oauthUrl: string
       try {
@@ -320,7 +331,6 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
 
       if (isKick) {
         // Open Kick OAuth in a popup window
-        sessionStorage.setItem('dashboard_return_tab', 'settings')
         const popupWindow = window.open(oauthUrl, 'kickOAuthPopup', 'width=500,height=700,menubar=no,location=no,resizable=yes,scrollbars=yes')
         
         if (!popupWindow) {
@@ -329,51 +339,74 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
           return
         }
 
-        // Poll the popup until it closes
-        const pollInterval = setInterval(() => {
-          if (popupWindow.closed) {
-            clearInterval(pollInterval)
-            setLinkingProvider(null)
-            
-            // After popup closes, refresh the profile to show updated connection status
-            void (async () => {
-              try {
-                const supabase = getSupabaseBrowserClient()
-                const [profileResponse, { data: { user: currentUser } }] = await Promise.all([
-                  authedFetch('/api/me/profile'),
-                  supabase.auth.getUser(),
-                ])
+        let pollInterval: ReturnType<typeof setInterval> | null = null
 
-                if (profileResponse.ok && currentUser) {
-                  const data = (await profileResponse.json()) as ProfileApiResponse
-                  const p = data.profile
-                  const streamAccounts = data.stream_accounts
-                  
-                  setProfile(p)
-                  setOauthProviders(mergeProviderOptions(data.oauth_providers, currentUser))
-                  setUser(currentUser)
-                  setKickConnectedUrl(streamAccounts?.kick?.url || null)
-                  setKickConnectedUsername(streamAccounts?.kick?.username || null)
-                  setYoutubeConnected(Boolean(streamAccounts?.youtube?.connected))
-                  
-                  const nextYouTubeOptions = streamAccounts?.youtube?.options || []
-                  setYoutubeOptions(nextYouTubeOptions)
-                  const selected = streamAccounts?.youtube?.selected || nextYouTubeOptions[0]?.key || ''
-                  setSelectedYouTubeChannel(selected)
-                  
-                  // Show success message
-                  setLinkingSuccess('Kick account linked successfully!')
-                  setTimeout(() => setLinkingSuccess(null), 4000)
-                }
-              } catch (err) {
-                console.error('Failed to refresh profile after Kick linking:', err)
+        const removePopupListener = () => {
+          window.removeEventListener('message', onPopupMessage)
+        }
+
+        const onPopupMessage = (event: MessageEvent) => {
+          if (event.origin !== window.location.origin) return
+          const payload = event.data as {
+            type?: string
+            status?: 'success' | 'error'
+            provider?: string
+            accessToken?: string
+            refreshToken?: string
+            message?: string
+          }
+
+          if (payload?.type !== 'oauth-link-complete') return
+
+          removePopupListener()
+          if (pollInterval) {
+            clearInterval(pollInterval)
+          }
+          setLinkingProvider(null)
+
+          void (async () => {
+            try {
+              if (payload.status === 'error') {
+                setError(payload.message || 'Kick OAuth linking failed. Please try again.')
+                return
               }
-            })()
+
+              if (payload.accessToken && payload.refreshToken) {
+                const supabase = getSupabaseBrowserClient()
+                const { error: setSessionError } = await supabase.auth.setSession({
+                  access_token: payload.accessToken,
+                  refresh_token: payload.refreshToken,
+                })
+
+                if (setSessionError) {
+                  setError(setSessionError.message)
+                  return
+                }
+              }
+
+              await refreshLinkedState()
+              setLinkingSuccess('Kick account linked successfully!')
+              setTimeout(() => setLinkingSuccess(null), 4000)
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Failed to refresh linked account state.')
+            }
+          })()
+        }
+
+        window.addEventListener('message', onPopupMessage)
+
+        // Poll the popup until it closes
+        pollInterval = setInterval(() => {
+          if (popupWindow.closed) {
+            if (pollInterval) {
+              clearInterval(pollInterval)
+            }
+            removePopupListener()
+            setLinkingProvider(null)
           }
         }, 500)
       } else {
         // For other providers (Google, Discord, etc.), do full-page redirect
-        sessionStorage.setItem('dashboard_return_tab', 'settings')
         window.location.href = oauthUrl
       }
     } catch (err) {
@@ -383,13 +416,19 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
   }
 
   const isLinked = (provider: string) => {
-    const normalizedProvider = provider.trim().toLowerCase()
-    return user?.identities?.some((i) => String(i.provider || '').trim().toLowerCase() === normalizedProvider) ?? false
+    const normalizedProvider = normalizeProviderKey(provider)
+    return user?.identities?.some(
+      (i) => normalizeProviderKey(String(i.provider || '')) === normalizedProvider,
+    ) ?? false
   }
 
-  const linkedIdentityProviders = (user?.identities || [])
-    .map((identity) => String(identity.provider || '').toLowerCase())
-    .filter(Boolean)
+  const linkedIdentityProviders = Array.from(
+    new Set(
+      (user?.identities || [])
+        .map((identity) => normalizeProviderKey(String(identity.provider || '')))
+        .filter(Boolean),
+    ),
+  )
 
   const checkUsername = (value: string) => {
     if (usernameDebounceRef.current) clearTimeout(usernameDebounceRef.current)
