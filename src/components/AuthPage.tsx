@@ -110,12 +110,11 @@ export function AuthPage({ view }: { view: AuthView }) {
       setBusyAction('login')
 
       if (provider === 'kick') {
-        // Route Kick through our custom server-side OAuth flow (avoids Supabase provider config dependency).
-        window.location.assign('/api/kick-login')
-        return
+        // Kick is configured as a Supabase custom OAuth provider.
+        await startOAuthSignIn('custom:kick')
+      } else {
+        await startOAuthSignIn(provider)
       }
-
-      await startOAuthSignIn(provider)
     } catch (err) {
       setError(err instanceof Error ? err.message : `Could not sign in with ${provider}.`)
       setBusyAction(null)

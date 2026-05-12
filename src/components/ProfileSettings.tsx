@@ -323,9 +323,19 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
       const isKick = normalizedProvider === 'custom:kick' || normalizedProvider === 'kick'
 
       if (isKick) {
-        // Route Kick through our custom server-side OAuth flow in a popup.
-        const popupUrl = '/api/kick-login?popup=1'
-        const popupWindow = window.open(popupUrl, 'kickOAuthPopup', 'width=500,height=700,menubar=no,location=no,resizable=yes,scrollbars=yes')
+        // Kick is linked through Supabase custom OAuth.
+        const redirectTo = getClientAuthRedirectUrl('/settings?linked=custom:kick')
+        let oauthUrl: string
+
+        try {
+          oauthUrl = await getIdentityLinkUrl('custom:kick', redirectTo)
+        } catch (primaryError) {
+          oauthUrl = await getIdentityLinkUrl('kick', redirectTo).catch(() => {
+            throw primaryError
+          })
+        }
+
+        const popupWindow = window.open(oauthUrl, 'kickOAuthPopup', 'width=500,height=700,menubar=no,location=no,resizable=yes,scrollbars=yes')
 
         if (!popupWindow) {
           setError('Failed to open popup window. Please check your browser popup settings.')
@@ -344,12 +354,14 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
           const payload = event.data as {
             type?: string
             status?: 'success' | 'error'
-            kickUsername?: string
-            magicLink?: string
+            provider?: string
+            accessToken?: string
+            refreshToken?: string
             error?: string
+            message?: string
           }
 
-          if (payload?.type !== 'kick-oauth-complete') return
+          if (payload?.type !== 'oauth-link-complete') return
 
           removePopupListener()
           if (pollInterval) clearInterval(pollInterval)
@@ -358,17 +370,22 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
           void (async () => {
             try {
               if (payload.status === 'error') {
-                setError(`Kick linking failed: ${payload.error || 'Unknown error'}`)
+                setError(payload.message || payload.error || 'Kick OAuth linking failed. Please try again.')
                 return
               }
 
-              // If the callback returned a magic link, navigate to it to establish the session.
-              if (payload.magicLink) {
-                window.location.assign(payload.magicLink)
-                return
+              if (payload.accessToken && payload.refreshToken) {
+                const { error: setSessionError } = await supabase.auth.setSession({
+                  access_token: payload.accessToken,
+                  refresh_token: payload.refreshToken,
+                })
+
+                if (setSessionError) {
+                  setError(setSessionError.message)
+                  return
+                }
               }
 
-              // Otherwise just refresh user state (kick_username added to metadata by callback).
               await refreshLinkedState()
               setLinkingSuccess('Kick account linked successfully!')
               setTimeout(() => setLinkingSuccess(null), 4000)
