@@ -325,16 +325,22 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
       if (isKick) {
         // Kick is linked through Supabase custom OAuth.
         const redirectTo = getClientAuthRedirectUrl('/settings?linked=custom:kick')
+        console.log('[ProfileSettings] Starting Kick link. redirectTo:', redirectTo)
         let oauthUrl: string
 
         try {
+          console.log('[ProfileSettings] Calling getIdentityLinkUrl for custom:kick')
           oauthUrl = await getIdentityLinkUrl('custom:kick', redirectTo)
+          console.log('[ProfileSettings] Got OAuth URL for custom:kick:', oauthUrl.substring(0, 100))
         } catch (primaryError) {
+          console.log('[ProfileSettings] custom:kick failed, trying kick:', primaryError)
           oauthUrl = await getIdentityLinkUrl('kick', redirectTo).catch(() => {
             throw primaryError
           })
+          console.log('[ProfileSettings] Got OAuth URL for kick:', oauthUrl.substring(0, 100))
         }
 
+        console.log('[ProfileSettings] Opening popup')
         const popupWindow = window.open(oauthUrl, 'kickOAuthPopup', 'width=500,height=700,menubar=no,location=no,resizable=yes,scrollbars=yes')
 
         if (!popupWindow) {
@@ -360,6 +366,8 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
             error?: string
             message?: string
           }
+
+          console.log('[ProfileSettings] Received popup message:', { type: payload?.type, status: payload?.status, provider: payload?.provider })
 
           if (payload?.type !== 'oauth-link-complete') return
 
@@ -400,6 +408,7 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
         // Poll the popup until it closes (fallback if postMessage doesn't fire).
         pollInterval = setInterval(() => {
           if (popupWindow.closed) {
+            console.log('[ProfileSettings] Popup closed, cleaning up')
             if (pollInterval) clearInterval(pollInterval)
             removePopupListener()
             setLinkingProvider(null)

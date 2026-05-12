@@ -39,6 +39,8 @@ export function OAuthCallbackHandler() {
         // Normal OAuth login callbacks should continue through the standard auth flow.
         const urlParams = new URLSearchParams(window.location.search)
         const linkedProvider = urlParams.get('linked')
+        console.log('[OAuthCallbackHandler] URL search:', window.location.search)
+        console.log('[OAuthCallbackHandler] linkedProvider:', linkedProvider)
         if (!linkedProvider) return
 
         const supabase = getSupabaseBrowserClient()
@@ -46,6 +48,8 @@ export function OAuthCallbackHandler() {
         // Check if there are OAuth tokens in the hash
         const hash = window.location.hash.slice(1)
         const code = urlParams.get('code')
+        console.log('[OAuthCallbackHandler] hash:', hash)
+        console.log('[OAuthCallbackHandler] code:', code)
 
         let accessToken: string | null = null
         let refreshToken: string | null = null
@@ -54,11 +58,14 @@ export function OAuthCallbackHandler() {
           const params = new URLSearchParams(hash)
           accessToken = params.get('access_token')
           refreshToken = params.get('refresh_token')
+          console.log('[OAuthCallbackHandler] Extracted tokens from hash:', { hasAccessToken: !!accessToken, hasRefreshToken: !!refreshToken })
         }
 
         if (!accessToken && !refreshToken && code) {
+          console.log('[OAuthCallbackHandler] Exchanging code for session')
           const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
           if (exchangeError) {
+            console.error('[OAuthCallbackHandler] Code exchange error:', exchangeError)
             postPopupResult({
               status: 'error',
               provider: linkedProvider,
@@ -69,10 +76,12 @@ export function OAuthCallbackHandler() {
 
           accessToken = exchangeData.session?.access_token || null
           refreshToken = exchangeData.session?.refresh_token || null
+          console.log('[OAuthCallbackHandler] Code exchange success:', { hasAccessToken: !!accessToken, hasRefreshToken: !!refreshToken })
         }
 
         // Identity linking flow: tokens indicate a successful OAuth identity linking
         if (accessToken && refreshToken) {
+          console.log('[OAuthCallbackHandler] Setting session with tokens')
           // Update the session with the new tokens from identity linking
           const { error } = await supabase.auth.setSession({
             access_token: accessToken,
@@ -80,7 +89,7 @@ export function OAuthCallbackHandler() {
           })
 
           if (error) {
-            console.error('Failed to set session after identity linking:', error)
+            console.error('[OAuthCallbackHandler] Failed to set session:', error)
             postPopupResult({
               status: 'error',
               provider: linkedProvider,
@@ -92,7 +101,7 @@ export function OAuthCallbackHandler() {
           // Get the current user to verify the linking worked
           const { data } = await supabase.auth.getUser()
           if (data?.user) {
-            console.log('Identity linking successful. User identities:', data.user.identities)
+            console.log('[OAuthCallbackHandler] Identity linking successful. User identities:', data.user.identities)
 
             setProcessed(true)
 
@@ -100,6 +109,7 @@ export function OAuthCallbackHandler() {
 
             // Popup flow for Kick linking: signal opener then close itself.
             if (window.opener && !window.opener.closed) {
+              console.log('[OAuthCallbackHandler] Posting success to opener and closing popup')
               postPopupResult({
                 status: 'success',
                 provider: linkedProvider,
