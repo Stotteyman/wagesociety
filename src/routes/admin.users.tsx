@@ -75,7 +75,6 @@ function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [requesterEmail, setRequesterEmail] = useState('')
-  const [requestSource, setRequestSource] = useState('')
   const [requesterRole, setRequesterRole] = useState<OrgRole>('user')
   const [requesterPermissions, setRequesterPermissions] = useState<string[]>([])
 
@@ -99,9 +98,8 @@ function AdminUsersPage() {
   const [activePermRole, setActivePermRole] = useState<OrgRole>('admin')
   const [permSavingKey, setPermSavingKey] = useState('')
 
-  const isLocalSuperadmin = useMemo(() => requestSource === 'localhost-bypass', [requestSource])
-  const canManagePerms = requesterRole === 'superadmin' || isLocalSuperadmin || requesterPermissions.includes('manage_permissions')
-  const canManageUsers = requesterRole === 'superadmin' || isLocalSuperadmin || requesterPermissions.includes('manage_users')
+  const canManagePerms = requesterRole === 'superadmin' || requesterPermissions.includes('manage_permissions')
+  const canManageUsers = requesterRole === 'superadmin' || requesterPermissions.includes('manage_users')
 
   const memberSuggestions = useMemo(() => {
     const query = formEmail.trim().toLowerCase()
@@ -152,7 +150,6 @@ function AdminUsersPage() {
       return next
     })
     setRequesterEmail(json.requester?.email || '')
-    setRequestSource(json.requester?.source || '')
     setRequesterRole((json.requester?.role as OrgRole) || 'user')
     setRequesterPermissions(json.requester?.permissions || [])
   }
@@ -338,8 +335,8 @@ function AdminUsersPage() {
             <span className="rounded-full border border-zinc-700 px-2.5 py-1 text-zinc-400">
               {requesterEmail || 'Loading…'}
             </span>
-            <span className={`rounded-full border px-2.5 py-1 ${isLocalSuperadmin ? 'border-orange-300/60 text-orange-200' : 'border-zinc-700 text-zinc-400'}`}>
-              {isLocalSuperadmin ? 'Localhost superadmin' : formatRoleLabel(requesterRole)}
+            <span className="rounded-full border border-zinc-700 px-2.5 py-1 text-zinc-400">
+              {formatRoleLabel(requesterRole)}
             </span>
           </div>
         </header>

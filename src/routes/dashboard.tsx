@@ -18,7 +18,6 @@ import {
   Users,
 } from 'lucide-react'
 import { canManageRole, formatRoleLabel, type BanRecord, type OrgPermission, type OrgRole } from '../lib/orgAccess'
-import { endLocalRootSession, getLocalRootUser, isLocalRootSessionActive } from '../lib/localRootSession'
 import { authedFetch, getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 import { requireAuthenticatedRoute } from '../lib/routeAuth'
 import { setStoredViewAsRole } from '../lib/viewAs'
@@ -72,19 +71,6 @@ type NewsItem = {
   author: string
 }
 
-const LOCAL_ROOT_PERMISSIONS: OrgPermission[] = [
-  'view_dashboard',
-  'view_creator_tools',
-  'view_revenue_tracker',
-  'view_live_streams',
-  'use_autoclipper',
-  'manage_livestreams',
-  'view_merch',
-  'manage_users',
-  'manage_permissions',
-  'access_admin_dashboard',
-]
-
 function DashboardGate() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -100,18 +86,6 @@ function DashboardGate() {
 
   useEffect(() => {
     let mounted = true
-
-    if (isLocalRootSessionActive()) {
-      setMember(getLocalRootUser() as AppUser)
-      setRole('superadmin')
-      setActorRole('superadmin')
-      setPermissions(LOCAL_ROOT_PERMISSIONS)
-      setAccessLoading(false)
-      setReady(true)
-      return () => {
-        mounted = false
-      }
-    }
 
     const supabase = getSupabaseBrowserClient()
 
@@ -142,11 +116,6 @@ function DashboardGate() {
   }, [])
 
   useEffect(() => {
-    if (isLocalRootSessionActive()) {
-      setAccessLoading(false)
-      return
-    }
-
     if (!member) {
       setAccessLoading(false)
       return
@@ -177,12 +146,6 @@ function DashboardGate() {
   const handleLogout = async () => {
     try {
       setStoredViewAsRole(null)
-
-      if (isLocalRootSessionActive()) {
-        endLocalRootSession()
-        void navigate({ to: '/login' })
-        return
-      }
 
       const supabase = getSupabaseBrowserClient()
       const { error } = await supabase.auth.signOut()
@@ -381,7 +344,6 @@ function CreatorDashboard({
   const dashboardDisplayName = getDashboardUsername(member)
 
   useEffect(() => {
-    if (isLocalRootSessionActive()) return
     void (async () => {
       try {
         const response = await authedFetch('/api/me/profile')
@@ -395,12 +357,6 @@ function CreatorDashboard({
   }, [])
 
   useEffect(() => {
-    if (isLocalRootSessionActive()) {
-      setLatestNews([])
-      setNewsLoading(false)
-      return
-    }
-
     void (async () => {
       setNewsLoading(true)
       try {

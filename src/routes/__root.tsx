@@ -1,6 +1,5 @@
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { isLocalRootSessionActive } from '../lib/localRootSession'
 import { LEGAL_POLICY_LAST_UPDATED, LEGAL_POLICY_VERSION } from '../lib/legalPolicies'
 import { formatRoleLabel, type OrgRole } from '../lib/orgAccess'
 import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
@@ -151,35 +150,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     return () => {
       window.removeEventListener('storage', syncViewAs)
     }
-  }, [])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    const host = window.location.hostname
-    const pathname = window.location.pathname
-    const isLocalhost = host === 'localhost' || host === '127.0.0.1'
-
-    if (!isLocalhost || pathname !== '/') return
-
-    // Redirect immediately if local root session is active
-    if (isLocalRootSessionActive()) {
-      window.location.replace('/dashboard')
-      return
-    }
-
-    void (async () => {
-      try {
-        const supabase = getSupabaseBrowserClient()
-        const { data } = await supabase.auth.getSession()
-
-        if (data.session?.user) {
-          window.location.replace('/dashboard')
-        }
-      } catch {
-        // Stay on homepage when local auth is not available.
-      }
-    })()
   }, [])
 
   return (

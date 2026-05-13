@@ -7,7 +7,13 @@ import {
   Save,
   User,
 } from 'lucide-react'
-import { authedFetch, getIdentityLinkUrl, getSupabaseBrowserClient } from '../lib/supabaseBrowser'
+import {
+  authedFetch,
+  getIdentityLinkUrl,
+  getSupabaseBrowserClient,
+  KICK_OAUTH_QUERY_PARAMS,
+  KICK_OAUTH_SCOPES,
+} from '../lib/supabaseBrowser'
 import { getClientAuthRedirectUrl } from '../lib/authRedirect'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
@@ -330,12 +336,23 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
 
         try {
           console.log('[ProfileSettings] Calling getIdentityLinkUrl for custom:kick')
-          oauthUrl = await getIdentityLinkUrl('custom:kick', redirectTo)
+          oauthUrl = await getIdentityLinkUrl('custom:kick', redirectTo, {
+            scopes: KICK_OAUTH_SCOPES,
+            queryParams: KICK_OAUTH_QUERY_PARAMS,
+          })
           console.log('[ProfileSettings] Got OAuth URL for custom:kick:', oauthUrl.substring(0, 100))
         } catch (primaryError) {
           console.log('[ProfileSettings] custom:kick failed, trying kick:', primaryError)
-          oauthUrl = await getIdentityLinkUrl('kick', redirectTo).catch(() => {
-            throw primaryError
+          oauthUrl = await getIdentityLinkUrl('kick', redirectTo, {
+            scopes: KICK_OAUTH_SCOPES,
+            queryParams: KICK_OAUTH_QUERY_PARAMS,
+          }).catch(async () => {
+            return await getIdentityLinkUrl('kick', redirectTo, {
+              scopes: 'user:read',
+              queryParams: KICK_OAUTH_QUERY_PARAMS,
+            }).catch(() => {
+              throw primaryError
+            })
           })
           console.log('[ProfileSettings] Got OAuth URL for kick:', oauthUrl.substring(0, 100))
         }

@@ -2,7 +2,6 @@
 import { Loader2, Search, UserRound, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { authedFetch, getSupabaseBrowserClient } from '../lib/supabaseBrowser'
-import { isLocalRootSessionActive, getLocalRootUser } from '../lib/localRootSession'
 
 type DirectoryEntry = {
   username: string
@@ -74,11 +73,6 @@ function DirectoryPage() {
     const supabase = getSupabaseBrowserClient()
 
     const checkAuth = async () => {
-      if (isLocalRootSessionActive()) {
-        setUser(getLocalRootUser())
-        setAuthLoading(false)
-        return
-      }
       try {
         const { data } = await supabase.auth.getSession()
         setUser(data.session?.user || null)
@@ -94,11 +88,6 @@ function DirectoryPage() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (isLocalRootSessionActive()) {
-        setUser(getLocalRootUser())
-        setAuthLoading(false)
-        return
-      }
       setUser(session?.user || null)
       setAuthLoading(false)
     })

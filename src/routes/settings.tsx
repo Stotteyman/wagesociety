@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft, CreditCard, Settings } from 'lucide-react'
 import { ProfileSettings } from '../components/ProfileSettings'
 import { formatRoleLabel, type OrgRole } from '../lib/orgAccess'
-import { getLocalRootUser, isLocalRootSessionActive } from '../lib/localRootSession'
 import { authedFetch, getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 import { requireAuthenticatedRoute } from '../lib/routeAuth'
 
@@ -81,14 +80,6 @@ function SettingsPage() {
   useEffect(() => {
     let mounted = true
 
-    if (isLocalRootSessionActive()) {
-      setMember(getLocalRootUser() as AppUser)
-      setLoading(false)
-      return () => {
-        mounted = false
-      }
-    }
-
     void (async () => {
       try {
         const supabase = getSupabaseBrowserClient()
@@ -106,7 +97,7 @@ function SettingsPage() {
   }, [])
 
   useEffect(() => {
-    if (!member || isLocalRootSessionActive()) return
+    if (!member) return
     void (async () => {
       try {
         const response = await authedFetch('/api/me/profile')
@@ -120,7 +111,7 @@ function SettingsPage() {
   }, [member])
 
   useEffect(() => {
-    if (!member || isLocalRootSessionActive()) return
+    if (!member) return
     void (async () => {
       try {
         const response = await authedFetch('/api/me/access')
@@ -134,11 +125,6 @@ function SettingsPage() {
   }, [member])
 
   useEffect(() => {
-    if (isLocalRootSessionActive()) {
-      setPlansLoading(false)
-      return
-    }
-
     void (async () => {
       try {
         const response = await fetch('/api/shop')

@@ -2,7 +2,6 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { ExternalLink, Loader2, UserRound } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
-import { isLocalRootSessionActive, getLocalRootUser } from '../lib/localRootSession'
 
 type PublicConnectedAccount = {
   provider: string
@@ -84,11 +83,6 @@ function PublicProfilePage() {
     const supabase = getSupabaseBrowserClient()
 
     const checkAuth = async () => {
-      if (isLocalRootSessionActive()) {
-        setUser(getLocalRootUser())
-        setAuthLoading(false)
-        return
-      }
       try {
         const { data } = await supabase.auth.getSession()
         setUser(data.session?.user || null)
@@ -104,11 +98,6 @@ function PublicProfilePage() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (isLocalRootSessionActive()) {
-        setUser(getLocalRootUser())
-        setAuthLoading(false)
-        return
-      }
       setUser(session?.user || null)
       setAuthLoading(false)
     })

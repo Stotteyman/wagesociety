@@ -29,11 +29,11 @@ export const Route = createFileRoute('/api/kick-login')({
           response_type: 'code',
           client_id: clientId,
           redirect_uri: redirectUri,
-          scope: 'user:read',
+          scope: 'user:profile',
           state,
         })
 
-        const authUrl = `https://kick.com/oauth/authorize?${params.toString()}`
+        const authUrl = `https://id.kick.com/oauth/authorize?${params.toString()}`
 
         const response = Response.redirect(authUrl, 302)
         // Store both state and popup flag together in one cookie (state|popup)

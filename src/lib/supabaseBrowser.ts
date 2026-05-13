@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js'
-import { isLocalRootSessionActive } from './localRootSession'
 import { getStoredViewAsRole } from './viewAs'
 
 let supabaseBrowserClient: ReturnType<typeof createClient> | null = null
@@ -40,14 +39,21 @@ export async function authedFetch(input: string, init?: RequestInit) {
     headers.set('x-view-as-role', viewAsRole)
   }
 
-  if (isLocalRootSessionActive()) {
-    headers.set('x-local-root-session', 'true')
-  }
-
   return fetch(input, {
     ...init,
     headers,
   })
+}
+
+export const KICK_OAUTH_SCOPES = 'user:read'
+
+export const KICK_OAUTH_QUERY_PARAMS: Record<string, string> = {
+  prompt: 'consent',
+}
+
+type OAuthUrlOptions = {
+  scopes?: string
+  queryParams?: Record<string, string>
 }
 
 /**
@@ -58,7 +64,11 @@ export async function authedFetch(input: string, init?: RequestInit) {
  *
  * Returns the OAuth provider URL to redirect the browser to.
  */
-export async function getIdentityLinkUrl(provider: string, redirectTo: string): Promise<string> {
+export async function getIdentityLinkUrl(
+  provider: string,
+  redirectTo: string,
+  options?: OAuthUrlOptions,
+): Promise<string> {
   const token = await getSupabaseAccessToken()
   if (!token) {
     throw new Error('No active session. Please log out and log back in, then try again.')
@@ -74,6 +84,16 @@ export async function getIdentityLinkUrl(provider: string, redirectTo: string): 
     redirect_to: redirectTo,
     skip_http_redirect: 'true',
   })
+
+  if (options?.scopes) {
+    params.set('scopes', options.scopes)
+  }
+
+  if (options?.queryParams) {
+    for (const [key, value] of Object.entries(options.queryParams)) {
+      params.set(key, value)
+    }
+  }
 
   const response = await fetch(`${supabaseUrl}/auth/v1/user/identities/authorize?${params.toString()}`, {
     method: 'GET',

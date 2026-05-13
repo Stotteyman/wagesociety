@@ -1,7 +1,6 @@
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import { ArrowRight, LogIn, LogOut, Newspaper, Store, Tv, User, UserPlus, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { getLocalRootUser, isLocalRootSessionActive } from '../lib/localRootSession'
 import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 
 export const Route = createFileRoute('/')({
@@ -68,15 +67,6 @@ function Home() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      // Check local root session first (dev bypass)
-      if (isLocalRootSessionActive()) {
-        const localUser = getLocalRootUser()
-        setUser(localUser)
-        setEmail(localUser.email)
-        setAuthLoading(false)
-        return
-      }
-
       try {
         const supabase = getSupabaseBrowserClient()
         const { data } = await supabase.auth.getSession()

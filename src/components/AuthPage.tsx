@@ -2,8 +2,7 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { ArrowLeft, BadgeCheck } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { getClientAuthRedirectUrl } from '../lib/authRedirect'
-import { isLocalhostClient, startLocalRootSession } from '../lib/localRootSession'
-import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
+import { KICK_OAUTH_QUERY_PARAMS, KICK_OAUTH_SCOPES, getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 
 // Lazily import Capacitor so the web bundle doesn't break in non-Capacitor environments.
 function isNativeApp(): boolean {
@@ -39,12 +38,6 @@ export function AuthPage({ view }: { view: AuthView }) {
 
   useEffect(() => {
     void (async () => {
-      if (view === 'login' && isLocalhostClient()) {
-        startLocalRootSession()
-        void navigate({ to: '/dashboard' })
-        return
-      }
-
       try {
         const supabase = getSupabaseBrowserClient()
         const { data } = await supabase.auth.getSession()
@@ -60,6 +53,14 @@ export function AuthPage({ view }: { view: AuthView }) {
 
   const startOAuthSignIn = async (provider: 'google' | 'kick' | 'custom:kick') => {
     const supabase = getSupabaseBrowserClient()
+    const isKickProvider = provider === 'kick' || provider === 'custom:kick'
+
+    const kickOAuthOptions = isKickProvider
+      ? {
+          scopes: KICK_OAUTH_SCOPES,
+          queryParams: KICK_OAUTH_QUERY_PARAMS,
+        }
+      : {}
 
     if (isNativeApp()) {
       const { data, error: authError } = await (supabase.auth as any).signInWithOAuth({
@@ -67,6 +68,7 @@ export function AuthPage({ view }: { view: AuthView }) {
         options: {
           redirectTo: NATIVE_OAUTH_REDIRECT,
           skipBrowserRedirect: true,
+          ...kickOAuthOptions,
         },
       })
       if (authError) throw authError
@@ -82,6 +84,7 @@ export function AuthPage({ view }: { view: AuthView }) {
       options: {
         redirectTo: getClientAuthRedirectUrl('/dashboard'),
         skipBrowserRedirect: true,
+        ...kickOAuthOptions,
       },
     })
 
@@ -110,8 +113,12 @@ export function AuthPage({ view }: { view: AuthView }) {
       setBusyAction('login')
 
       if (provider === 'kick') {
-        // Kick is configured as a Supabase custom OAuth provider.
-        await startOAuthSignIn('custom:kick')
+        // Kick may be exposed as custom:kick or kick depending on Supabase provider setup.
+        try {
+          await startOAuthSignIn('custom:kick')
+        } catch {
+          await startOAuthSignIn('kick')
+        }
       } else {
         await startOAuthSignIn(provider)
       }
