@@ -1,15 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { requirePermission } from '../../../lib/orgAuth'
-import { isLocalRequest } from '../../../lib/orgAuth'
 import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../../lib/supabaseAdmin'
-import fs from 'node:fs/promises'
-import path from 'node:path'
 
 const BUCKET = 'blog-media'
 const RELEASES_DIR = 'app-releases/android'
 const LATEST_METADATA_PATH = `${RELEASES_DIR}/latest.json`
-const LOCAL_PUBLIC_APK_PATH = path.join(process.cwd(), 'public', 'wagesociety.apk')
-const LOCAL_PUBLIC_METADATA_PATH = path.join(process.cwd(), 'public', RELEASES_DIR, 'latest.json')
 const ALLOWED_TYPES = new Set([
   'application/vnd.android.package-archive',
   'application/octet-stream',
@@ -27,25 +22,7 @@ export const Route = createFileRoute('/api/admin/apk-release')({
           await requirePermission(request, 'access_admin_dashboard')
 
           if (!hasSupabaseAdminConfig()) {
-            if (!isLocalRequest(request)) {
-              return Response.json({ release: null })
-            }
-
-            try {
-              const raw = await fs.readFile(LOCAL_PUBLIC_METADATA_PATH, 'utf8')
-              const release = JSON.parse(raw) as {
-                version: string
-                notes?: string
-                uploadedAt: string
-                uploadedBy?: string
-                fileName: string
-                fileSizeBytes: number
-                url: string
-              }
-              return Response.json({ release })
-            } catch {
-              return Response.json({ release: null })
-            }
+            return Response.json({ error: 'APK release metadata is unavailable in this environment.' }, { status: 503 })
           }
 
           const admin = getSupabaseAdminClient()
@@ -93,27 +70,7 @@ export const Route = createFileRoute('/api/admin/apk-release')({
           }
 
           if (!hasSupabaseAdminConfig()) {
-            if (!isLocalRequest(request)) {
-              return Response.json({ error: 'APK upload is not configured for this environment.' }, { status: 403 })
-            }
-
-            const fileBuffer = Buffer.from(await file.arrayBuffer())
-            await fs.mkdir(path.dirname(LOCAL_PUBLIC_APK_PATH), { recursive: true })
-            await fs.mkdir(path.dirname(LOCAL_PUBLIC_METADATA_PATH), { recursive: true })
-            await fs.writeFile(LOCAL_PUBLIC_APK_PATH, fileBuffer)
-
-            const release = {
-              version,
-              notes,
-              uploadedAt: new Date().toISOString(),
-              uploadedBy: access.requester.email,
-              fileName: 'wagesociety.apk',
-              fileSizeBytes: file.size,
-              url: `/wagesociety.apk?v=${Date.now()}`,
-            }
-
-            await fs.writeFile(LOCAL_PUBLIC_METADATA_PATH, JSON.stringify(release, null, 2), 'utf8')
-            return Response.json({ release }, { status: 201 })
+            return Response.json({ error: 'APK upload is not configured for this environment.' }, { status: 503 })
           }
 
           const admin = getSupabaseAdminClient()

@@ -45,15 +45,41 @@ export async function authedFetch(input: string, init?: RequestInit) {
   })
 }
 
-export const KICK_OAUTH_SCOPES = 'user:read'
-
-export const KICK_OAUTH_QUERY_PARAMS: Record<string, string> = {
-  prompt: 'consent',
-}
-
 type OAuthUrlOptions = {
   scopes?: string
   queryParams?: Record<string, string>
+}
+
+export const KICK_OAUTH_SCOPES = 'user:read'
+export const KICK_OAUTH_QUERY_PARAMS = {
+  prompt: 'consent',
+} as const
+
+export function normalizeOAuthProviderKey(provider: string) {
+  const normalized = String(provider || '').trim().toLowerCase()
+  return normalized === 'custom:kick' ? 'kick' : normalized
+}
+
+export function isKickOAuthProvider(provider: string) {
+  const normalized = String(provider || '').trim().toLowerCase()
+  return normalized === 'kick' || normalized === 'custom:kick'
+}
+
+export function getKickOAuthProviderCandidates() {
+  return ['custom:kick', 'kick'] as const
+}
+
+export function isMalformedKickOAuthUrl(url: string) {
+  const raw = String(url || '')
+  return raw.includes('https//id.kick.com') || raw.includes('kick.comhttps//')
+}
+
+export function normalizeKickOAuthUrl(url: string) {
+  const raw = String(url || '')
+  return raw
+    .replace('https://kick.comhttps//id.kick.com', 'https://id.kick.com')
+    .replace('https://kick.comhttps://id.kick.com', 'https://id.kick.com')
+    .replace('https//id.kick.com', 'https://id.kick.com')
 }
 
 /**

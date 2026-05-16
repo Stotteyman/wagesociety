@@ -1,8 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
-import { getRequesterAccess, isLocalRequest, requirePermission } from '../../../lib/orgAuth'
+import { getRequesterAccess, requirePermission } from '../../../lib/orgAuth'
 import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../../lib/supabaseAdmin'
-import { getSupabaseServerPublicClient } from '../../../lib/supabaseServer'
 
 const createSubmissionSchema = z.object({
   title: z.string().trim().min(3).max(180),
@@ -93,26 +92,10 @@ export const Route = createFileRoute('/api/merch-studio/submissions')({
             })
           }
 
-          const useLocalRoot = request.headers.get('x-local-root-session') === 'true' && isLocalRequest(request)
-          if (!useLocalRoot) {
-            return Response.json(
-              { error: 'Merch Studio currently requires SUPABASE_SERVICE_ROLE_KEY in this environment.' },
-              { status: 503 },
-            )
-          }
-
-          const client = getSupabaseServerPublicClient() as any
-          const { data, error } = await client
-            .from('org_merch_studio_submissions')
-            .select('*')
-            .order('created_at', { ascending: false })
-
-          if (error) return Response.json({ error: error.message }, { status: 500 })
-
-          return Response.json({
-            canReview: true,
-            submissions: (data || []).map((row) => mapSubmission(row as SubmissionRow)),
-          })
+          return Response.json(
+            { error: 'Merch Studio currently requires SUPABASE_SERVICE_ROLE_KEY in this environment.' },
+            { status: 503 },
+          )
         } catch (error) {
           if (error instanceof Response) return error
           return Response.json(
@@ -125,39 +108,10 @@ export const Route = createFileRoute('/api/merch-studio/submissions')({
       POST: async ({ request }) => {
         try {
           if (!hasSupabaseAdminConfig()) {
-            const useLocalRoot = request.headers.get('x-local-root-session') === 'true' && isLocalRequest(request)
-            if (!useLocalRoot) {
-              return Response.json(
-                { error: 'Merch Studio submissions require SUPABASE_SERVICE_ROLE_KEY in this environment.' },
-                { status: 503 },
-              )
-            }
-
-            const payload = createSubmissionSchema.safeParse(await request.json())
-            if (!payload.success) {
-              return Response.json({ error: payload.error.flatten() }, { status: 400 })
-            }
-
-            const client = getSupabaseServerPublicClient() as any
-            const { data, error } = await client
-              .from('org_merch_studio_submissions')
-              .insert([
-                {
-                  creator_email: 'root-superadmin@localhost',
-                  title: payload.data.title,
-                  description: payload.data.description,
-                  submission_target: payload.data.submissionTarget,
-                  media_urls: payload.data.mediaUrls,
-                  embed_links: payload.data.embedLinks,
-                  external_store_url: payload.data.externalStoreUrl || null,
-                  status: 'submitted',
-                },
-              ])
-              .select('*')
-              .single()
-
-            if (error) return Response.json({ error: error.message }, { status: 500 })
-            return Response.json({ submission: mapSubmission(data as SubmissionRow) }, { status: 201 })
+            return Response.json(
+              { error: 'Merch Studio submissions require SUPABASE_SERVICE_ROLE_KEY in this environment.' },
+              { status: 503 },
+            )
           }
 
           const access = await requirePermission(request, 'view_merch')
@@ -211,34 +165,10 @@ export const Route = createFileRoute('/api/merch-studio/submissions')({
           }
 
           if (!hasSupabaseAdminConfig()) {
-            const useLocalRoot = request.headers.get('x-local-root-session') === 'true' && isLocalRequest(request)
-            if (!useLocalRoot) {
-              return Response.json(
-                { error: 'Merch Studio reviews require SUPABASE_SERVICE_ROLE_KEY in this environment.' },
-                { status: 503 },
-              )
-            }
-
-            const client = getSupabaseServerPublicClient() as any
-            const updatePayload: Record<string, unknown> = {
-              status: payload.data.status,
-              admin_notes: payload.data.adminNotes || null,
-              creator_split_percent: payload.data.creatorSplitPercent,
-              wage_split_percent: payload.data.wageSplitPercent,
-              approved_by: 'root-superadmin@localhost',
-              approved_at: payload.data.status === 'accepted' ? new Date().toISOString() : null,
-              updated_at: new Date().toISOString(),
-            }
-
-            const { data, error } = await client
-              .from('org_merch_studio_submissions')
-              .update(updatePayload)
-              .eq('id', payload.data.id)
-              .select('*')
-              .single()
-
-            if (error) return Response.json({ error: error.message }, { status: 500 })
-            return Response.json({ submission: mapSubmission(data as SubmissionRow) })
+            return Response.json(
+              { error: 'Merch Studio reviews require SUPABASE_SERVICE_ROLE_KEY in this environment.' },
+              { status: 503 },
+            )
           }
 
           const access = await requirePermission(request, 'access_admin_dashboard')

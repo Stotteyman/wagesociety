@@ -43,9 +43,14 @@ function normalizeUsername(value: string) {
   return value.trim().toLowerCase()
 }
 
+function normalizeProvider(provider: string) {
+  const normalized = provider.trim().toLowerCase()
+  return normalized === 'custom:kick' ? 'kick' : normalized
+}
+
 function providerLabel(provider: string) {
-  switch (provider.toLowerCase()) {
-    case 'custom:kick':
+  switch (normalizeProvider(provider)) {
+    case 'kick':
       return 'Kick'
     case 'discord':
       return 'Discord'
@@ -68,8 +73,8 @@ function providerLabel(provider: string) {
 
 function providerProfileUrl(provider: string, handle: string) {
   const normalizedHandle = handle.replace(/^@/, '')
-  switch (provider.toLowerCase()) {
-    case 'custom:kick':
+  switch (normalizeProvider(provider)) {
+    case 'kick':
       return `https://kick.com/${normalizedHandle}`
     case 'twitter':
       return `https://x.com/${normalizedHandle}`

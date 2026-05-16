@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
-import { getRequesterAccess, isLocalRequest, requirePermission } from '../../lib/orgAuth'
+import { getRequesterAccess } from '../../lib/orgAuth'
 import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../lib/supabaseAdmin'
 import { getSupabaseServerPublicClient } from '../../lib/supabaseServer'
 
@@ -76,17 +76,10 @@ export const Route = createFileRoute('/api/news')({
             canContribute = WRITE_ROLES.has(access.role) && access.role !== 'banned'
             authorEmail = access.requester.email
           } else {
-            const useLocalRoot = request.headers.get('x-local-root-session') === 'true' && isLocalRequest(request)
-            if (!useLocalRoot) {
-              return Response.json(
-                { error: 'Blog contributions require SUPABASE_SERVICE_ROLE_KEY in this environment.' },
-                { status: 503 },
-              )
-            }
-
-            await requirePermission(request, 'view_creator_tools')
-            authorEmail = 'root-superadmin@localhost'
-            canContribute = true
+            return Response.json(
+              { error: 'Blog contributions require SUPABASE_SERVICE_ROLE_KEY in this environment.' },
+              { status: 503 },
+            )
           }
 
           if (!canContribute) {

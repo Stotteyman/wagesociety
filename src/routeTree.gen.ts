@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as SubscriptionsRouteImport } from './routes/subscriptions'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -27,6 +28,7 @@ import { Route as AppealsRouteImport } from './routes/appeals'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as UsernameRouteImport } from './routes/$username'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as ApiStripeWebhookRouteImport } from './routes/api/stripe-webhook'
 import { Route as ApiShopRouteImport } from './routes/api/shop'
 import { Route as ApiPublicProfileRouteImport } from './routes/api/public-profile'
@@ -38,8 +40,6 @@ import { Route as ApiNewsUploadRouteImport } from './routes/api/news-upload'
 import { Route as ApiNewsRouteImport } from './routes/api/news'
 import { Route as ApiMarketingProofRouteImport } from './routes/api/marketing-proof'
 import { Route as ApiKnowledgeVaultRouteImport } from './routes/api/knowledge-vault'
-import { Route as ApiKickLoginRouteImport } from './routes/api/kick-login'
-import { Route as ApiKickCallbackRouteImport } from './routes/api/kick-callback'
 import { Route as ApiCreatePaymentIntentRouteImport } from './routes/api/create-payment-intent'
 import { Route as ApiCollabRouteImport } from './routes/api/collab'
 import { Route as ApiCheckUsernameRouteImport } from './routes/api/check-username'
@@ -67,6 +67,11 @@ import { Route as ApiAdminShopImportUrlRouteImport } from './routes/api/admin/sh
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SubscriptionsRoute = SubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignupRoute = SignupRouteImport.update({
@@ -154,6 +159,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiStripeWebhookRoute = ApiStripeWebhookRouteImport.update({
   id: '/api/stripe-webhook',
   path: '/api/stripe-webhook',
@@ -207,16 +217,6 @@ const ApiMarketingProofRoute = ApiMarketingProofRouteImport.update({
 const ApiKnowledgeVaultRoute = ApiKnowledgeVaultRouteImport.update({
   id: '/api/knowledge-vault',
   path: '/api/knowledge-vault',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiKickLoginRoute = ApiKickLoginRouteImport.update({
-  id: '/api/kick-login',
-  path: '/api/kick-login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiKickCallbackRoute = ApiKickCallbackRouteImport.update({
-  id: '/api/kick-callback',
-  path: '/api/kick-callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCreatePaymentIntentRoute = ApiCreatePaymentIntentRouteImport.update({
@@ -354,6 +354,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
+  '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/admin/apk': typeof AdminApkRoute
   '/admin/shop': typeof AdminShopRoute
@@ -361,8 +362,6 @@ export interface FileRoutesByFullPath {
   '/api/check-username': typeof ApiCheckUsernameRoute
   '/api/collab': typeof ApiCollabRouteWithChildren
   '/api/create-payment-intent': typeof ApiCreatePaymentIntentRoute
-  '/api/kick-callback': typeof ApiKickCallbackRoute
-  '/api/kick-login': typeof ApiKickLoginRoute
   '/api/knowledge-vault': typeof ApiKnowledgeVaultRoute
   '/api/marketing-proof': typeof ApiMarketingProofRoute
   '/api/news': typeof ApiNewsRoute
@@ -374,6 +373,7 @@ export interface FileRoutesByFullPath {
   '/api/public-profile': typeof ApiPublicProfileRoute
   '/api/shop': typeof ApiShopRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/api/admin/apk-release': typeof ApiAdminApkReleaseRoute
   '/api/admin/permissions': typeof ApiAdminPermissionsRoute
   '/api/admin/roles': typeof ApiAdminRolesRoute
@@ -410,6 +410,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
+  '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/admin/apk': typeof AdminApkRoute
   '/admin/shop': typeof AdminShopRoute
@@ -417,8 +418,6 @@ export interface FileRoutesByTo {
   '/api/check-username': typeof ApiCheckUsernameRoute
   '/api/collab': typeof ApiCollabRouteWithChildren
   '/api/create-payment-intent': typeof ApiCreatePaymentIntentRoute
-  '/api/kick-callback': typeof ApiKickCallbackRoute
-  '/api/kick-login': typeof ApiKickLoginRoute
   '/api/knowledge-vault': typeof ApiKnowledgeVaultRoute
   '/api/marketing-proof': typeof ApiMarketingProofRoute
   '/api/news': typeof ApiNewsRoute
@@ -430,6 +429,7 @@ export interface FileRoutesByTo {
   '/api/public-profile': typeof ApiPublicProfileRoute
   '/api/shop': typeof ApiShopRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/api/admin/apk-release': typeof ApiAdminApkReleaseRoute
   '/api/admin/permissions': typeof ApiAdminPermissionsRoute
   '/api/admin/roles': typeof ApiAdminRolesRoute
@@ -467,6 +467,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
+  '/subscriptions': typeof SubscriptionsRoute
   '/terms': typeof TermsRoute
   '/admin/apk': typeof AdminApkRoute
   '/admin/shop': typeof AdminShopRoute
@@ -474,8 +475,6 @@ export interface FileRoutesById {
   '/api/check-username': typeof ApiCheckUsernameRoute
   '/api/collab': typeof ApiCollabRouteWithChildren
   '/api/create-payment-intent': typeof ApiCreatePaymentIntentRoute
-  '/api/kick-callback': typeof ApiKickCallbackRoute
-  '/api/kick-login': typeof ApiKickLoginRoute
   '/api/knowledge-vault': typeof ApiKnowledgeVaultRoute
   '/api/marketing-proof': typeof ApiMarketingProofRoute
   '/api/news': typeof ApiNewsRoute
@@ -487,6 +486,7 @@ export interface FileRoutesById {
   '/api/public-profile': typeof ApiPublicProfileRoute
   '/api/shop': typeof ApiShopRoute
   '/api/stripe-webhook': typeof ApiStripeWebhookRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/api/admin/apk-release': typeof ApiAdminApkReleaseRoute
   '/api/admin/permissions': typeof ApiAdminPermissionsRoute
   '/api/admin/roles': typeof ApiAdminRolesRoute
@@ -525,6 +525,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/settings'
     | '/signup'
+    | '/subscriptions'
     | '/terms'
     | '/admin/apk'
     | '/admin/shop'
@@ -532,8 +533,6 @@ export interface FileRouteTypes {
     | '/api/check-username'
     | '/api/collab'
     | '/api/create-payment-intent'
-    | '/api/kick-callback'
-    | '/api/kick-login'
     | '/api/knowledge-vault'
     | '/api/marketing-proof'
     | '/api/news'
@@ -545,6 +544,7 @@ export interface FileRouteTypes {
     | '/api/public-profile'
     | '/api/shop'
     | '/api/stripe-webhook'
+    | '/auth/callback'
     | '/api/admin/apk-release'
     | '/api/admin/permissions'
     | '/api/admin/roles'
@@ -581,6 +581,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/settings'
     | '/signup'
+    | '/subscriptions'
     | '/terms'
     | '/admin/apk'
     | '/admin/shop'
@@ -588,8 +589,6 @@ export interface FileRouteTypes {
     | '/api/check-username'
     | '/api/collab'
     | '/api/create-payment-intent'
-    | '/api/kick-callback'
-    | '/api/kick-login'
     | '/api/knowledge-vault'
     | '/api/marketing-proof'
     | '/api/news'
@@ -601,6 +600,7 @@ export interface FileRouteTypes {
     | '/api/public-profile'
     | '/api/shop'
     | '/api/stripe-webhook'
+    | '/auth/callback'
     | '/api/admin/apk-release'
     | '/api/admin/permissions'
     | '/api/admin/roles'
@@ -637,6 +637,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/settings'
     | '/signup'
+    | '/subscriptions'
     | '/terms'
     | '/admin/apk'
     | '/admin/shop'
@@ -644,8 +645,6 @@ export interface FileRouteTypes {
     | '/api/check-username'
     | '/api/collab'
     | '/api/create-payment-intent'
-    | '/api/kick-callback'
-    | '/api/kick-login'
     | '/api/knowledge-vault'
     | '/api/marketing-proof'
     | '/api/news'
@@ -657,6 +656,7 @@ export interface FileRouteTypes {
     | '/api/public-profile'
     | '/api/shop'
     | '/api/stripe-webhook'
+    | '/auth/callback'
     | '/api/admin/apk-release'
     | '/api/admin/permissions'
     | '/api/admin/roles'
@@ -694,12 +694,11 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
+  SubscriptionsRoute: typeof SubscriptionsRoute
   TermsRoute: typeof TermsRoute
   ApiCheckUsernameRoute: typeof ApiCheckUsernameRoute
   ApiCollabRoute: typeof ApiCollabRouteWithChildren
   ApiCreatePaymentIntentRoute: typeof ApiCreatePaymentIntentRoute
-  ApiKickCallbackRoute: typeof ApiKickCallbackRoute
-  ApiKickLoginRoute: typeof ApiKickLoginRoute
   ApiKnowledgeVaultRoute: typeof ApiKnowledgeVaultRoute
   ApiMarketingProofRoute: typeof ApiMarketingProofRoute
   ApiNewsRoute: typeof ApiNewsRoute
@@ -711,6 +710,7 @@ export interface RootRouteChildren {
   ApiPublicProfileRoute: typeof ApiPublicProfileRoute
   ApiShopRoute: typeof ApiShopRoute
   ApiStripeWebhookRoute: typeof ApiStripeWebhookRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
   ApiAdminApkReleaseRoute: typeof ApiAdminApkReleaseRoute
   ApiAdminPermissionsRoute: typeof ApiAdminPermissionsRoute
   ApiAdminRolesRoute: typeof ApiAdminRolesRoute
@@ -734,6 +734,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/subscriptions': {
+      id: '/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/subscriptions'
+      preLoaderRoute: typeof SubscriptionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signup': {
@@ -855,6 +862,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/stripe-webhook': {
       id: '/api/stripe-webhook'
       path: '/api/stripe-webhook'
@@ -930,20 +944,6 @@ declare module '@tanstack/react-router' {
       path: '/api/knowledge-vault'
       fullPath: '/api/knowledge-vault'
       preLoaderRoute: typeof ApiKnowledgeVaultRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/kick-login': {
-      id: '/api/kick-login'
-      path: '/api/kick-login'
-      fullPath: '/api/kick-login'
-      preLoaderRoute: typeof ApiKickLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/kick-callback': {
-      id: '/api/kick-callback'
-      path: '/api/kick-callback'
-      fullPath: '/api/kick-callback'
-      preLoaderRoute: typeof ApiKickCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/create-payment-intent': {
@@ -1168,12 +1168,11 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
+  SubscriptionsRoute: SubscriptionsRoute,
   TermsRoute: TermsRoute,
   ApiCheckUsernameRoute: ApiCheckUsernameRoute,
   ApiCollabRoute: ApiCollabRouteWithChildren,
   ApiCreatePaymentIntentRoute: ApiCreatePaymentIntentRoute,
-  ApiKickCallbackRoute: ApiKickCallbackRoute,
-  ApiKickLoginRoute: ApiKickLoginRoute,
   ApiKnowledgeVaultRoute: ApiKnowledgeVaultRoute,
   ApiMarketingProofRoute: ApiMarketingProofRoute,
   ApiNewsRoute: ApiNewsRoute,
@@ -1185,6 +1184,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicProfileRoute: ApiPublicProfileRoute,
   ApiShopRoute: ApiShopRoute,
   ApiStripeWebhookRoute: ApiStripeWebhookRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
   ApiAdminApkReleaseRoute: ApiAdminApkReleaseRoute,
   ApiAdminPermissionsRoute: ApiAdminPermissionsRoute,
   ApiAdminRolesRoute: ApiAdminRolesRoute,

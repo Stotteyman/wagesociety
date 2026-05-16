@@ -2,7 +2,6 @@ import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { getLivestreamSnapshot, parseLivestreamLink } from '../../../lib/liveStatus'
 import { listAuthIndexedUsers } from '../../../lib/authUserIndex'
-import { isLocalRequest } from '../../../lib/orgAuth'
 import { getRequesterAccess, requirePermission } from '../../../lib/orgAuth'
 import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../../lib/supabaseAdmin'
 import { getSupabaseServerPublicClient } from '../../../lib/supabaseServer'
@@ -329,14 +328,8 @@ export const Route = createFileRoute('/api/live/streams')({
 
           const authHeader = request.headers.get('authorization') || ''
           const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
-          const useLocalRoot = request.headers.get('x-local-root-session') === 'true' && isLocalRequest(request)
 
-          if (useLocalRoot) {
-            requesterEmail = 'root-superadmin@localhost'
-            requesterSource = 'localhost-bypass'
-            canManage = true
-            canUseAutoclipper = autoclipperEnabled
-          } else if (token) {
+          if (token) {
             try {
               const access = await getRequesterAccess(request)
               requesterEmail = access.requester.email
@@ -390,29 +383,10 @@ export const Route = createFileRoute('/api/live/streams')({
           const stream = parseLivestreamLink(parsed.data.url)
 
           if (!hasSupabaseAdminConfig()) {
-            const useLocalRoot = request.headers.get('x-local-root-session') === 'true' && isLocalRequest(request)
-            if (!useLocalRoot) {
-              return Response.json(
-                { error: 'Admin livestream management requires SUPABASE_SERVICE_ROLE_KEY in this environment.' },
-                { status: 503 },
-              )
-            }
-
-            const client = getSupabaseServerPublicClient()
-            // @ts-expect-error RPC typing can lag behind DB migrations in local development.
-            const { data, error } = await client.rpc('add_org_livestream', {
-              p_url: parsed.data.url,
-              p_title: parsed.data.title || null,
-              p_platform: stream.platform,
-              p_stream_key: stream.streamKey,
-              p_created_by: 'root-superadmin@localhost',
-            })
-
-            if (error) {
-              return Response.json({ error: error.message }, { status: 500 })
-            }
-
-            return Response.json({ stream: data?.[0] || null })
+            return Response.json(
+              { error: 'Admin livestream management requires SUPABASE_SERVICE_ROLE_KEY in this environment.' },
+              { status: 503 },
+            )
           }
 
           const { requester } = await requirePermission(request, 'manage_livestreams')
@@ -451,25 +425,10 @@ export const Route = createFileRoute('/api/live/streams')({
           }
 
           if (!hasSupabaseAdminConfig()) {
-            const useLocalRoot = request.headers.get('x-local-root-session') === 'true' && isLocalRequest(request)
-            if (!useLocalRoot) {
-              return Response.json(
-                { error: 'Admin livestream management requires SUPABASE_SERVICE_ROLE_KEY in this environment.' },
-                { status: 503 },
-              )
-            }
-
-            const client = getSupabaseServerPublicClient()
-            // @ts-expect-error RPC typing can lag behind DB migrations in local development.
-            const { data, error } = await client.rpc('delete_org_livestream', {
-              p_id: parsed.data.id,
-            })
-
-            if (error) {
-              return Response.json({ error: error.message }, { status: 500 })
-            }
-
-            return Response.json({ deleted: !!data })
+            return Response.json(
+              { error: 'Admin livestream management requires SUPABASE_SERVICE_ROLE_KEY in this environment.' },
+              { status: 503 },
+            )
           }
 
           await requirePermission(request, 'manage_livestreams')

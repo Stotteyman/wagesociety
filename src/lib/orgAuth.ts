@@ -2,7 +2,6 @@ import { canManageRole, isOrgRole, type BanRecord, type OrgPermission, type OrgR
 import { getSupabaseAdminClient, hasSupabaseAdminConfig } from './supabaseAdmin'
 import { getSupabaseServerPublicClient } from './supabaseServer'
 
-export const LOCAL_SUPERADMIN_EMAIL = 'root-superadmin@localhost'
 const OWNER_SUPERADMIN_EMAILS = new Set(['stotteyman@gmail.com'])
 const SUPERADMIN_FALLBACK_PERMISSIONS: OrgPermission[] = [
   'view_dashboard',
@@ -17,21 +16,7 @@ const SUPERADMIN_FALLBACK_PERMISSIONS: OrgPermission[] = [
   'access_admin_dashboard',
 ]
 
-export function isLocalRequest(request: Request) {
-  const host = request.headers.get('host') || ''
-  return host.includes('localhost') || host.includes('127.0.0.1') || host.includes('[::1]') || host.includes('::1')
-}
-
 export async function resolveRequester(request: Request) {
-  const useLocalRootHeader = request.headers.get('x-local-root-session') === 'true'
-
-  if (isLocalRequest(request) && (process.env.ALLOW_LOCALHOST_SUPERADMIN === 'true' || useLocalRootHeader)) {
-    return {
-      email: LOCAL_SUPERADMIN_EMAIL,
-      source: 'localhost-bypass' as const,
-    }
-  }
-
   const authHeader = request.headers.get('authorization') || request.headers.get('Authorization')
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
 
@@ -64,25 +49,6 @@ export async function resolveRequester(request: Request) {
 export async function resolveOrgRole(email: string): Promise<OrgRole> {
   const normalizedEmail = email.toLowerCase()
 
-  if (normalizedEmail === LOCAL_SUPERADMIN_EMAIL) {
-    if (!hasSupabaseAdminConfig()) {
-      return 'superadmin'
-    }
-
-    const admin = getSupabaseAdminClient()
-    const { error } = await admin.rpc('set_org_member_role', {
-      p_target_email: LOCAL_SUPERADMIN_EMAIL,
-      p_role: 'superadmin',
-      p_granted_by: 'system:localhost-root',
-    })
-
-    if (error) {
-      return 'superadmin'
-    }
-
-    return 'superadmin'
-  }
-
   if (OWNER_SUPERADMIN_EMAILS.has(normalizedEmail)) {
     if (!hasSupabaseAdminConfig()) {
       return 'superadmin'
@@ -92,7 +58,7 @@ export async function resolveOrgRole(email: string): Promise<OrgRole> {
     const { error } = await admin.rpc('set_org_member_role', {
       p_target_email: normalizedEmail,
       p_role: 'superadmin',
-      p_granted_by: LOCAL_SUPERADMIN_EMAIL,
+      p_granted_by: 'system:owner-bootstrap',
     })
 
     if (error) {

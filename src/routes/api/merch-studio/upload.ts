@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../../lib/supabaseAdmin'
 import { getSupabaseServerClientForToken } from '../../../lib/supabaseServer'
-import { isLocalRequest, requirePermission } from '../../../lib/orgAuth'
+import { requirePermission } from '../../../lib/orgAuth'
 
 const BUCKET = 'merch-studio-media'
 const ALLOWED_EXTENSIONS = new Set([
@@ -33,18 +33,11 @@ export const Route = createFileRoute('/api/merch-studio/upload')({
     handlers: {
       POST: async ({ request }) => {
         try {
-          const isLocalRoot = request.headers.get('x-local-root-session') === 'true' && isLocalRequest(request)
-          let requesterEmail: string | null = null
-
-          if (!isLocalRoot) {
-            const access = await requirePermission(request, 'view_merch')
-            if (access.role === 'banned') {
-              return Response.json({ error: 'Banned users cannot upload merch studio media.' }, { status: 403 })
-            }
-            requesterEmail = access.requester.email
-          } else {
-            requesterEmail = 'root-superadmin@localhost'
+          const access = await requirePermission(request, 'view_merch')
+          if (access.role === 'banned') {
+            return Response.json({ error: 'Banned users cannot upload merch studio media.' }, { status: 403 })
           }
+          const requesterEmail = access.requester.email
 
           const form = await request.formData()
           const file = form.get('file')
@@ -95,7 +88,7 @@ export const Route = createFileRoute('/api/merch-studio/upload')({
             ? authHeader.slice(7).trim()
             : undefined
 
-          if (!isLocalRoot && !token) {
+          if (!token) {
             return Response.json(
               { error: 'Missing bearer token for upload in fallback mode.' },
               { status: 401 },

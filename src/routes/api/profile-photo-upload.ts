@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../lib/supabaseAdmin'
 import { getSupabaseServerClientForToken } from '../../lib/supabaseServer'
-import { isLocalRequest, requirePermission } from '../../lib/orgAuth'
+import { requirePermission } from '../../lib/orgAuth'
 
 const BUCKET = 'blog-media'
 const FOLDER = 'profile-avatars'
@@ -26,18 +26,11 @@ export const Route = createFileRoute('/api/profile-photo-upload')({
     handlers: {
       POST: async ({ request }) => {
         try {
-          const isLocalRoot = request.headers.get('x-local-root-session') === 'true' && isLocalRequest(request)
-
-          let requesterEmail = 'member'
-          if (!isLocalRoot) {
-            const access = await requirePermission(request, 'view_dashboard')
-            if (access.role === 'banned') {
-              return Response.json({ error: 'Banned users cannot upload profile photos.' }, { status: 403 })
-            }
-            requesterEmail = access.requester.email
-          } else {
-            requesterEmail = 'root-superadmin@localhost'
+          const access = await requirePermission(request, 'view_dashboard')
+          if (access.role === 'banned') {
+            return Response.json({ error: 'Banned users cannot upload profile photos.' }, { status: 403 })
           }
+          const requesterEmail = access.requester.email
 
           const form = await request.formData()
           const file = form.get('file')

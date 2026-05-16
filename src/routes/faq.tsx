@@ -16,9 +16,9 @@ export const Route = createFileRoute('/faq')({
         property: 'og:description',
         content: 'Everything you need to know about joining W.A.G.E. Society as a creator, marketer, or entrepreneur.',
       },
-      { property: 'og:url', content: 'https://playful-torte-0c9af1.netlify.app/faq' },
+      { property: 'og:url', content: 'https://wagesociety.com/faq' },
     ],
-    links: [{ rel: 'canonical', href: 'https://playful-torte-0c9af1.netlify.app/faq' }],
+    links: [{ rel: 'canonical', href: 'https://wagesociety.com/faq' }],
   }),
   component: FAQ,
 })

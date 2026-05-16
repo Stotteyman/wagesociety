@@ -18,9 +18,9 @@ export const Route = createFileRoute('/')({
         content:
           'An organization for content creators, online marketers, and entrepreneurs who want tools, strategy, and community to grow.',
       },
-      { property: 'og:url', content: 'https://playful-torte-0c9af1.netlify.app/' },
+      { property: 'og:url', content: 'https://wagesociety.com/' },
     ],
-    links: [{ rel: 'canonical', href: 'https://playful-torte-0c9af1.netlify.app/' }],
+    links: [{ rel: 'canonical', href: 'https://wagesociety.com/' }],
   }),
   component: Home,
 })

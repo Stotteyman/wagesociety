@@ -53,7 +53,24 @@ type AppUser = {
   user_metadata?: {
     username?: string
     preferred_username?: string
+    role?: string
   }
+}
+
+const OWNER_SUPERADMIN_EMAILS = new Set(['stotteyman@gmail.com'])
+
+function deriveFallbackRole(member: AppUser | null): OrgRole {
+  const email = String(member?.email || '').trim().toLowerCase()
+  if (email && OWNER_SUPERADMIN_EMAILS.has(email)) {
+    return 'superadmin'
+  }
+
+  const metadataRole = String(member?.user_metadata?.role || '').trim().toLowerCase()
+  if (isOrgRole(metadataRole)) {
+    return metadataRole
+  }
+
+  return 'user'
 }
 
 function getDashboardUsername(member: AppUser | null) {
@@ -121,10 +138,17 @@ function DashboardGate() {
       return
     }
 
+    const fallbackRole = deriveFallbackRole(member)
+
     void (async () => {
       try {
         const response = await authedFetch('/api/me/access')
         if (!response.ok) {
+          setRole(fallbackRole)
+          setActorRole(fallbackRole)
+          setViewingAs(null)
+          setPermissions([])
+          setBan(null)
           setAccessLoading(false)
           return
         }
@@ -137,6 +161,11 @@ function DashboardGate() {
         setBan(access.ban || null)
       } catch {
         // Dashboard can still render with conservative defaults.
+        setRole(fallbackRole)
+        setActorRole(fallbackRole)
+        setViewingAs(null)
+        setPermissions([])
+        setBan(null)
       } finally {
         setAccessLoading(false)
       }
@@ -508,6 +537,13 @@ function CreatorDashboard({
                   <Settings size={15} />
                   Settings
                 </Link>
+                <a
+                  href="/subscriptions"
+                  className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:text-zinc-50"
+                >
+                  <DollarSign size={15} />
+                  Subscriptions
+                </a>
                 {hasPermission('access_admin_dashboard') && (
                   <Link
                     to="/admin"

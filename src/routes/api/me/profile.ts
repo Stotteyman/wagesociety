@@ -171,9 +171,13 @@ const BUILTIN_OAUTH_PROVIDER_META: Record<string, { label: string; description: 
   discord: { label: 'Discord', description: 'Link your Discord account' },
   google: { label: 'Google / YouTube', description: 'Link your Google account' },
   kick: { label: 'Kick', description: 'Link your Kick account' },
-  'custom:kick': { label: 'Kick', description: 'Link your Kick account' },
   apple: { label: 'Apple', description: 'Link your Apple account' },
   facebook: { label: 'Facebook', description: 'Link your Facebook account' },
+}
+
+function normalizeProviderKey(key: string) {
+  const normalized = String(key || '').trim().toLowerCase()
+  return normalized === 'custom:kick' ? 'kick' : normalized
 }
 
 function toTitleCase(value: string) {
@@ -185,7 +189,7 @@ function toTitleCase(value: string) {
 }
 
 function providerOptionFromKey(key: string, explicitLabel?: string | null): OAuthProviderOption {
-  const normalized = key.trim().toLowerCase()
+  const normalized = normalizeProviderKey(key)
   const builtin = BUILTIN_OAUTH_PROVIDER_META[normalized]
   if (builtin) {
     return { key: normalized, label: builtin.label, description: builtin.description }
@@ -209,13 +213,17 @@ async function getAvailableOAuthProviders(client: any, includeIdentityProviderSc
       .neq('provider', 'email')
     : Promise.resolve({ data: null, error: null })
 
-  const [{ data: identityRows, error: identityError }, { data: customRows, error: customError }] = await Promise.all([
-    identityPromise,
-    client
+  const customProviderPromise = includeIdentityProviderScan
+    ? client
       .schema('auth')
       .from('custom_oauth_providers')
       .select('identifier, name, enabled')
-      .eq('enabled', true),
+      .eq('enabled', true)
+    : Promise.resolve({ data: null, error: null })
+
+  const [{ data: identityRows, error: identityError }, { data: customRows, error: customError }] = await Promise.all([
+    identityPromise,
+    customProviderPromise,
   ])
 
   const optionsByKey = new Map<string, OAuthProviderOption>()
@@ -322,8 +330,8 @@ function buildYouTubeOptions(meta: AuthUserMeta | null | undefined, authUser: an
 function buildConnectedStreamAccounts(meta: AuthUserMeta | null | undefined, authUser: any | null | undefined): StreamAccounts {
   const identities = Array.isArray(authUser?.identities) ? authUser.identities : []
   const kickIdentity = identities.find((identity: any) => {
-    const provider = String(identity?.provider || '').trim().toLowerCase()
-    return provider === 'kick' || provider === 'custom:kick'
+    const provider = normalizeProviderKey(String(identity?.provider || ''))
+    return provider === 'kick'
   })
   const googleIdentity = identities.find((identity: any) => String(identity?.provider || '').trim().toLowerCase() === 'google')
 
@@ -349,7 +357,7 @@ function buildConnectedStreamAccounts(meta: AuthUserMeta | null | undefined, aut
 
   return {
     kick: {
-      connected: Boolean(kickIdentity),
+      connected: Boolean(kickIdentity || kickUsername),
       username: kickUsername,
       url: kickUsername ? `https://kick.com/${kickUsername}` : null,
     },

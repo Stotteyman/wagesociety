@@ -9,12 +9,16 @@ import {
 } from 'lucide-react'
 import {
   authedFetch,
+  getKickOAuthProviderCandidates,
   getIdentityLinkUrl,
   getSupabaseBrowserClient,
+  normalizeKickOAuthUrl,
+  isMalformedKickOAuthUrl,
+  isKickOAuthProvider,
   KICK_OAUTH_QUERY_PARAMS,
   KICK_OAUTH_SCOPES,
+  normalizeOAuthProviderKey,
 } from '../lib/supabaseBrowser'
-import { getClientAuthRedirectUrl } from '../lib/authRedirect'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -63,7 +67,7 @@ type ProfileApiResponse = {
 const FALLBACK_OAUTH_PROVIDERS: OAuthProviderOption[] = [
   { key: 'discord', label: 'Discord', description: 'Link your Discord account' },
   { key: 'google', label: 'Google / YouTube', description: 'Link your Google account' },
-  { key: 'custom:kick', label: 'Kick', description: 'Link your Kick account' },
+  { key: 'kick', label: 'Kick', description: 'Link your Kick account' },
   { key: 'apple', label: 'Apple', description: 'Link your Apple account' },
   { key: 'facebook', label: 'Facebook', description: 'Link your Facebook account' },
 ]
@@ -91,9 +95,7 @@ function providerOptionFromKey(key: string): OAuthProviderOption {
 }
 
 function normalizeProviderKey(key: string) {
-  const normalized = String(key || '').trim().toLowerCase()
-  if (normalized === 'kick' || normalized === 'custom:kick') return 'kick'
-  return normalized
+  return normalizeOAuthProviderKey(String(key || '').trim())
 }
 
 function mergeProviderOptions(
@@ -130,9 +132,8 @@ function mergeProviderOptions(
   if (!options.has('google')) {
     options.set('google', providerOptionFromKey('google'))
   }
-
-  if (!options.has('custom:kick') && !options.has('kick')) {
-    options.set('custom:kick', providerOptionFromKey('custom:kick'))
+  if (!options.has('kick') && !options.has('custom:kick')) {
+    options.set('kick', providerOptionFromKey('kick'))
   }
 
   return Array.from(options.values()).sort((a, b) => a.label.localeCompare(b.label))
@@ -165,8 +166,6 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [bio, setBio] = useState('')
   const [skillsInput, setSkillsInput] = useState('')
-  const [kickConnectedUrl, setKickConnectedUrl] = useState<string | null>(null)
-  const [kickConnectedUsername, setKickConnectedUsername] = useState<string | null>(null)
   const [youtubeConnected, setYoutubeConnected] = useState(false)
   const [youtubeOptions, setYoutubeOptions] = useState<StreamAccountOption[]>([])
   const [selectedYouTubeChannel, setSelectedYouTubeChannel] = useState('')
@@ -194,16 +193,45 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
       setProfile(p)
       setOauthProviders(mergeProviderOptions(data.oauth_providers, currentUser))
       setUser(currentUser)
-      setKickConnectedUrl(streamAccounts?.kick?.url || null)
-      setKickConnectedUsername(streamAccounts?.kick?.username || null)
       setYoutubeConnected(Boolean(streamAccounts?.youtube?.connected))
 
       const nextYouTubeOptions = streamAccounts?.youtube?.options || []
       setYoutubeOptions(nextYouTubeOptions)
       const selected = streamAccounts?.youtube?.selected || nextYouTubeOptions[0]?.key || ''
       setSelectedYouTubeChannel(selected)
+
+      return {
+        currentUser,
+        streamAccounts,
+      }
+    }
+
+    return {
+      currentUser: currentUser ?? null,
+      streamAccounts: null,
     }
   }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const search = new URLSearchParams(window.location.search)
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+    const callbackError =
+      search.get('error_description') ||
+      search.get('error') ||
+      hash.get('error_description') ||
+      hash.get('error')
+
+    if (!callbackError) return
+
+    const normalized = String(callbackError).trim()
+    if (normalized === 'invalid_scope') {
+      setError('OAuth scope is misconfigured. Please verify provider configuration and try again.')
+    } else {
+      setError(`OAuth linking failed: ${normalized}`)
+    }
+  }, [])
 
   useEffect(() => {
     void (async () => {
@@ -226,8 +254,6 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
           setBio(p.bio || '')
           setSkillsInput((p.skills || []).join(', '))
           const streamAccounts = data.stream_accounts
-          setKickConnectedUrl(streamAccounts?.kick?.url || null)
-          setKickConnectedUsername(streamAccounts?.kick?.username || null)
           setYoutubeConnected(Boolean(streamAccounts?.youtube?.connected))
           const nextYouTubeOptions = streamAccounts?.youtube?.options || []
           setYoutubeOptions(nextYouTubeOptions)
@@ -253,9 +279,20 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
     const refreshProfileAfterLinking = async () => {
       try {
         setError('')
-        await refreshLinkedState()
+        const { currentUser, streamAccounts } = await refreshLinkedState()
 
         const targetKey = normalizeProviderKey(linkedProvider)
+        const linkedNow = Boolean(
+          currentUser?.identities?.some(
+            (identity) => normalizeProviderKey(String(identity.provider || '')) === targetKey,
+          ),
+        )
+
+        if (!linkedNow) {
+          setError('OAuth callback completed, but the provider was not linked. Please try linking again.')
+          return
+        }
+
         const providerLabel = oauthProviders.find(
           (p) => normalizeProviderKey(p.key) === targetKey,
         )?.label || linkedProvider
@@ -295,7 +332,6 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
         selectedYouTubeChannel: youtubeConnected
           ? (selectedYouTubeChannel || null)
           : null,
-        connectedKickUsername: kickConnectedUsername || null,
       }),
     })
     if (response.ok) {
@@ -326,117 +362,40 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
         return
       }
 
-      const isKick = normalizedProvider === 'custom:kick' || normalizedProvider === 'kick'
+      const providerCandidates = isKickOAuthProvider(normalizedProvider)
+        ? [...getKickOAuthProviderCandidates()]
+        : [normalizedProvider]
 
-      if (isKick) {
-        // Kick is linked through Supabase custom OAuth.
-        const redirectTo = getClientAuthRedirectUrl('/settings?linked=custom:kick')
-        console.log('[ProfileSettings] Starting Kick link. redirectTo:', redirectTo)
-        let oauthUrl: string
+      let lastError: unknown = null
+      for (const candidate of providerCandidates) {
+        const redirectTo = `${window.location.origin}/settings?linked=${encodeURIComponent(normalizedProvider)}`
 
         try {
-          console.log('[ProfileSettings] Calling getIdentityLinkUrl for custom:kick')
-          oauthUrl = await getIdentityLinkUrl('custom:kick', redirectTo, {
-            scopes: KICK_OAUTH_SCOPES,
-            queryParams: KICK_OAUTH_QUERY_PARAMS,
-          })
-          console.log('[ProfileSettings] Got OAuth URL for custom:kick:', oauthUrl.substring(0, 100))
-        } catch (primaryError) {
-          console.log('[ProfileSettings] custom:kick failed, trying kick:', primaryError)
-          oauthUrl = await getIdentityLinkUrl('kick', redirectTo, {
-            scopes: KICK_OAUTH_SCOPES,
-            queryParams: KICK_OAUTH_QUERY_PARAMS,
-          }).catch(async () => {
-            return await getIdentityLinkUrl('kick', redirectTo, {
-              scopes: 'user:read',
-              queryParams: KICK_OAUTH_QUERY_PARAMS,
-            }).catch(() => {
-              throw primaryError
-            })
-          })
-          console.log('[ProfileSettings] Got OAuth URL for kick:', oauthUrl.substring(0, 100))
-        }
-
-        console.log('[ProfileSettings] Opening popup')
-        const popupWindow = window.open(oauthUrl, 'kickOAuthPopup', 'width=500,height=700,menubar=no,location=no,resizable=yes,scrollbars=yes')
-
-        if (!popupWindow) {
-          setError('Failed to open popup window. Please check your browser popup settings.')
-          setLinkingProvider(null)
-          return
-        }
-
-        let pollInterval: ReturnType<typeof setInterval> | null = null
-
-        const removePopupListener = () => {
-          window.removeEventListener('message', onPopupMessage)
-        }
-
-        const onPopupMessage = (event: MessageEvent) => {
-          if (event.origin !== window.location.origin) return
-          const payload = event.data as {
-            type?: string
-            status?: 'success' | 'error'
-            provider?: string
-            accessToken?: string
-            refreshToken?: string
-            error?: string
-            message?: string
-          }
-
-          console.log('[ProfileSettings] Received popup message:', { type: payload?.type, status: payload?.status, provider: payload?.provider })
-
-          if (payload?.type !== 'oauth-link-complete') return
-
-          removePopupListener()
-          if (pollInterval) clearInterval(pollInterval)
-          setLinkingProvider(null)
-
-          void (async () => {
-            try {
-              if (payload.status === 'error') {
-                setError(payload.message || payload.error || 'Kick OAuth linking failed. Please try again.')
-                return
-              }
-
-              if (payload.accessToken && payload.refreshToken) {
-                const { error: setSessionError } = await supabase.auth.setSession({
-                  access_token: payload.accessToken,
-                  refresh_token: payload.refreshToken,
-                })
-
-                if (setSessionError) {
-                  setError(setSessionError.message)
-                  return
+          const oauthUrl = await getIdentityLinkUrl(candidate, redirectTo, {
+            ...(isKickOAuthProvider(candidate)
+              ? {
+                  scopes: KICK_OAUTH_SCOPES,
+                  queryParams: KICK_OAUTH_QUERY_PARAMS,
                 }
-              }
+              : {}),
+          })
 
-              await refreshLinkedState()
-              setLinkingSuccess('Kick account linked successfully!')
-              setTimeout(() => setLinkingSuccess(null), 4000)
-            } catch (err) {
-              setError(err instanceof Error ? err.message : 'Failed to refresh linked account state.')
-            }
-          })()
-        }
+          const finalUrl = isKickOAuthProvider(candidate) ? normalizeKickOAuthUrl(oauthUrl) : oauthUrl
 
-        window.addEventListener('message', onPopupMessage)
-
-        // Poll the popup until it closes (fallback if postMessage doesn't fire).
-        pollInterval = setInterval(() => {
-          if (popupWindow.closed) {
-            console.log('[ProfileSettings] Popup closed, cleaning up')
-            if (pollInterval) clearInterval(pollInterval)
-            removePopupListener()
-            setLinkingProvider(null)
+          if (isKickOAuthProvider(candidate) && isMalformedKickOAuthUrl(finalUrl)) {
+            lastError = new Error(`Received malformed Kick OAuth URL from ${candidate}.`)
+            continue
           }
-        }, 500)
-      } else {
-        // For other providers (Google, Discord, etc.), use Supabase identity-link with full-page redirect.
-        const redirectTo = getClientAuthRedirectUrl(`/settings?linked=${normalizedProvider}`)
-        const oauthUrl = await getIdentityLinkUrl(normalizedProvider, redirectTo)
-        window.location.href = oauthUrl
+
+          window.location.href = finalUrl
+          return
+        } catch (candidateError) {
+          lastError = candidateError
+        }
       }
+
+      if (lastError instanceof Error) throw lastError
+      throw new Error(`Failed to initiate OAuth linking for ${provider}.`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to initiate OAuth linking.')
       setLinkingProvider(null)
@@ -689,17 +648,6 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
               Livestream Sources <span className="text-zinc-500">(from connected accounts)</span>
             </label>
             <div className="space-y-3 rounded-lg border border-zinc-200/20 bg-zinc-950/40 p-3">
-              <div className="rounded-lg border border-zinc-200/10 bg-zinc-900/50 p-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Kick</p>
-                {kickConnectedUrl ? (
-                  <p className="mt-1 text-sm text-zinc-200">
-                    Connected stream: <a href={kickConnectedUrl} target="_blank" rel="noreferrer" className="text-orange-200 underline">{kickConnectedUrl}</a>
-                  </p>
-                ) : (
-                  <p className="mt-1 text-xs text-zinc-500">No Kick account linked yet. Link your Kick account below to enable Kick streams.</p>
-                )}
-              </div>
-
               <div className="rounded-lg border border-zinc-200/10 bg-zinc-900/50 p-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">YouTube</p>
                 {youtubeConnected ? (

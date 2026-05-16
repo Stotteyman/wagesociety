@@ -9,6 +9,7 @@ const repoRoot = path.resolve(__dirname, '../../..')
 const sourceDir = path.join(repoRoot, 'dist', 'client')
 const targetDir = path.resolve(__dirname, '..', 'www')
 const fallbackUrl = process.env.MOBILE_APP_FALLBACK_URL || 'https://wagesociety.com'
+const blockedMarkers = ['example.supabase.co', 'sb_publishable_test', 'playful-torte-0c9af1.netlify.app']
 
 async function createFallbackIndexHtml() {
   const html = `<!doctype html>
@@ -41,6 +42,29 @@ async function copyBuildOutput() {
     await fs.access(path.join(targetDir, 'index.html'))
   } catch {
     await createFallbackIndexHtml()
+  }
+
+  const assetsDir = path.join(targetDir, 'assets')
+  try {
+    const assetEntries = await fs.readdir(assetsDir)
+    const jsAssets = assetEntries.filter((entry) => entry.endsWith('.js'))
+
+    for (const assetFile of jsAssets) {
+      const assetPath = path.join(assetsDir, assetFile)
+      const bundledAsset = await fs.readFile(assetPath, 'utf8')
+      const marker = blockedMarkers.find((entry) => bundledAsset.includes(entry))
+      if (marker) {
+        throw new Error(
+          `Blocked mobile asset sync: detected placeholder/staging marker "${marker}" in ${assetPath}. Build web assets with real production settings first.`,
+        )
+      }
+    }
+  } catch (error) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+      // If no assets directory exists, the fallback index page is used.
+    } else {
+      throw error
+    }
   }
 
   console.log(`Copied web assets to ${targetDir}`)

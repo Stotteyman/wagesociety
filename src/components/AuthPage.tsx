@@ -2,7 +2,15 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { ArrowLeft, BadgeCheck } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { getClientAuthRedirectUrl } from '../lib/authRedirect'
-import { KICK_OAUTH_QUERY_PARAMS, KICK_OAUTH_SCOPES, getSupabaseBrowserClient } from '../lib/supabaseBrowser'
+import {
+  getKickOAuthProviderCandidates,
+  normalizeKickOAuthUrl,
+  getSupabaseBrowserClient,
+  isMalformedKickOAuthUrl,
+  isKickOAuthProvider,
+  KICK_OAUTH_QUERY_PARAMS,
+  KICK_OAUTH_SCOPES,
+} from '../lib/supabaseBrowser'
 
 // Lazily import Capacitor so the web bundle doesn't break in non-Capacitor environments.
 function isNativeApp(): boolean {
@@ -51,50 +59,80 @@ export function AuthPage({ view }: { view: AuthView }) {
     })()
   }, [navigate, view])
 
-  const startOAuthSignIn = async (provider: 'google' | 'kick' | 'custom:kick') => {
+  const startOAuthSignIn = async (provider: 'google' | 'kick') => {
     const supabase = getSupabaseBrowserClient()
-    const isKickProvider = provider === 'kick' || provider === 'custom:kick'
+    const providerCandidates = provider === 'kick' ? [...getKickOAuthProviderCandidates()] : [provider]
+    let lastError: unknown = null
 
-    const kickOAuthOptions = isKickProvider
-      ? {
-          scopes: KICK_OAUTH_SCOPES,
-          queryParams: KICK_OAUTH_QUERY_PARAMS,
+    for (const candidate of providerCandidates) {
+      const oauthOptions = {
+        ...(isKickOAuthProvider(candidate)
+          ? {
+              scopes: KICK_OAUTH_SCOPES,
+              queryParams: KICK_OAUTH_QUERY_PARAMS,
+            }
+          : {}),
+      }
+
+      if (isNativeApp()) {
+        const { data, error: authError } = await (supabase.auth as any).signInWithOAuth({
+          provider: candidate,
+          options: {
+            redirectTo: NATIVE_OAUTH_REDIRECT,
+            skipBrowserRedirect: true,
+            ...oauthOptions,
+          },
+        })
+        if (authError) {
+          lastError = authError
+          continue
         }
-      : {}
+        if (data?.url) {
+          const finalUrl = isKickOAuthProvider(candidate) ? normalizeKickOAuthUrl(data.url) : data.url
+          if (isKickOAuthProvider(candidate) && isMalformedKickOAuthUrl(finalUrl)) {
+            lastError = new Error(`Received malformed Kick OAuth URL from ${candidate}.`)
+            continue
+          }
+          const { Browser } = await import('@capacitor/browser')
+          await Browser.open({ url: finalUrl })
+          return
+        }
+        lastError = new Error(`Could not start OAuth flow for ${candidate}.`)
+        continue
+      }
 
-    if (isNativeApp()) {
       const { data, error: authError } = await (supabase.auth as any).signInWithOAuth({
-        provider,
+        provider: candidate,
         options: {
-          redirectTo: NATIVE_OAUTH_REDIRECT,
+          redirectTo: getClientAuthRedirectUrl('/auth/callback'),
           skipBrowserRedirect: true,
-          ...kickOAuthOptions,
+          ...oauthOptions,
         },
       })
-      if (authError) throw authError
-      if (data?.url) {
-        const { Browser } = await import('@capacitor/browser')
-        await Browser.open({ url: data.url })
+
+      if (authError) {
+        lastError = authError
+        continue
       }
+
+      if (!data?.url) {
+        lastError = new Error(`Could not start OAuth flow for ${candidate}.`)
+        continue
+      }
+
+      const finalUrl = isKickOAuthProvider(candidate) ? normalizeKickOAuthUrl(data.url) : data.url
+
+      if (isKickOAuthProvider(candidate) && isMalformedKickOAuthUrl(finalUrl)) {
+        lastError = new Error(`Received malformed Kick OAuth URL from ${candidate}.`)
+        continue
+      }
+
+      window.location.assign(finalUrl)
       return
     }
 
-    const { data, error: authError } = await (supabase.auth as any).signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: getClientAuthRedirectUrl('/dashboard'),
-        skipBrowserRedirect: true,
-        ...kickOAuthOptions,
-      },
-    })
-
-    if (authError) throw authError
-
-    if (!data?.url) {
-      throw new Error(`Could not start OAuth flow for ${provider}.`)
-    }
-
-    window.location.assign(data.url)
+    if (lastError instanceof Error) throw lastError
+    throw new Error(`Could not start OAuth flow for ${provider}.`)
   }
 
   const handleOAuth = async (provider: 'google' | 'kick') => {
@@ -112,16 +150,7 @@ export function AuthPage({ view }: { view: AuthView }) {
 
       setBusyAction('login')
 
-      if (provider === 'kick') {
-        // Kick may be exposed as custom:kick or kick depending on Supabase provider setup.
-        try {
-          await startOAuthSignIn('custom:kick')
-        } catch {
-          await startOAuthSignIn('kick')
-        }
-      } else {
-        await startOAuthSignIn(provider)
-      }
+      await startOAuthSignIn(provider)
     } catch (err) {
       setError(err instanceof Error ? err.message : `Could not sign in with ${provider}.`)
       setBusyAction(null)
@@ -376,7 +405,9 @@ export function AuthPage({ view }: { view: AuthView }) {
                   className="flex items-center justify-center gap-2 rounded-lg border border-zinc-200/20 bg-zinc-950/40 px-3 py-2.5 text-sm font-medium text-zinc-100 transition hover:border-zinc-100/50 disabled:cursor-not-allowed disabled:opacity-60"
                   aria-label="Sign in with Kick"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#53FC18" aria-hidden="true"><path d="M2 2h5v8.5l5-8.5h6l-6 10 6 10h-6l-5-8.5V22H2z"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#53FC18" aria-hidden="true">
+                    <path d="M2 2h5v8.5l5-8.5h6l-6 10 6 10h-6l-5-8.5V22H2z" />
+                  </svg>
                   Kick
                 </button>
               </div>

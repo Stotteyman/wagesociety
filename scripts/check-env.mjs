@@ -3,6 +3,7 @@ import path from 'node:path'
 
 const cwd = process.cwd()
 const envLocalPath = path.join(cwd, '.env.local')
+const requireAdmin = process.argv.includes('--require-admin')
 
 function parseEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return {}
@@ -51,6 +52,13 @@ const hasServiceRole = hasAny(serverRoleKeys)
 if (hasServerUrl && hasBrowserUrl && hasBrowserPublishable) {
   console.log('Environment check passed: Supabase URL and browser publishable key are configured.')
   if (!hasServiceRole) {
+    if (requireAdmin) {
+      console.error(
+        `Missing service role key. Set one of: ${serverRoleKeys.join(', ')}. Privileged admin routes require a server-only key.`,
+      )
+      process.exit(1)
+    }
+
     console.warn(
       `Warning: service role key is missing. Set one of: ${serverRoleKeys.join(', ')}. Public/auth flows work, but privileged admin DB operations will be limited.`,
     )

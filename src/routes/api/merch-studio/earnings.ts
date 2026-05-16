@@ -1,8 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
-import { getRequesterAccess, isLocalRequest, requirePermission } from '../../../lib/orgAuth'
+import { getRequesterAccess, requirePermission } from '../../../lib/orgAuth'
 import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../../lib/supabaseAdmin'
-import { getSupabaseServerPublicClient } from '../../../lib/supabaseServer'
 
 const createEarningSchema = z.object({
   submissionId: z.string().uuid(),
@@ -112,32 +111,10 @@ export const Route = createFileRoute('/api/merch-studio/earnings')({
             return Response.json({ canReview, earnings: mapped, summary })
           }
 
-          const useLocalRoot = request.headers.get('x-local-root-session') === 'true' && isLocalRequest(request)
-          if (!useLocalRoot) {
-            return Response.json(
-              { error: 'Merch Studio earnings require SUPABASE_SERVICE_ROLE_KEY in this environment.' },
-              { status: 503 },
-            )
-          }
-
-          const client = getSupabaseServerPublicClient() as any
-          const { data, error } = await client
-            .from('org_merch_studio_earnings')
-            .select('id, submission_id, recorded_by, period_start, period_end, gross_cents, member_due_cents, wage_due_cents, paid_to_member_cents, paid_to_wage_cents, notes, created_at, updated_at')
-            .order('created_at', { ascending: false })
-
-          if (error) return Response.json({ error: error.message }, { status: 500 })
-
-          const rawRows = (data || []) as EarningRow[]
-          const mapped = rawRows.map(mapEarning)
-          const summary = { memberDueCents: 0, memberPaidCents: 0, memberPendingCents: 0 }
-          for (const entry of mapped) {
-            summary.memberDueCents += entry.memberDueCents
-            summary.memberPaidCents += entry.paidToMemberCents
-            summary.memberPendingCents += Math.max(0, entry.memberDueCents - entry.paidToMemberCents)
-          }
-
-          return Response.json({ canReview: true, earnings: mapped, summary })
+          return Response.json(
+            { error: 'Merch Studio earnings require SUPABASE_SERVICE_ROLE_KEY in this environment.' },
+            { status: 503 },
+          )
         } catch (error) {
           if (error instanceof Response) return error
           return Response.json(
@@ -155,46 +132,10 @@ export const Route = createFileRoute('/api/merch-studio/earnings')({
           }
 
           if (!hasSupabaseAdminConfig()) {
-            const useLocalRoot = request.headers.get('x-local-root-session') === 'true' && isLocalRequest(request)
-            if (!useLocalRoot) {
-              return Response.json(
-                { error: 'Recording earnings requires SUPABASE_SERVICE_ROLE_KEY in this environment.' },
-                { status: 503 },
-              )
-            }
-
-            const client = getSupabaseServerPublicClient() as any
-            const { data: submission, error: submissionError } = await client
-              .from('org_merch_studio_submissions')
-              .select('id, creator_email, title, creator_split_percent, wage_split_percent')
-              .eq('id', payload.data.submissionId)
-              .single()
-
-            if (submissionError) return Response.json({ error: submissionError.message }, { status: 500 })
-
-            const submissionRow = submission as SubmissionRow
-            const memberDueCents = Math.round(payload.data.grossCents * (Number(submissionRow.creator_split_percent) / 100))
-            const wageDueCents = payload.data.grossCents - memberDueCents
-
-            const { data, error } = await client
-              .from('org_merch_studio_earnings')
-              .insert([
-                {
-                  submission_id: payload.data.submissionId,
-                  recorded_by: 'root-superadmin@localhost',
-                  period_start: payload.data.periodStart || null,
-                  period_end: payload.data.periodEnd || null,
-                  gross_cents: payload.data.grossCents,
-                  member_due_cents: memberDueCents,
-                  wage_due_cents: wageDueCents,
-                  notes: payload.data.notes || null,
-                },
-              ])
-              .select('*')
-              .single()
-
-            if (error) return Response.json({ error: error.message }, { status: 500 })
-            return Response.json({ earning: mapEarning(data as EarningRow) }, { status: 201 })
+            return Response.json(
+              { error: 'Recording earnings requires SUPABASE_SERVICE_ROLE_KEY in this environment.' },
+              { status: 503 },
+            )
           }
 
           const access = await requirePermission(request, 'access_admin_dashboard')
@@ -248,28 +189,10 @@ export const Route = createFileRoute('/api/merch-studio/earnings')({
           }
 
           if (!hasSupabaseAdminConfig()) {
-            const useLocalRoot = request.headers.get('x-local-root-session') === 'true' && isLocalRequest(request)
-            if (!useLocalRoot) {
-              return Response.json(
-                { error: 'Updating payout tracking requires SUPABASE_SERVICE_ROLE_KEY in this environment.' },
-                { status: 503 },
-              )
-            }
-
-            const client = getSupabaseServerPublicClient() as any
-            const { data, error } = await client
-              .from('org_merch_studio_earnings')
-              .update({
-                paid_to_member_cents: payload.data.paidToMemberCents,
-                paid_to_wage_cents: payload.data.paidToWageCents,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', payload.data.id)
-              .select('*')
-              .single()
-
-            if (error) return Response.json({ error: error.message }, { status: 500 })
-            return Response.json({ earning: mapEarning(data as EarningRow) })
+            return Response.json(
+              { error: 'Updating payout tracking requires SUPABASE_SERVICE_ROLE_KEY in this environment.' },
+              { status: 503 },
+            )
           }
 
           await requirePermission(request, 'access_admin_dashboard')

@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { getRequesterAccess, isLocalRequest } from '../../lib/orgAuth'
+import { getRequesterAccess } from '../../lib/orgAuth'
 import { getSupabaseAdminClient, hasSupabaseAdminConfig } from '../../lib/supabaseAdmin'
 import { getSupabaseServerClientForToken } from '../../lib/supabaseServer'
 
@@ -22,29 +22,24 @@ export const Route = createFileRoute('/api/news-upload')({
             }
             requesterEmail = access.requester.email
           } else {
-            const useLocalRoot = request.headers.get('x-local-root-session') === 'true' && isLocalRequest(request)
-            if (!useLocalRoot) {
-              const authHeader = request.headers.get('authorization') || request.headers.get('Authorization') || ''
-              const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
-              if (!token) {
-                return Response.json({ error: 'Unauthorized' }, { status: 401 })
-              }
-
-              const client = getSupabaseServerClientForToken(token)
-              const {
-                data: { user },
-                error,
-              } = await client.auth.getUser(token)
-
-              if (error || !user?.email) {
-                return Response.json({ error: 'Unauthorized' }, { status: 401 })
-              }
-
-              requesterEmail = user.email.toLowerCase()
-              accessToken = token
-            } else {
-              requesterEmail = 'root-superadmin@localhost'
+            const authHeader = request.headers.get('authorization') || request.headers.get('Authorization') || ''
+            const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
+            if (!token) {
+              return Response.json({ error: 'Unauthorized' }, { status: 401 })
             }
+
+            const client = getSupabaseServerClientForToken(token)
+            const {
+              data: { user },
+              error,
+            } = await client.auth.getUser(token)
+
+            if (error || !user?.email) {
+              return Response.json({ error: 'Unauthorized' }, { status: 401 })
+            }
+
+            requesterEmail = user.email.toLowerCase()
+            accessToken = token
           }
 
           const form = await request.formData()

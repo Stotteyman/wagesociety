@@ -1,1 +1,0 @@
-import{j as o}from"./index-DZTbXdpq.js";import{A as t}from"./AuthPage-C7TCdH6L.js";import"./authRedirect-eYMB2Yj7.js";import"./arrow-left-Bsz3JwLs.js";import"./createLucideIcon-fRrENd2P.js";function e(){return o.jsx(t,{view:"login"})}export{e as component};

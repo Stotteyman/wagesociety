@@ -10,7 +10,7 @@ import { useNavigate } from '@tanstack/react-router'
 
 import '../styles.css'
 
-const SITE_URL = 'https://playful-torte-0c9af1.netlify.app'
+const SITE_URL = 'https://wagesociety.com'
 const SITE_NAME = 'W.A.G.E. Society'
 const SITE_DESCRIPTION =
   'A modern organization for content creators, online marketers, and entrepreneurs. Join W.A.G.E. Society for strategy, systems, and community accountability.'
