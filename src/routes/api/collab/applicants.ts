@@ -2,6 +2,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { requirePermission } from '../../../lib/orgAuth'
 import { getSupabaseAdminClient } from '../../../lib/supabaseAdmin'
+import { listAuthIndexedUsers } from '../../../lib/authUserIndex'
+import { readAvatarFromMetadata, readDisplayNameFromMetadata } from '../../../lib/memberDirectory'
 
 const updateSchema = z.object({
   applicationId: z.string().uuid(),
@@ -64,6 +66,11 @@ export const Route = createFileRoute('/api/collab/applicants')({
 
           const applicants: RawApplicant[] = data || []
           const emails = applicants.map((a) => a.applicant_email)
+          const requestedEmailSet = new Set(
+            emails
+              .map((email) => String(email || '').trim().toLowerCase())
+              .filter(Boolean),
+          )
 
           let profiles: Record<string, ProfileRow> = {}
           if (emails.length) {
@@ -72,14 +79,49 @@ export const Route = createFileRoute('/api/collab/applicants')({
               .select('email, display_name, avatar_url, bio, skills')
               .in('email', emails)
             for (const p of (profileData as ProfileRow[] | null || [])) {
-              profiles[p.email] = p
+              profiles[String(p.email || '').trim().toLowerCase()] = p
             }
+          }
+
+          const authUsers = await listAuthIndexedUsers(admin)
+          const authFallback = new Map<string, { display_name: string | null; avatar_url: string | null }>()
+
+          for (const user of authUsers) {
+            const email = String(user.email || '').trim().toLowerCase()
+            if (!email || !requestedEmailSet.has(email)) continue
+
+            authFallback.set(email, {
+              display_name: readDisplayNameFromMetadata((user.user_metadata as any) || null),
+              avatar_url: readAvatarFromMetadata((user.user_metadata as any) || null),
+            })
           }
 
           return Response.json({
             applicants: applicants.map((a) => ({
               ...a,
-              profile: profiles[a.applicant_email] || null,
+              profile: (() => {
+                const email = String(a.applicant_email || '').trim().toLowerCase()
+                const profile = profiles[email]
+                const fallback = authFallback.get(email)
+
+                if (profile) {
+                  return {
+                    ...profile,
+                    display_name: profile.display_name || fallback?.display_name || null,
+                    avatar_url: profile.avatar_url || fallback?.avatar_url || null,
+                  }
+                }
+
+                if (!fallback) return null
+
+                return {
+                  email: a.applicant_email,
+                  display_name: fallback.display_name || null,
+                  avatar_url: fallback.avatar_url || null,
+                  bio: null,
+                  skills: null,
+                }
+              })(),
             })),
           })
         } catch (error) {

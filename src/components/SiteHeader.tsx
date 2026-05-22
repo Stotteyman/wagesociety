@@ -72,8 +72,9 @@ export function SiteHeader() {
   return (
     <header className="sticky top-3 z-20 rounded-2xl border border-zinc-200/15 bg-zinc-900/90 p-3 backdrop-blur">
       <div className="flex items-center justify-between gap-3">
-        <Link to="/" className="text-sm font-black tracking-[0.16em] text-orange-200 sm:text-base">
-          W.A.G.E. SOCIETY
+        <Link to="/" className="inline-flex items-center gap-3 text-sm font-black tracking-[0.16em] text-orange-200 sm:text-base">
+          <img src="/logo.svg" alt="W.A.G.E. Society logo" className="h-8 w-8 rounded-full" />
+          <span className="hidden sm:inline">W.A.G.E. SOCIETY</span>
         </Link>
 
         <nav className="hidden items-center gap-2 md:flex">

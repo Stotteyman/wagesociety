@@ -4,13 +4,13 @@
   "type": "module",
   "scripts": {
     "predev": "node ./scripts/check-env.mjs --require-admin",
-    "dev": "vite dev --port 3000",
+    "dev": "vite dev --port 3000 --strictPort",
     "predev:local": "node ./scripts/check-env.mjs",
-    "dev:local": "vite dev --mode devlocal --port 3000",
+    "dev:local": "vite dev --mode devlocal --port 3000 --strictPort",
     "prebuild": "node ./scripts/check-env.mjs --require-admin",
     "build": "vite build",
     "check:env": "node ./scripts/check-env.mjs",
-    "test:security": "node --test ./tests/privileged-endpoints.test.mjs ./tests/env-health.test.mjs",
+    "test:security": "node --test ./tests/privileged-endpoints.test.mjs ./tests/env-health.test.mjs ./tests/kick-oauth-scope-guard.test.mjs",
     "apk:update-local": "node ./scripts/update-local-apk.mjs"
   },
   "dependencies": {

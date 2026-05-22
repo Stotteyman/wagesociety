@@ -50,10 +50,27 @@ type OAuthUrlOptions = {
   queryParams?: Record<string, string>
 }
 
-export const KICK_OAUTH_SCOPES = 'user:read'
 export const KICK_OAUTH_QUERY_PARAMS = {
   prompt: 'consent',
 } as const
+
+type KickOAuthOptions = {
+  scopes?: string
+  queryParams?: Record<string, string>
+}
+
+export function getKickOAuthOptions(): KickOAuthOptions {
+  const prompt = String(import.meta.env.VITE_KICK_OAUTH_PROMPT || KICK_OAUTH_QUERY_PARAMS.prompt).trim()
+
+  const options: KickOAuthOptions = {}
+  if (prompt) {
+    options.queryParams = {
+      prompt,
+    }
+  }
+
+  return options
+}
 
 export function normalizeOAuthProviderKey(provider: string) {
   const normalized = String(provider || '').trim().toLowerCase()
@@ -66,7 +83,7 @@ export function isKickOAuthProvider(provider: string) {
 }
 
 export function getKickOAuthProviderCandidates() {
-  return ['custom:kick', 'kick'] as const
+  return ['custom:kick'] as const
 }
 
 export function isMalformedKickOAuthUrl(url: string) {
@@ -82,6 +99,36 @@ export function normalizeKickOAuthUrl(url: string) {
     .replace('https//id.kick.com', 'https://id.kick.com')
 }
 
+export function ensureKickOAuthRedirect(url: string, redirectTo: string) {
+  const normalized = normalizeKickOAuthUrl(url)
+  const target = String(redirectTo || '').trim()
+  if (!target) return normalized
+
+  try {
+    const parsed = new URL(normalized)
+
+    // Kick frequently wraps /oauth/authorize inside /login?redirect=... .
+    // Ensure redirect_to is present in that nested authorize URL.
+    const nestedRedirect = parsed.searchParams.get('redirect')
+    if (nestedRedirect) {
+      const authorizeUrl = new URL(nestedRedirect, `${parsed.origin}/`)
+      if (!authorizeUrl.searchParams.get('redirect_to')) {
+        authorizeUrl.searchParams.set('redirect_to', target)
+      }
+      parsed.searchParams.set('redirect', `${authorizeUrl.pathname}${authorizeUrl.search}`)
+      return parsed.toString()
+    }
+
+    if (!parsed.searchParams.get('redirect_to')) {
+      parsed.searchParams.set('redirect_to', target)
+    }
+
+    return parsed.toString()
+  } catch {
+    return normalized
+  }
+}
+
 /**
  * Initiates OAuth identity linking by calling Supabase's GoTrue endpoint directly
  * with the user's current access token. This is more reliable than
@@ -95,45 +142,40 @@ export async function getIdentityLinkUrl(
   redirectTo: string,
   options?: OAuthUrlOptions,
 ): Promise<string> {
-  const token = await getSupabaseAccessToken()
-  if (!token) {
-    throw new Error('No active session. Please log out and log back in, then try again.')
-  }
+  const supabase = getSupabaseBrowserClient()
+  const normalizedProvider = String(provider || '').trim().toLowerCase()
+  const providerCandidates = Array.from(new Set([
+    normalizedProvider,
+    normalizedProvider.startsWith('custom:')
+      ? normalizedProvider.slice('custom:'.length)
+      : `custom:${normalizedProvider}`,
+  ].filter(Boolean)))
 
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
-  const anonKey = (
-    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY
-  ) as string
+  let lastError: string | null = null
 
-  const params = new URLSearchParams({
-    provider,
-    redirect_to: redirectTo,
-    skip_http_redirect: 'true',
-  })
+  for (const candidate of providerCandidates) {
+    const { data, error } = await (supabase.auth as any).linkIdentity({
+      provider: candidate,
+      options: {
+        redirectTo,
+        skipBrowserRedirect: true,
+        ...(options?.scopes ? { scopes: options.scopes } : {}),
+        ...(options?.queryParams ? { queryParams: options.queryParams } : {}),
+      },
+    })
 
-  if (options?.scopes) {
-    params.set('scopes', options.scopes)
-  }
+    if (data?.url) {
+      return data.url
+    }
 
-  if (options?.queryParams) {
-    for (const [key, value] of Object.entries(options.queryParams)) {
-      params.set(key, value)
+    const errorMessage = error?.message || `Could not start ${candidate} account linking.`
+    lastError = errorMessage
+
+    // Continue trying alternate provider forms for custom providers.
+    if (errorMessage.toLowerCase().includes('unsupported provider')) {
+      continue
     }
   }
 
-  const response = await fetch(`${supabaseUrl}/auth/v1/user/identities/authorize?${params.toString()}`, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      apikey: anonKey,
-    },
-  })
-
-  const data = (await response.json()) as { url?: string; error_description?: string; msg?: string; code?: string }
-
-  if (!response.ok || !data.url) {
-    throw new Error(data.error_description || data.msg || `Could not start ${provider} account linking.`)
-  }
-
-  return data.url
+  throw new Error(lastError || `Could not start ${provider} account linking.`)
 }

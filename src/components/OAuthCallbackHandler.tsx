@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 
 /**
@@ -10,7 +10,13 @@ import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
  * redirected back to the settings page.
  */
 export function OAuthCallbackHandler() {
-  const [processed, setProcessed] = useState(false)
+  const lastHandledRef = useRef<string | null>(null)
+
+  const redirectToSettingsWithError = (provider: string, message: string) => {
+    const safeProvider = String(provider || 'unknown').trim() || 'unknown'
+    const safeMessage = String(message || 'OAuth callback processing failed.').trim() || 'OAuth callback processing failed.'
+    window.location.href = `/settings?linked=${encodeURIComponent(safeProvider)}&error_description=${encodeURIComponent(safeMessage)}`
+  }
 
   const postPopupResult = (payload: {
     status: 'success' | 'error'
@@ -31,10 +37,29 @@ export function OAuthCallbackHandler() {
   }
 
   useEffect(() => {
-    if (typeof window === 'undefined' || processed) return
+    if (typeof window === 'undefined') return
 
     const handleCallback = async () => {
       try {
+        const searchParams = new URLSearchParams(window.location.search)
+        const searchError = searchParams.get('error_description') || searchParams.get('error')
+        if (searchError && !searchParams.get('linked')) {
+          let pendingProvider: string | null = null
+          try {
+            pendingProvider = window.localStorage.getItem('oauth-link-provider')
+            if (pendingProvider) {
+              window.localStorage.removeItem('oauth-link-provider')
+            }
+          } catch {
+            // Ignore localStorage errors and continue.
+          }
+
+          if (pendingProvider) {
+            redirectToSettingsWithError(pendingProvider, searchError)
+            return
+          }
+        }
+
         // This handler is for identity-linking callbacks only.
         // Normal OAuth login callbacks should continue through the standard auth flow.
         const urlParams = new URLSearchParams(window.location.search)
@@ -42,6 +67,12 @@ export function OAuthCallbackHandler() {
         console.log('[OAuthCallbackHandler] URL search:', window.location.search)
         console.log('[OAuthCallbackHandler] linkedProvider:', linkedProvider)
         if (!linkedProvider) return
+
+        const callbackKey = `${window.location.pathname}|${window.location.search}|${window.location.hash}`
+        if (lastHandledRef.current === callbackKey) {
+          return
+        }
+        lastHandledRef.current = callbackKey
 
         const supabase = getSupabaseBrowserClient()
 
@@ -71,6 +102,7 @@ export function OAuthCallbackHandler() {
               provider: linkedProvider,
               message: exchangeError.message,
             })
+            redirectToSettingsWithError(linkedProvider, exchangeError.message)
             return
           }
 
@@ -95,6 +127,7 @@ export function OAuthCallbackHandler() {
               provider: linkedProvider,
               message: error.message,
             })
+            redirectToSettingsWithError(linkedProvider, error.message)
             return
           }
 
@@ -103,7 +136,11 @@ export function OAuthCallbackHandler() {
           if (data?.user) {
             console.log('[OAuthCallbackHandler] Identity linking successful. User identities:', data.user.identities)
 
-            setProcessed(true)
+            try {
+              window.localStorage.removeItem('oauth-link-provider')
+            } catch {
+              // Ignore localStorage errors and continue.
+            }
 
             const redirectUrl = `/settings?linked=${linkedProvider}`
 
@@ -131,16 +168,23 @@ export function OAuthCallbackHandler() {
         // If we can resolve a signed-in user here, treat linking as successful.
         const { data: fallbackUserData, error: fallbackUserError } = await supabase.auth.getUser()
         if (fallbackUserError || !fallbackUserData?.user) {
+          const errorMessage = fallbackUserError?.message || 'OAuth callback completed without a valid session.'
           postPopupResult({
             status: 'error',
             provider: linkedProvider,
-            message: fallbackUserError?.message || 'OAuth callback completed without a valid session.',
+            message: errorMessage,
           })
+          redirectToSettingsWithError(linkedProvider, errorMessage)
           return
         }
 
-        setProcessed(true)
         const redirectUrl = `/settings?linked=${linkedProvider}`
+
+        try {
+          window.localStorage.removeItem('oauth-link-provider')
+        } catch {
+          // Ignore localStorage errors and continue.
+        }
 
         if (window.opener && !window.opener.closed) {
           postPopupResult({
@@ -156,17 +200,19 @@ export function OAuthCallbackHandler() {
         console.error('OAuth callback handler error:', err)
         if (typeof window !== 'undefined') {
           const linkedProvider = new URLSearchParams(window.location.search).get('linked') || 'unknown'
+          const message = err instanceof Error ? err.message : 'OAuth callback processing failed.'
           postPopupResult({
             status: 'error',
             provider: linkedProvider,
-            message: err instanceof Error ? err.message : 'OAuth callback processing failed.',
+            message,
           })
+          redirectToSettingsWithError(linkedProvider, message)
         }
       }
     }
 
     void handleCallback()
-  }, [processed])
+  }, [])
 
   return null
 }

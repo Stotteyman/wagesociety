@@ -22,9 +22,21 @@ VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 SUPABASE_SERVICE_ROLE_KEY=sb_secret_...
 ```
 
-Supabase Auth URL settings for local OAuth
-- Site URL: `http://localhost:3000`
-- Additional Redirect URLs: `http://localhost:3000/auth/callback`
+Supabase Auth URL settings
+- Site URL:
+	- Local-only development: `http://localhost:3000`
+	- Production deployment: `https://wagesociety.com`
+- Redirect URLs (allow list):
+	- `https://playful-torte-0c9af1.netlify.app`
+	- `com.wagesociety.android://login-callback`
+	- `http://localhost:3000/auth/callback`
+	- `https://wagesociety.com/auth/callback`
+- Important:
+	- Use `https://wagesociety.com/auth/callback` for production, not `http://wagesociety.com/auth/callback`.
+	- If you sometimes open local via `127.0.0.1`, also add `http://127.0.0.1:3000/auth/callback`.
+
+Optional local OAuth override
+- Set `VITE_AUTH_REDIRECT_ORIGIN=http://localhost:3000` to force OAuth callbacks to localhost.
 
 Required Env Vars
 - URL (required):

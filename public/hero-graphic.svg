@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img" aria-labelledby="heroTitle heroDesc">
+  <title id="heroTitle">W.A.G.E. Society hero graphic</title>
+  <desc id="heroDesc">Abstract vibrant shapes and spotlight with the W.A.G.E. Society mark</desc>
+  <defs>
+    <linearGradient id="lg1" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#FF8A3D"/>
+      <stop offset="50%" stop-color="#D946EF"/>
+      <stop offset="100%" stop-color="#6B21A8"/>
+    </linearGradient>
+    <linearGradient id="lg2" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#06B6D4" stop-opacity="0.14"/>
+      <stop offset="100%" stop-color="#60A5FA" stop-opacity="0.06"/>
+    </linearGradient>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="18" stdDeviation="40" flood-color="#000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <rect width="100%" height="100%" fill="#0f1724" />
+
+  <g transform="translate(0,0)">
+    <circle cx="420" cy="300" r="260" fill="url(#lg1)" filter="url(#shadow)"/>
+    <ellipse cx="1100" cy="520" rx="420" ry="220" fill="url(#lg2)" />
+    <g transform="translate(360,140) scale(0.9)">
+      <circle cx="256" cy="256" r="220" fill="url(#lg1)" />
+      <path d="M140 170 L188 342 L236 226 L285 342 L333 170 L296 170 L266 280 L236 170 L206 280 L176 170 Z" fill="#FFFFFF" transform="translate(28,12) scale(1.12)"/>
+    </g>
+  </g>
+
+  <g transform="translate(80,600)">
+    <text x="0" y="0" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto" font-size="42" font-weight="800" fill="#F8FAFC">W.A.G.E. Society</text>
+    <text x="0" y="44" font-family="Inter, system-ui, -apple-system, 'Segoe UI', Roboto" font-size="20" font-weight="600" fill="#CBD5E1">Creator growth, community, and execution</text>
+  </g>
+
+</svg>

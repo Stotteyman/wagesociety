@@ -7,7 +7,12 @@ type CallbackState =
   | { status: 'error'; message: string }
 
 function getPostAuthPath(metadata: Record<string, unknown> | undefined) {
-  return metadata?.onboarding_completed === true ? '/dashboard' : '/onboarding'
+  return '/dashboard'
+}
+
+function normalizeProviderKey(provider: string) {
+  const normalized = String(provider || '').trim().toLowerCase()
+  return normalized === 'custom:kick' ? 'kick' : normalized
 }
 
 export const Route = createFileRoute('/auth/callback')({
@@ -28,11 +33,12 @@ function AuthCallbackPage() {
   })
 
   const callbackParams = useMemo(() => {
-    if (typeof window === 'undefined') return { code: null, hash: '' }
+    if (typeof window === 'undefined') return { code: null, hash: '', linkedProvider: null }
     const params = new URLSearchParams(window.location.search)
     return {
       code: params.get('code'),
       hash: window.location.hash.slice(1),
+      linkedProvider: params.get('linked'),
     }
   }, [])
 
@@ -46,8 +52,30 @@ function AuthCallbackPage() {
         const supabase = getSupabaseBrowserClient()
         const searchParams = new URLSearchParams(window.location.search)
         const oauthError = searchParams.get('error_description') || searchParams.get('error')
+        const linkedProvider = callbackParams.linkedProvider
 
         if (oauthError) {
+          if (linkedProvider) {
+            const redirectUrl = `/settings?linked=${encodeURIComponent(linkedProvider)}&error_description=${encodeURIComponent(oauthError)}`
+
+            if (window.opener && !window.opener.closed) {
+              window.opener.postMessage(
+                {
+                  type: 'oauth-link-complete',
+                  status: 'error',
+                  provider: linkedProvider,
+                  message: oauthError,
+                },
+                window.location.origin,
+              )
+              window.close()
+              return
+            }
+
+            window.location.assign(redirectUrl)
+            return
+          }
+
           throw new Error(oauthError)
         }
 
@@ -96,6 +124,35 @@ function AuthCallbackPage() {
           throw new Error('Sign-in did not complete. Please try again.')
         }
 
+        if (linkedProvider) {
+          const normalizedTarget = normalizeProviderKey(linkedProvider)
+          const linkedNow = (user.identities || []).some((identity) => {
+            return normalizeProviderKey(String(identity.provider || '')) === normalizedTarget
+          })
+
+          if (!linkedNow) {
+            throw new Error('OAuth callback completed, but the provider was not linked.')
+          }
+
+          const settingsUrl = `/settings?linked=${encodeURIComponent(linkedProvider)}`
+
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage(
+              {
+                type: 'oauth-link-complete',
+                status: 'success',
+                provider: linkedProvider,
+              },
+              window.location.origin,
+            )
+            window.close()
+            return
+          }
+
+          window.location.assign(settingsUrl)
+          return
+        }
+
         // Remove callback query/hash tokens before moving on.
         window.history.replaceState({}, '', window.location.pathname)
 
@@ -106,7 +163,7 @@ function AuthCallbackPage() {
         if (!active) return
         setState({
           status: 'error',
-          message: error instanceof Error ? error.message : 'Could not complete Google sign-in.',
+          message: error instanceof Error ? error.message : 'Could not complete sign-in.',
         })
       }
     })()

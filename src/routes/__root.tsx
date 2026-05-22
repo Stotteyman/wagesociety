@@ -5,7 +5,6 @@ import { formatRoleLabel, type OrgRole } from '../lib/orgAccess'
 import { getSupabaseBrowserClient } from '../lib/supabaseBrowser'
 import { getStoredViewAsRole, setStoredViewAsRole } from '../lib/viewAs'
 import { SiteHeader } from '../components/SiteHeader'
-import { OAuthCallbackHandler } from '../components/OAuthCallbackHandler'
 import { useNavigate } from '@tanstack/react-router'
 
 import '../styles.css'
@@ -178,7 +177,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         />
       </head>
       <body>
-        <OAuthCallbackHandler />
         <div className="min-h-screen bg-zinc-950 text-zinc-100">
           <div className="mx-auto flex w-full max-w-6xl flex-col px-4 pb-12 pt-5 sm:px-6 lg:px-8">
             <SiteHeader />

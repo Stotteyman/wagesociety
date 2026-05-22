@@ -37,6 +37,8 @@ const updateSchema = z.object({
 type AuthUserMeta = {
   username?: string
   preferred_username?: string
+  avatar_url?: string
+  picture?: string
   livestream_links?: string[]
   selected_youtube_channel?: string
   kick_username?: string
@@ -44,6 +46,15 @@ type AuthUserMeta = {
 
 function readDisplayNameFromMeta(meta: AuthUserMeta | null | undefined) {
   const candidates = [meta?.username, meta?.preferred_username]
+  for (const candidate of candidates) {
+    const trimmed = candidate?.trim()
+    if (trimmed) return trimmed
+  }
+  return null
+}
+
+function readAvatarFromMeta(meta: AuthUserMeta | null | undefined) {
+  const candidates = [meta?.avatar_url, meta?.picture]
   for (const candidate of candidates) {
     const trimmed = candidate?.trim()
     if (trimmed) return trimmed
@@ -109,11 +120,11 @@ async function updateAuthUserMetadataWithToken(accessToken: string, metadata: Re
   return { error: detail }
 }
 
-function createFallbackProfile(email: string, displayName: string | null) {
+function createFallbackProfile(email: string, displayName: string | null, avatarUrl: string | null = null) {
   return {
     email,
     display_name: displayName,
-    avatar_url: null,
+    avatar_url: avatarUrl,
     bio: null,
     skills: [] as string[],
     livestream_links: [] as string[],
@@ -438,6 +449,26 @@ export const Route = createFileRoute('/api/me/profile')({
             ?? null
           const streamAccounts = buildConnectedStreamAccounts(meta, authUserRecord)
           const authDisplayName = readDisplayNameFromMeta(meta)
+          const authAvatarUrl = readAvatarFromMeta(meta)
+          const resolvedAvatarUrl = profile?.avatar_url || authAvatarUrl || null
+
+          if (authAvatarUrl && (!profile || !profile.avatar_url)) {
+            const { error: avatarBackfillError } = await (client as any)
+              .from('org_member_profiles')
+              .upsert(
+                {
+                  email: requester.email,
+                  display_name: profile?.display_name || authDisplayName || null,
+                  avatar_url: authAvatarUrl,
+                  updated_at: new Date().toISOString(),
+                },
+                { onConflict: 'email' },
+              )
+
+            if (avatarBackfillError && avatarBackfillError.code !== '42P01') {
+              console.error('[api/me/profile] avatar backfill failed:', avatarBackfillError.message)
+            }
+          }
 
           return Response.json({
             oauth_providers: oauthProviders,
@@ -446,13 +477,14 @@ export const Route = createFileRoute('/api/me/profile')({
               ? {
                   ...profile,
                   display_name: profile.display_name || authDisplayName,
+                  avatar_url: resolvedAvatarUrl,
                   livestream_links: [
                     ...(streamAccounts.kick.url ? [streamAccounts.kick.url] : []),
                     ...(streamAccounts.youtube.selected ? [streamKeyToYouTubeUrl(streamAccounts.youtube.selected)] : []),
                   ],
                 }
               : {
-                  ...createFallbackProfile(requester.email, authDisplayName),
+                  ...createFallbackProfile(requester.email, authDisplayName, resolvedAvatarUrl),
                   livestream_links: [
                     ...(streamAccounts.kick.url ? [streamAccounts.kick.url] : []),
                     ...(streamAccounts.youtube.selected ? [streamKeyToYouTubeUrl(streamAccounts.youtube.selected)] : []),
@@ -492,6 +524,7 @@ export const Route = createFileRoute('/api/me/profile')({
           const canUseAdmin = hasSupabaseAdminConfig()
           const token = getBearerToken(request)
           const client = canUseAdmin ? getSupabaseAdminClient() : getSupabaseServerClientForToken(token)
+          let requesterMeta: AuthUserMeta | null = null
 
           let authUserList: Array<{ id?: string | null; email?: string | null; raw_user_meta_data?: unknown }> = []
 
@@ -554,6 +587,7 @@ export const Route = createFileRoute('/api/me/profile')({
           const currentAuthUser = authUserList.find(
             (userRow) => String(userRow.email || '').toLowerCase() === requester.email,
           )
+          requesterMeta = ((currentAuthUser?.raw_user_meta_data as AuthUserMeta | null | undefined) ?? null)
 
           if (canUseAdmin && currentAuthUser?.id && (parsed.data.displayName !== undefined || selectedYouTubeChannel !== undefined || connectedKickUsername !== undefined)) {
             const existingMeta = (currentAuthUser.raw_user_meta_data as AuthUserMeta | null | undefined) ?? {}
@@ -597,6 +631,7 @@ export const Route = createFileRoute('/api/me/profile')({
             }
 
             const existingMeta = ((tokenUser.user_metadata as AuthUserMeta | null | undefined) ?? {})
+            requesterMeta = existingMeta
             const trimmedDisplayName = parsed.data.displayName?.trim() || ''
             const nextName = trimmedDisplayName || readDisplayNameFromMeta(existingMeta) || ''
 
@@ -648,7 +683,7 @@ export const Route = createFileRoute('/api/me/profile')({
           if (selectedYouTubeChannel) {
             const youtubeUrl = streamKeyToYouTubeUrl(selectedYouTubeChannel)
             const displayName = data?.display_name || parsed.data.displayName?.trim() || requester.email.split('@')[0]
-            const avatarUrl = data?.avatar_url || parsed.data.avatarUrl || null
+            const avatarUrl = data?.avatar_url || parsed.data.avatarUrl || readAvatarFromMeta(requesterMeta) || null
 
             const { error: livestreamError } = await (client as any)
               .from('org_member_livestreams')
@@ -682,11 +717,11 @@ export const Route = createFileRoute('/api/me/profile')({
           }
 
           if (data) {
-            const ownAuthMeta = (currentAuthUser?.raw_user_meta_data as AuthUserMeta | null | undefined) ?? null
-            const streamAccounts = buildConnectedStreamAccounts(ownAuthMeta, null)
+            const streamAccounts = buildConnectedStreamAccounts(requesterMeta, null)
             return Response.json({
               profile: {
                 ...data,
+                avatar_url: data.avatar_url || readAvatarFromMeta(requesterMeta),
                 livestream_links: [
                   ...(streamAccounts.kick.url ? [streamAccounts.kick.url] : []),
                   ...(streamAccounts.youtube.selected ? [streamKeyToYouTubeUrl(streamAccounts.youtube.selected)] : []),
@@ -695,17 +730,17 @@ export const Route = createFileRoute('/api/me/profile')({
             })
           }
 
-          const ownAuthMeta = (currentAuthUser?.raw_user_meta_data as AuthUserMeta | null | undefined) ?? null
           const fallbackDisplayName =
-            parsed.data.displayName?.trim() || readDisplayNameFromMeta(ownAuthMeta)
+            parsed.data.displayName?.trim() || readDisplayNameFromMeta(requesterMeta)
+          const fallbackAvatarUrl = parsed.data.avatarUrl || readAvatarFromMeta(requesterMeta)
 
           return Response.json({
             profile: {
-              ...createFallbackProfile(requester.email, fallbackDisplayName || null),
+              ...createFallbackProfile(requester.email, fallbackDisplayName || null, fallbackAvatarUrl || null),
               livestream_links: [
-                ...(ownAuthMeta?.kick_username ? [`https://kick.com/${String(ownAuthMeta.kick_username).replace(/^@/, '')}`] : []),
-                ...(ownAuthMeta?.selected_youtube_channel
-                  ? [streamKeyToYouTubeUrl(String(ownAuthMeta.selected_youtube_channel))]
+                ...(requesterMeta?.kick_username ? [`https://kick.com/${String(requesterMeta.kick_username).replace(/^@/, '')}`] : []),
+                ...(requesterMeta?.selected_youtube_channel
+                  ? [streamKeyToYouTubeUrl(String(requesterMeta.selected_youtube_channel))]
                   : []),
               ],
             },

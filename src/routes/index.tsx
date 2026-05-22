@@ -28,42 +28,65 @@ export const Route = createFileRoute('/')({
 const publicDestinations = [
   {
     title: 'Shop',
-    description: 'Browse memberships and merch available to all visitors.',
+    description: 'Pick up exclusive W.A.G.E. Society merch and explore membership tiers built for creators at every stage.',
     to: '/merch' as const,
     icon: Store,
   },
   {
     title: 'Livestream',
-    description: 'View the live section and stream activity feed.',
+    description: 'Catch members live across platforms — see who\'s streaming and what they\'re building right now.',
     to: '/live' as const,
     icon: Tv,
   },
   {
     title: 'Directory',
-    description: 'Discover creators and open their public profiles.',
+    description: 'Browse our growing network of creators, marketers, and entrepreneurs — find collaborators and supporters.',
     to: '/directory' as const,
     icon: Users,
   },
   {
     title: 'Blog',
-    description: 'Read public updates, announcements, and posts.',
+    description: 'Get org news, creator spotlights, strategy breakdowns, and announcements straight from the team.',
     to: '/news' as const,
     icon: Newspaper,
   },
 ]
 
 function Home() {
-  const [email, setEmail] = useState('')
-  const [liveAlerts, setLiveAlerts] = useState(true)
-  const [newsletter, setNewsletter] = useState(true)
-  const [productUpdates, setProductUpdates] = useState(false)
-  const [communityUpdates, setCommunityUpdates] = useState(false)
-  const [subscribing, setSubscribing] = useState(false)
-  const [subscribeError, setSubscribeError] = useState('')
-  const [subscribeSuccess, setSubscribeSuccess] = useState('')
   const [user, setUser] = useState<{ email?: string } | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const router = useRouter()
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const search = new URLSearchParams(window.location.search)
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+    const hasAuthCallbackPayload = Boolean(
+      search.get('code') ||
+      hash.get('access_token') ||
+      hash.get('refresh_token') ||
+      search.get('linked'),
+    )
+
+    if (hasAuthCallbackPayload) {
+      const query = window.location.search || ''
+      const hashFragment = window.location.hash || ''
+      window.location.replace(`/auth/callback${query}${hashFragment}`)
+      return
+    }
+
+    const error = search.get('error') || hash.get('error')
+    const errorDescription = search.get('error_description') || hash.get('error_description')
+
+    if (!error && !errorDescription) return
+
+    const params = new URLSearchParams()
+    if (error) params.set('error', error)
+    if (errorDescription) params.set('error_description', errorDescription)
+
+    window.location.replace(`/login?${params.toString()}`)
+  }, [])
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -71,9 +94,6 @@ function Home() {
         const supabase = getSupabaseBrowserClient()
         const { data } = await supabase.auth.getSession()
         setUser(data.session?.user || null)
-        if (data.session?.user?.email) {
-          setEmail(data.session.user.email)
-        }
       } catch {
         setUser(null)
       } finally {
@@ -91,62 +111,17 @@ function Home() {
     await router.navigate({ to: '/' })
   }
 
-  const handleSubscribe = async (event: React.FormEvent) => {
-    event.preventDefault()
-    setSubscribeError('')
-    setSubscribeSuccess('')
-
-    if (!email.trim()) {
-      setSubscribeError('Please enter an email address.')
-      return
-    }
-
-    if (!liveAlerts && !newsletter && !productUpdates && !communityUpdates) {
-      setSubscribeError('Choose at least one alert type.')
-      return
-    }
-
-    try {
-      setSubscribing(true)
-      const response = await fetch('/api/marketing-proof', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.trim(),
-          liveAlerts,
-          newsletter,
-          productUpdates,
-          communityUpdates,
-          source: 'homepage',
-        }),
-      })
-
-      const data = (await response.json()) as { error?: string }
-      if (!response.ok) {
-        setSubscribeError(data.error || 'Could not subscribe right now.')
-        return
-      }
-
-      setSubscribeSuccess('Subscribed. You will receive the alerts you selected.')
-      setEmail('')
-    } catch {
-      setSubscribeError('Could not subscribe right now.')
-    } finally {
-      setSubscribing(false)
-    }
-  }
-
   return (
     <>
       <section className="mt-8 rounded-3xl border border-orange-200/20 bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 p-6 sm:p-8 lg:p-10">
           <p className="inline-flex rounded-full border border-orange-300/30 bg-orange-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-orange-100">
-            Public Portal
+            Creator Growth Organization
           </p>
           <h1 className="mt-4 max-w-3xl text-3xl font-black leading-tight text-zinc-50 sm:text-4xl lg:text-5xl">
-            One place for creators to connect, watch live, discover members, and grow.
+            Built for creators who mean business.
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-300 sm:text-base">
-            Whether visitors are authenticated or not, they can access public sections, explore creators, and jump into the content that matters most.
+            W.A.G.E. Society is a creator-first organization built around live streaming, community, and execution. Explore the directory, watch members live, grab merch, and — when you\'re ready — join the org and plug into the full creator operating system.
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
@@ -183,6 +158,13 @@ function Home() {
               </>
             ) : null}
           </div>
+          <div className="mt-8">
+            <img
+              src="/hero-graphic.svg"
+              alt="W.A.G.E. Society hero graphic"
+              className="w-full rounded-2xl border border-zinc-800/30 shadow-2xl"
+            />
+          </div>
         </section>
 
         <section className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -207,51 +189,7 @@ function Home() {
           })}
         </section>
 
-        {!authLoading && user && (
-          <section className="mt-7 rounded-2xl border border-zinc-200/15 bg-zinc-900/70 p-5 sm:p-6">
-            <h2 className="text-lg font-bold text-zinc-50">Get Email Alerts</h2>
-            <p className="mt-1 text-sm text-zinc-400">Subscribe for live alerts, newsletters, and website updates.</p>
 
-            <form onSubmit={handleSubscribe} className="mt-4 space-y-3">
-              <input
-                type="email"
-                value={email}
-                readOnly
-                className="w-full rounded-lg border border-zinc-200/20 bg-zinc-800/50 px-3 py-2 text-sm text-zinc-300 outline-none"
-              />
-
-              <div className="grid gap-2 text-sm text-zinc-300 sm:grid-cols-2 lg:grid-cols-4">
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={liveAlerts} onChange={(event) => setLiveAlerts(event.target.checked)} />
-                  Live alerts
-                </label>
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={newsletter} onChange={(event) => setNewsletter(event.target.checked)} />
-                  Newsletter
-                </label>
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={productUpdates} onChange={(event) => setProductUpdates(event.target.checked)} />
-                  Product updates
-                </label>
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={communityUpdates} onChange={(event) => setCommunityUpdates(event.target.checked)} />
-                  Community updates
-                </label>
-              </div>
-
-              {subscribeError ? <p className="text-xs text-rose-300">{subscribeError}</p> : null}
-              {subscribeSuccess ? <p className="text-xs text-emerald-300">{subscribeSuccess}</p> : null}
-
-              <button
-                type="submit"
-                disabled={subscribing}
-                className="w-full rounded-lg bg-orange-300 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-orange-200 disabled:opacity-70 sm:w-auto"
-              >
-                {subscribing ? 'Subscribing...' : 'Subscribe'}
-              </button>
-            </form>
-          </section>
-        )}
     </>
   )
 }

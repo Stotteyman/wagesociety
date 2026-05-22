@@ -3,13 +3,13 @@ import { ArrowLeft, BadgeCheck } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { getClientAuthRedirectUrl } from '../lib/authRedirect'
 import {
+  ensureKickOAuthRedirect,
+  getKickOAuthOptions,
   getKickOAuthProviderCandidates,
-  normalizeKickOAuthUrl,
   getSupabaseBrowserClient,
+  normalizeKickOAuthUrl,
   isMalformedKickOAuthUrl,
   isKickOAuthProvider,
-  KICK_OAUTH_QUERY_PARAMS,
-  KICK_OAUTH_SCOPES,
 } from '../lib/supabaseBrowser'
 
 // Lazily import Capacitor so the web bundle doesn't break in non-Capacitor environments.
@@ -27,7 +27,18 @@ const NATIVE_OAUTH_REDIRECT = 'com.wagesociety.android://login-callback'
 type AuthView = 'login' | 'signup'
 
 function getPostAuthPath(metadata: Record<string, unknown> | undefined) {
-  return metadata?.onboarding_completed === true ? '/dashboard' : '/onboarding'
+  return '/dashboard'
+}
+
+function decodeOAuthErrorMessage(value: string) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+
+  try {
+    return decodeURIComponent(raw.replace(/\+/g, ' '))
+  } catch {
+    return raw
+  }
 }
 
 export function AuthPage({ view }: { view: AuthView }) {
@@ -44,14 +55,40 @@ export function AuthPage({ view }: { view: AuthView }) {
 
   const isSignup = view === 'signup'
 
+  const redirectAfterAuth = async () => {
+    const supabase = getSupabaseBrowserClient()
+    const { data } = await supabase.auth.getSession()
+    const userMeta = (data.session?.user?.user_metadata as Record<string, unknown> | undefined) || undefined
+    void navigate({ to: getPostAuthPath(userMeta) as '/dashboard' | '/onboarding' })
+  }
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || view !== 'login') return
+
+    const search = new URLSearchParams(window.location.search)
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+    const oauthErrorRaw =
+      search.get('error_description') ||
+      search.get('error') ||
+      hash.get('error_description') ||
+      hash.get('error')
+
+    if (!oauthErrorRaw) return
+
+    const normalized = decodeOAuthErrorMessage(oauthErrorRaw)
+    setError(normalized || 'OAuth login failed. Please try again.')
+
+    // Remove provider error tokens from URL after displaying the message.
+    window.history.replaceState({}, '', window.location.pathname)
+  }, [view])
+
   useEffect(() => {
     void (async () => {
       try {
         const supabase = getSupabaseBrowserClient()
         const { data } = await supabase.auth.getSession()
         if (data.session?.user) {
-          const userMeta = (data.session.user.user_metadata as Record<string, unknown> | undefined) || undefined
-          void navigate({ to: getPostAuthPath(userMeta) as '/dashboard' | '/onboarding' })
+          await redirectAfterAuth()
         }
       } catch {
         // Ignore and stay on auth screen.
@@ -65,14 +102,7 @@ export function AuthPage({ view }: { view: AuthView }) {
     let lastError: unknown = null
 
     for (const candidate of providerCandidates) {
-      const oauthOptions = {
-        ...(isKickOAuthProvider(candidate)
-          ? {
-              scopes: KICK_OAUTH_SCOPES,
-              queryParams: KICK_OAUTH_QUERY_PARAMS,
-            }
-          : {}),
-      }
+      const oauthOptions = isKickOAuthProvider(candidate) ? getKickOAuthOptions() : {}
 
       if (isNativeApp()) {
         const { data, error: authError } = await (supabase.auth as any).signInWithOAuth({
@@ -88,7 +118,9 @@ export function AuthPage({ view }: { view: AuthView }) {
           continue
         }
         if (data?.url) {
-          const finalUrl = isKickOAuthProvider(candidate) ? normalizeKickOAuthUrl(data.url) : data.url
+          const finalUrl = isKickOAuthProvider(candidate)
+            ? ensureKickOAuthRedirect(normalizeKickOAuthUrl(data.url), NATIVE_OAUTH_REDIRECT)
+            : data.url
           if (isKickOAuthProvider(candidate) && isMalformedKickOAuthUrl(finalUrl)) {
             lastError = new Error(`Received malformed Kick OAuth URL from ${candidate}.`)
             continue
@@ -120,7 +152,9 @@ export function AuthPage({ view }: { view: AuthView }) {
         continue
       }
 
-      const finalUrl = isKickOAuthProvider(candidate) ? normalizeKickOAuthUrl(data.url) : data.url
+      const finalUrl = isKickOAuthProvider(candidate)
+        ? ensureKickOAuthRedirect(normalizeKickOAuthUrl(data.url), getClientAuthRedirectUrl('/auth/callback'))
+        : data.url
 
       if (isKickOAuthProvider(candidate) && isMalformedKickOAuthUrl(finalUrl)) {
         lastError = new Error(`Received malformed Kick OAuth URL from ${candidate}.`)
@@ -153,6 +187,38 @@ export function AuthPage({ view }: { view: AuthView }) {
       await startOAuthSignIn(provider)
     } catch (err) {
       setError(err instanceof Error ? err.message : `Could not sign in with ${provider}.`)
+      setBusyAction(null)
+    }
+  }
+
+  const handleLogin = async () => {
+    try {
+      setError('')
+
+      if (!email.trim()) {
+        setError('Please enter your email address.')
+        return
+      }
+
+      if (!password) {
+        setError('Please enter your password.')
+        return
+      }
+
+      setBusyAction('login')
+
+      const supabase = getSupabaseBrowserClient()
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      })
+
+      if (authError) throw authError
+
+      await redirectAfterAuth()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not sign in. Please try again.')
+    } finally {
       setBusyAction(null)
     }
   }
@@ -330,30 +396,28 @@ export function AuthPage({ view }: { view: AuthView }) {
                   ) : null}
                 </label>
               ) : null}
-              {isSignup ? (
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-zinc-200">Email Address</span>
-                  <input
-                    type="text"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-zinc-100 outline-none transition focus:border-orange-200/70"
-                    placeholder="you@email.com"
-                  />
-                </label>
-              ) : null}
-              {isSignup ? (
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-zinc-200">Password</span>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-zinc-100 outline-none transition focus:border-orange-200/70"
-                    placeholder="********"
-                  />
-                </label>
-              ) : null}
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-zinc-200">Email Address</span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-zinc-100 outline-none transition focus:border-orange-200/70"
+                  placeholder="you@email.com"
+                  autoComplete="email"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-zinc-200">Password</span>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="w-full rounded-lg border border-zinc-200/20 bg-zinc-950/60 px-3 py-2 text-zinc-100 outline-none transition focus:border-orange-200/70"
+                  placeholder="********"
+                  autoComplete={isSignup ? 'new-password' : 'current-password'}
+                />
+              </label>
             </div>
 
             {error ? (
@@ -369,6 +433,16 @@ export function AuthPage({ view }: { view: AuthView }) {
             ) : null}
 
             <div className="mt-6 grid gap-3">
+              {!isSignup ? (
+                <button
+                  type="button"
+                  onClick={handleLogin}
+                  disabled={busyAction !== null}
+                  className="rounded-lg bg-orange-300 px-4 py-2.5 font-semibold text-zinc-950 transition hover:bg-orange-200 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {busyAction === 'login' ? 'Signing in...' : 'Sign In'}
+                </button>
+              ) : null}
               {isSignup ? (
                 <button
                   type="button"

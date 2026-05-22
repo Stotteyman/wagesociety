@@ -9,16 +9,17 @@ import {
 } from 'lucide-react'
 import {
   authedFetch,
+  ensureKickOAuthRedirect,
+  getKickOAuthOptions,
   getKickOAuthProviderCandidates,
   getIdentityLinkUrl,
   getSupabaseBrowserClient,
   normalizeKickOAuthUrl,
   isMalformedKickOAuthUrl,
   isKickOAuthProvider,
-  KICK_OAUTH_QUERY_PARAMS,
-  KICK_OAUTH_SCOPES,
   normalizeOAuthProviderKey,
 } from '../lib/supabaseBrowser'
+import { getClientAuthRedirectUrl } from '../lib/authRedirect'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -368,26 +369,26 @@ export function ProfileSettings({ member, linkedProvider }: ProfileSettingsProps
 
       let lastError: unknown = null
       for (const candidate of providerCandidates) {
-        const redirectTo = `${window.location.origin}/settings?linked=${encodeURIComponent(normalizedProvider)}`
+        const redirectTo = getClientAuthRedirectUrl(
+          `/auth/callback?linked=${encodeURIComponent(normalizedProvider)}`,
+        )
 
         try {
           const oauthUrl = await getIdentityLinkUrl(candidate, redirectTo, {
-            ...(isKickOAuthProvider(candidate)
-              ? {
-                  scopes: KICK_OAUTH_SCOPES,
-                  queryParams: KICK_OAUTH_QUERY_PARAMS,
-                }
-              : {}),
+            ...(isKickOAuthProvider(candidate) ? getKickOAuthOptions() : {}),
           })
 
           const finalUrl = isKickOAuthProvider(candidate) ? normalizeKickOAuthUrl(oauthUrl) : oauthUrl
+          const finalRedirectUrl = isKickOAuthProvider(candidate)
+            ? ensureKickOAuthRedirect(finalUrl, redirectTo)
+            : finalUrl
 
-          if (isKickOAuthProvider(candidate) && isMalformedKickOAuthUrl(finalUrl)) {
+          if (isKickOAuthProvider(candidate) && isMalformedKickOAuthUrl(finalRedirectUrl)) {
             lastError = new Error(`Received malformed Kick OAuth URL from ${candidate}.`)
             continue
           }
 
-          window.location.href = finalUrl
+          window.location.href = finalRedirectUrl
           return
         } catch (candidateError) {
           lastError = candidateError
