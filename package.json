@@ -9,6 +9,7 @@
     "dev:local": "vite dev --mode devlocal --port 3000 --strictPort",
     "prebuild": "node ./scripts/check-env.mjs --require-admin",
     "build": "vite build",
+    "generate:pdf": "node scripts/md-to-pdf.js",
     "check:env": "node ./scripts/check-env.mjs",
     "test:security": "node --test ./tests/privileged-endpoints.test.mjs ./tests/env-health.test.mjs ./tests/kick-oauth-scope-guard.test.mjs",
     "apk:update-local": "node ./scripts/update-local-apk.mjs"
@@ -43,6 +44,8 @@
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.4",
     "lucide-react": "^0.576.0",
+    "marked": "^18.0.4",
+    "puppeteer": "^25.0.4",
     "rimraf": "^6.0.1",
     "tailwindcss": "^4.0.6",
     "typescript": "^5.7.2",
