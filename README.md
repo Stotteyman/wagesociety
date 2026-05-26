@@ -1,62 +1,48 @@
-# wagesociety2.0
+# WAGE Society — Creator OS
 
-Minimal instructions to build and deploy this Vite + React + TanStack project.
+Express.js + EJS + PostgreSQL (Neon) + Supabase Auth. A platform where creators
+manage profiles, go live, sell memberships and merch, blog, and build audiences
+without platform middlemen taking a cut.
 
-Prereqs
-- Node.js (>=18 recommended) and npm installed
-- GitHub account and Git installed locally
+## Stack
 
-Local
-1. Install deps: `npm install`
-2. Validate env vars: `npm run check:env`
-3. Dev server: `npm run dev` (runs a strict startup env check first)
-4. Local online-like dev: `npm run dev:local` (skips Netlify extension lookup and keeps full Supabase-backed auth/app flows)
-4. Build: `npm run build` (runs the same strict env check first and outputs to `dist/` and `.netlify/v1/functions/server.mjs`)
-5. Security regression tests: `npm run test:security`
+- **Backend**: Express.js (server.js), EJS templates, express-session + connect-pg-simple
+- **Auth**: Supabase Auth (magic link, Google OAuth, Discord OAuth) via @supabase/supabase-js
+- **Database**: Supabase Postgres via `pg` Pool (DATABASE_URL from Neon)
+- **Payments**: Stripe (membership checkout + webhook)
+- **Discord**: Bot-based guild role sync (tier roles)
+- **Email**: Zoho SMTP
 
-Example `.env.local` for real account login in local mode
+## Dev Setup
+
+```bash
+npm install
+# Required env vars:
+DATABASE_URL, SESSION_SECRET, SUPABASE_URL, SUPABASE_ANON_KEY, APP_URL
+node server.js
 ```
-SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
-SUPABASE_SERVICE_ROLE_KEY=sb_secret_...
-```
 
-Supabase Auth URL settings
-- Site URL:
-	- Local-only development: `http://localhost:3000`
-	- Production deployment: `https://wagesociety.com`
-- Redirect URLs (allow list):
-	- `https://playful-torte-0c9af1.netlify.app`
-	- `com.wagesociety.android://login-callback`
-	- `http://localhost:3000/auth/callback`
-	- `https://wagesociety.com/auth/callback`
-- Important:
-	- Use `https://wagesociety.com/auth/callback` for production, not `http://wagesociety.com/auth/callback`.
-	- If you sometimes open local via `127.0.0.1`, also add `http://127.0.0.1:3000/auth/callback`.
+## Key Files
 
-Optional local OAuth override
-- Set `VITE_AUTH_REDIRECT_ORIGIN=http://localhost:3000` to force OAuth callbacks to localhost.
+| Path | Purpose |
+|------|---------|
+| `server.js` | Express entry — middleware, route mounts, listen |
+| `migrate.js` | Migration runner — runs on every `npm run build` |
+| `routes/auth.js` | Magic link (send + PKCE verify) + logout |
+| `routes/pages.js` | All server-rendered pages |
+| `routes/api/stripe.js` | Stripe checkout + webhook |
+| `lib/auth.js` | User provisioning on first OAuth login |
+| `db/index.js` | `pg` Pool singleton — only file allowed to `new Pool()` |
+| `db/*.js` | All DB queries as named functions |
+| `migrations/` | All DDL as timestamped `.sql` files |
+| `views/` | EJS templates (layout, partials, pages) |
 
-Required Env Vars
-- URL (required):
-	- `SUPABASE_URL` or `VITE_SUPABASE_URL` (either works)
-- Browser key (required for client auth/session):
-	- `VITE_SUPABASE_PUBLISHABLE_KEY` or `VITE_SUPABASE_ANON_KEY`
-	- server-side fallbacks also support: `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- Admin key (required for full privileged admin DB operations):
-	- `SUPABASE_SERVICE_ROLE_KEY`
+## Auth
 
-Notes
-- Do not use anon/publishable keys for `SUPABASE_SERVICE_ROLE_KEY`.
-- `npm run dev` and `npm run build` fail fast if `SUPABASE_SERVICE_ROLE_KEY` is missing.
-- If `SUPABASE_SERVICE_ROLE_KEY` is missing, public/auth flows still work, but privileged admin operations are limited in non-strict checks.
+- **Magic link**: `POST /auth/magic-link` → Supabase OTP → `GET /auth/verify?code=` → Express session
+- **Google/Discord**: Client-side Supabase SDK `signInWithOAuth` → `GET /auth/verify`
+- Superadmin: `lib/auth.js` `SUPERADMIN_EMAILS` set promotes on login
 
-CI / GitHub
-- A sample GitHub Actions workflow is included to run `npm ci` and `npm run build` on pushes and PRs.
+## Deployment
 
-Netlify
-1. Create a new site from Git -> select the repo
-2. Build command: `npm run build`
-3. Publish directory: `dist/client`
-4. Functions directory: Leave default; this repo writes Netlify serverless entry to `.netlify/v1/functions` during build.
+Render auto-runs `npm run build` (→ `npm run migrate`) on deploy.

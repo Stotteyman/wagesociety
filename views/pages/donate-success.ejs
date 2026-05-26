@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thank You! — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .success-page { padding: 4rem 2rem; text-align: center; max-width: 560px; margin: 0 auto; }
+    .success-icon { font-size: 4rem; margin-bottom: 1.5rem; }
+    .success-title { font-size: 2.5rem; font-weight: 800; margin-bottom: 0.75rem; letter-spacing: -0.03em; }
+    .success-message { color: var(--muted); font-size: 1.05rem; line-height: 1.7; margin-bottom: 2rem; max-width: 44ch; margin-left: auto; margin-right: auto; }
+    .success-card {
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-card);
+      padding: 1.75rem 2rem;
+      margin-bottom: 2rem;
+      text-align: left;
+    }
+    .success-row { display: flex; justify-content: space-between; padding: 0.6rem 0; border-bottom: 1px solid var(--border); }
+    .success-row:last-child { border-bottom: none; }
+    .success-row-label { color: var(--muted); font-size: 0.875rem; }
+    .success-row-value { font-weight: 600; }
+    .success-row-value.accent { color: var(--accent); }
+    .success-cta { display: flex; flex-direction: column; gap: 0.75rem; align-items: center; }
+    .btn-home { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--accent); color: #fff; padding: 0.75rem 1.75rem; border-radius: var(--radius-btn); font-weight: 700; text-decoration: none; font-size: 0.9rem; transition: all 0.2s; }
+    .btn-home:hover { background: var(--accent-hover); box-shadow: 0 4px 16px rgba(249,115,22,0.25); }
+    .btn-donate-again { color: var(--muted); font-size: 0.85rem; text-decoration: none; }
+    .btn-donate-again:hover { color: var(--fg); }
+    .loading-state { color: var(--muted); padding: 3rem; }
+  </style>
+</head>
+<body>
+  <div class="success-page">
+    <% if (donorName) { %>
+      <div class="success-icon">🎉</div>
+      <h1 class="success-title">Thank you, <%= donorName %>!</h1>
+      <p class="success-message">Your donation means the world to the W.A.G.E. community. Every dollar funds tools and infrastructure for creators who refuse to share their revenue with platform middlemen.</p>
+
+      <div class="success-card">
+        <div class="success-row">
+          <span class="success-row-label">Donor</span>
+          <span class="success-row-value"><%= donorName %></span>
+        </div>
+        <div class="success-row">
+          <span class="success-row-label">Amount</span>
+          <span class="success-row-value accent">$<%= (parseInt(donorAmount || 0) / 100).toFixed(2) %></span>
+        </div>
+        <% if (donorMessage) { %>
+        <div class="success-row">
+          <span class="success-row-label">Message</span>
+          <span class="success-row-value" style="font-style:italic;color:var(--muted);"><%= donorMessage %></span>
+        </div>
+        <% } %>
+        <div class="success-row">
+          <span class="success-row-label">Status</span>
+          <span class="success-row-value accent">Confirmed ✅</span>
+        </div>
+      </div>
+
+      <div class="success-cta">
+        <a href="/" class="btn-home">← Back to W.A.G.E. Society</a>
+        <a href="/donate" class="btn-donate-again">Donate again →</a>
+      </div>
+    <% } else { %>
+      <div class="success-icon">🤔</div>
+      <h1 class="success-title">Donation Received</h1>
+      <p class="success-message">We received your donation. If you entered a name on the form, it will appear here. Thank you for supporting W.A.G.E. Society!</p>
+      <a href="/" class="btn-home">← Back to W.A.G.E. Society</a>
+    <% } %>
+  </div>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Streams — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+  <%- include('../partials/nav') %>
+
+  <section class="live-page">
+    <div class="live-inner">
+      <div class="page-header">
+        <span class="section-label">Livestream</span>
+        <h1 class="section-title">Live Streams</h1>
+        <p class="section-sub">View all organization livestreams in one list with live/offline status and quick open links.</p>
+      </div>
+
+      <% if (streams.length === 0) { %>
+        <div class="empty-state">
+          <p>No linked livestream profiles found yet.</p>
+        </div>
+      <% } else { %>
+        <div class="streams-list">
+          <% streams.forEach(function(stream) { %>
+          <div class="stream-card">
+            <div class="stream-status <%= stream.status %>">
+              <span class="status-dot"></span>
+              <%= stream.status === 'live' ? 'Live' : 'Offline' %>
+            </div>
+            <div class="stream-info">
+              <h3 class="stream-title"><%= stream.title || (stream.platform.toUpperCase() + ' · ' + stream.stream_key) %></h3>
+              <a href="<%= stream.stream_url %>" target="_blank" rel="noopener" class="stream-url"><%= stream.stream_url %></a>
+              <% if (stream.status === 'live' && stream.viewer_count) { %>
+                <p class="stream-viewers">Viewers: <%= new Intl.NumberFormat().format(stream.viewer_count) %></p>
+              <% } %>
+            </div>
+            <a href="<%= stream.stream_url %>" target="_blank" rel="noopener" class="stream-open-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Open
+            </a>
+          </div>
+          <% }) %>
+        </div>
+      <% } %>
+
+      <% if (canUseAutoclipper) { %>
+      <div class="autoclipper-section">
+        <h2 class="autoclipper-title">Autoclipper</h2>
+        <p class="autoclipper-desc">Chat users run !clip and the bot auto-creates a 5-minute clip job, auto-captions it, and auto-queues social posts.</p>
+        <div class="autoclipper-cta">
+          <button id="triggerClipBtn" class="btn-trigger" onclick="triggerClip()">Trigger !clip (Test)</button>
+        </div>
+        <div id="clipError" class="error-msg" style="display:none"></div>
+        <div id="clipQueue" class="clip-queue"></div>
+      </div>
+      <% } %>
+    </div>
+  </section>
+
+  <%- include('../partials/footer') %>
+  <script>
+    var canUseAutoclipper = <%= canUseAutoclipper %>;
+    function triggerClip() {
+      var btn = document.getElementById('triggerClipBtn');
+      var err = document.getElementById('clipError');
+      btn.disabled = true; btn.textContent = 'Triggering...';
+      err.style.display = 'none';
+      fetch('/api/live/clips', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          commandText: '!clip',
+          autoPost: true,
+          autoCaption: true,
+          platforms: ['x', 'kick', 'instagram'],
+          clipWindowMinutes: 5
+        })
+      }).then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) { err.textContent = data.error; err.style.display = ''; }
+          else loadClipJobs();
+        })
+        .catch(function() { err.textContent = 'Failed to trigger autoclip'; err.style.display = ''; })
+        .finally(function() { btn.disabled = false; btn.textContent = 'Trigger !clip (Test)'; });
+    }
+    function loadClipJobs() {
+      fetch('/api/live/clips').then(function(r) { return r.json(); })
+        .then(function(data) {
+          var q = document.getElementById('clipQueue');
+          if (!data.jobs || !data.jobs.length) { q.innerHTML = '<p class="empty-state">No clip jobs yet.</p>'; return; }
+          q.innerHTML = '<h3 class="clip-queue-title">Clip Queue</h3>';
+          data.jobs.forEach(function(job) {
+            q.innerHTML += '<div class="clip-job"><p class="clip-job-info">'
+              + job.command + ' • ' + job.clip_window_minutes + 'm • ' + job.source
+              + '<br>By ' + job.requested_by + ' · Platforms: ' + (job.platforms || []).join(', ')
+              + '</p><span class="clip-status">'
+              + job.status + '</span></div>';
+          });
+        }).catch(function() {});
+    }
+    if (canUseAutoclipper) loadClipJobs();
+  </script>
+</body>
+</html>

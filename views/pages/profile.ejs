@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= profile.display_name || profile.username %> — W.A.G.E. Society</title>
+  <meta name="description" content="<%= profile.bio ? profile.bio.substring(0, 160) : 'Creator profile on W.A.G.E. Society' %>">
+  <meta property="og:title" content="<%= profile.display_name || profile.username %> — W.A.G.E. Society">
+  <meta property="og:description" content="<%= profile.bio ? profile.bio.substring(0, 200) : 'Creator on W.A.G.E. Society' %>">
+  <meta property="og:type" content="profile">
+  <meta property="og:image" content="<%= profile.avatar_url || 'https://ai.wagesociety.com/favicon.png' %>">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="<%= profile.display_name || profile.username %> — W.A.G.E. Society">
+  <meta name="twitter:description" content="<%= profile.bio ? profile.bio.substring(0, 200) : 'Creator on W.A.G.E. Society' %>">
+  <meta name="twitter:image" content="<%= profile.avatar_url || '' %>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    .profile-page { max-width: 680px; margin: 0 auto; padding: 3rem 1.5rem; }
+    .profile-header { display: flex; align-items: flex-start; gap: 2rem; margin-bottom: 2.5rem; }
+    .profile-avatar {
+      width: 96px; height: 96px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+      background: var(--surface); border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-avatar-placeholder { font-size: 2.5rem; font-weight: 700; color: var(--accent); }
+    .profile-info { flex: 1; }
+    .profile-top-line { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem; flex-wrap: wrap; }
+    .profile-username { font-family: 'DM Sans', sans-serif; font-size: 0.85rem; color: var(--muted); }
+    .tier-badge { display: inline-block; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.2rem 0.6rem; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
+    .tier-badge.creator { background: rgba(251,146,60,0.1); border-color: rgba(251,146,60,0.3); color: #c2410c; }
+    .tier-badge.pro { background: rgba(234,179,8,0.1); border-color: rgba(234,179,8,0.4); color: #b45309; }
+    .profile-name { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 900; color: var(--fg); margin-bottom: 0.5rem; line-height: 1.1; }
+    .profile-bio { font-family: 'DM Sans', sans-serif; font-size: 0.95rem; color: var(--muted); line-height: 1.6; margin-bottom: 1.5rem; }
+    .profile-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .profile-actions a, .profile-actions button {
+      font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 500;
+      padding: 0.5rem 1.25rem; border-radius: 999px; text-decoration: none;
+      background: var(--surface); color: var(--fg); border: 1px solid var(--border);
+      transition: all 0.2s; cursor: pointer; display: inline-block;
+    }
+    .profile-actions a:hover, .profile-actions button:hover { background: var(--border); }
+    .profile-actions a.primary, .profile-actions button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .profile-actions a.primary:hover, .profile-actions button.primary:hover { opacity: 0.85; }
+    .profile-section { margin-bottom: 2rem; }
+    .profile-section-title { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; color: var(--fg); margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+    .profile-accounts { display: flex; flex-direction: column; gap: 0.75rem; }
+    .profile-account { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; background: var(--surface); border-radius: 0.75rem; border: 1px solid var(--border); }
+    .account-platform { font-family: 'DM Sans', sans-serif; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); min-width: 48px; }
+    .account-info { flex: 1; }
+    .account-handle { font-family: 'DM Sans', sans-serif; font-size: 0.85rem; color: var(--fg); font-weight: 500; }
+    .account-url { font-size: 0.75rem; color: var(--muted); }
+    .account-url a { color: var(--accent); text-decoration: none; }
+    .account-url a:hover { text-decoration: underline; }
+    .profile-no-accounts { font-family: 'DM Sans', sans-serif; font-size: 0.85rem; color: var(--muted); font-style: italic; }
+    .profile-skills { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .skill-tag { font-size: 0.75rem; padding: 0.3rem 0.75rem; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); font-family: 'DM Sans', sans-serif; }
+    @media (max-width: 600px) {
+      .profile-header { flex-direction: column; }
+      .profile-name { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <%- include('../partials/nav') %>
+
+  <main class="profile-page">
+    <div class="profile-header">
+      <div class="profile-avatar">
+        <% if (profile.avatar_url) { %>
+          <img src="<%= profile.avatar_url %>" alt="<%= profile.display_name || profile.username %>">
+        <% } else { %>
+          <span class="profile-avatar-placeholder"><%= (profile.display_name || profile.username || '?').charAt(0).toUpperCase() %></span>
+        <% } %>
+      </div>
+      <div class="profile-info">
+        <div class="profile-top-line">
+          <span class="profile-username">@<%= profile.username %></span>
+          <% const tier = profile.membership_tier || 'free'; %>
+          <% if (tier === 'pro') { %>
+            <span class="tier-badge pro">★ Pro Member</span>
+          <% } else if (tier === 'creator') { %>
+            <span class="tier-badge creator">Creator</span>
+          <% } %>
+        </div>
+        <h1 class="profile-name"><%= profile.display_name || profile.username %></h1>
+        <% if (profile.bio) { %>
+          <p class="profile-bio"><%= profile.bio %></p>
+        <% } %>
+
+        <% if (profile.skills) { %>
+        <div class="profile-skills">
+          <% var skillsList = typeof profile.skills === 'string' ? profile.skills.split(',') : (Array.isArray(profile.skills) ? profile.skills : []); %>
+          <% skillsList.forEach(function(skill) { %>
+            <span class="skill-tag"><%= typeof skill === 'string' ? skill.trim() : '' %></span>
+          <% }); %>
+        </div>
+        <% } %>
+
+        <div class="profile-actions">
+          <a href="/creators" class="">← Directory</a>
+          <% if (userEmail && profile.email === userEmail) { %>
+            <a href="/creators/edit" class="primary">Edit Profile</a>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <div class="profile-section">
+      <h2 class="profile-section-title">Connected Accounts</h2>
+      <% const accounts = profile.connectedAccounts || []; %>
+      <% if (accounts.length > 0) { %>
+        <div class="profile-accounts">
+          <% accounts.forEach(function(account) { %>
+            <div class="profile-account">
+              <span class="account-platform"><%= account.platform %></span>
+              <div class="account-info">
+                <% if (account.display_name) { %>
+                  <p class="account-handle"><%= account.display_name %></p>
+                <% } %>
+                <% if (account.stream_url) { %>
+                  <p class="account-url"><a href="<%= account.stream_url %>" target="_blank" rel="noopener">Open <%= account.platform %> →</a></p>
+                <% } %>
+              </div>
+              <% if (account.status === 'live') { %>
+                <span style="font-size:0.7rem;background:#16a34a;color:#fff;padding:0.2rem 0.6rem;border-radius:999px;font-weight:600;">LIVE</span>
+              <% } %>
+            </div>
+          <% }); %>
+        </div>
+      <% } else { %>
+        <p class="profile-no-accounts">No connected accounts yet.</p>
+      <% } %>
+    </div>
+  </main>
+
+  <%- include('../partials/footer') %>
+</body>
+</html>

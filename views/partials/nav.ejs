@@ -1,0 +1,24 @@
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">W.A.G.E<span>.</span></a>
+    <div class="nav-links">
+      <a href="/directory">Directory</a>
+      <a href="/live">Live</a>
+      <a href="/merch">Merch</a>
+      <a href="/news">Blog</a>
+      <a href="/faq">FAQ</a>
+      <a href="/donate" style="color:var(--accent);font-weight:600;">Donate</a>
+    </div>
+    <div class="nav-auth">
+      <% if (typeof session !== 'undefined' && session.userEmail) { %>
+        <a href="/dashboard" class="nav-btn nav-btn-outline">Dashboard</a>
+        <form action="/logout" method="POST" style="display:inline">
+          <button type="submit" class="nav-btn nav-btn-outline">Logout</button>
+        </form>
+      <% } else { %>
+        <a href="/join" class="nav-btn nav-btn-outline">Join</a>
+        <a href="/login" class="nav-btn nav-btn-primary">Login</a>
+      <% } %>
+    </div>
+  </div>
+</nav>

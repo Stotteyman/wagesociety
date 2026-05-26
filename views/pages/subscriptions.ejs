@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plans — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+<%- include('../partials/nav') %>
+
+<div style="padding:5rem 3rem;">
+  <div style="max-width:900px;margin:0 auto;text-align:center;">
+    <div class="section-label">Membership</div>
+    <h1 style="font-family:'Playfair Display',serif;font-size:clamp(2.5rem,5vw,4rem);font-weight:900;letter-spacing:-0.02em;margin-bottom:1rem;">Choose Your Plan</h1>
+    <p style="font-size:1.1rem;color:var(--muted);max-width:50ch;margin:0 auto 3rem;">Every new account starts free. Upgrade to unlock creator tools, collaboration access, and revenue features.</p>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:2rem;text-align:left;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:2.5rem;">
+        <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.75rem;">Free</div>
+        <div style="font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;margin-bottom:0.5rem;">$0</div>
+        <div style="color:var(--muted);margin-bottom:2rem;font-size:0.9rem;">Forever free</div>
+        <ul style="list-style:none;padding:0;margin-bottom:2rem;">
+          <li style="padding:0.5rem 0;border-bottom:1px solid var(--border);color:var(--fg);">✅ Creator directory profile</li>
+          <li style="padding:0.5rem 0;border-bottom:1px solid var(--border);color:var(--fg);">✅ Livestream tools</li>
+          <li style="padding:0.5rem 0;border-bottom:1px solid var(--border);color:var(--fg);">✅ Community access</li>
+          <li style="padding:0.5rem 0;color:var(--muted);">❌ Creator tools access</li>
+          <li style="padding:0.5rem 0;color:var(--muted);">❌ Collaboration hub</li>
+        </ul>
+        <a href="/join" class="btn-primary" style="display:block;text-align:center;">Get Started</a>
+      </div>
+
+      <div style="background:var(--fg);color:var(--bg);border:1px solid var(--fg);border-radius:14px;padding:2.5rem;position:relative;">
+        <div style="position:absolute;top:-1px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-size:0.7rem;font-weight:700;padding:0.25rem 1rem;border-radius:0 0 6px 6px;letter-spacing:0.1em;">POPULAR</div>
+        <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent-warm);margin-bottom:0.75rem;margin-top:1rem;">Creator Pro</div>
+        <div style="font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;margin-bottom:0.5rem;">$29<span style="font-size:1rem;font-weight:400;">/mo</span></div>
+        <div style="color:rgba(250,246,241,0.6);margin-bottom:2rem;font-size:0.9rem;">Everything you need</div>
+        <ul style="list-style:none;padding:0;margin-bottom:2rem;">
+          <li style="padding:0.5rem 0;border-bottom:1px solid rgba(255,255,255,0.1);color:var(--bg);">✅ Everything in Free</li>
+          <li style="padding:0.5rem 0;border-bottom:1px solid rgba(255,255,255,0.1);color:var(--bg);">✅ Creator workspace tools</li>
+          <li style="padding:0.5rem 0;border-bottom:1px solid rgba(255,255,255,0.1);color:var(--bg);">✅ Collaboration hub</li>
+          <li style="padding:0.5rem 0;border-bottom:1px solid rgba(255,255,255,0.1);color:var(--bg);">✅ Revenue tracker</li>
+          <li style="padding:0.5rem 0;color:rgba(250,246,241,0.6);">✅ Knowledge vault</li>
+        </ul>
+        <button class="btn-primary" style="width:100%;background:var(--accent);" onclick="alert('Payments not yet connected. Contact support@wagesociety.com to upgrade.')">Upgrade Now</button>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:2.5rem;">
+        <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.75rem;">Business</div>
+        <div style="font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;margin-bottom:0.5rem;">$99<span style="font-size:1rem;font-weight:400;">/mo</span></div>
+        <div style="color:var(--muted);margin-bottom:2rem;font-size:0.9rem;">For serious operators</div>
+        <ul style="list-style:none;padding:0;margin-bottom:2rem;">
+          <li style="padding:0.5rem 0;border-bottom:1px solid var(--border);color:var(--fg);">✅ Everything in Pro</li>
+          <li style="padding:0.5rem 0;border-bottom:1px solid var(--border);color:var(--fg);">✅ Multiple team members</li>
+          <li style="padding:0.5rem 0;border-bottom:1px solid var(--border);color:var(--fg);">✅ Advanced analytics</li>
+          <li style="padding:0.5rem 0;border-bottom:1px solid var(--border);color:var(--fg);">✅ Priority support</li>
+          <li style="padding:0.5rem 0;color:var(--muted);">✅ Merch studio</li>
+        </ul>
+        <button class="btn-primary" style="width:100%;" onclick="alert('Payments not yet connected. Contact support@wagesociety.com to upgrade.')">Contact Sales</button>
+      </div>
+    </div>
+
+    <p style="margin-top:3rem;font-size:0.85rem;color:var(--muted);">Questions? Email <a href="mailto:support@wagesociety.com" style="color:var(--accent);">support@wagesociety.com</a></p>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
+</body>
+</html>

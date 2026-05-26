@@ -1,0 +1,22 @@
+{
+	"siteId": "ce36dea1-e565-45c2-a93b-8cbdc11da67d",
+	"geolocation": {
+		"data": {
+			"city": "Atlanta",
+			"country": {
+				"code": "US",
+				"name": "United States"
+			},
+			"subdivision": {
+				"code": "GA",
+				"name": "Georgia"
+			},
+			"timezone": "America/New_York",
+			"latitude": 33.7485,
+			"longitude": -84.3871,
+			"postalCode": "30301"
+		},
+		"timestamp": 1778368897080
+	},
+	"dbConnectionString": "postgres://localhost:28154/postgres"
+}

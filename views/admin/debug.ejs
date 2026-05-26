@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug Panel — WAGE Society</title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <style>
+    /* ── Debug Panel — Dark Zinc Aesthetic ───────────────────────────────── */
+    .debug-wrapper { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+    .debug-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.5rem 0; border-bottom: 1px solid var(--border); margin-bottom: 2rem;
+    }
+    .debug-header h1 { font-size: 1.4rem; font-weight: 700; color: var(--accent); }
+    .debug-badge {
+      background: rgba(249,115,22,0.15); border: 1px solid rgba(249,115,22,0.3);
+      color: var(--accent); font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 100px;
+      letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600;
+    }
+
+    .section-card {
+      background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius-card);
+      margin-bottom: 1.25rem; overflow: hidden;
+    }
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.25rem; cursor: pointer; user-select: none;
+      border-bottom: 1px solid transparent;
+    }
+    .section-header:hover { background: rgba(255,255,255,0.03); }
+    .section-card.open .section-header { border-bottom-color: var(--border); }
+    .section-title {
+      font-size: 0.9rem; font-weight: 600; color: var(--fg); display: flex; align-items: center; gap: 0.5rem;
+    }
+    .section-title .icon { font-size: 1rem; }
+    .section-meta { font-size: 0.75rem; color: var(--muted-2); }
+    .chevron { transition: transform 0.2s; font-size: 0.8rem; color: var(--muted-2); }
+    .section-card.open .chevron { transform: rotate(180deg); }
+
+    .section-body { padding: 1.25rem; display: none; }
+    .section-card.open .section-body { display: block; }
+
+    /* Tables */
+    .debug-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .debug-table th {
+      text-align: left; padding: 0.5rem 0.75rem; background: var(--surface);
+      color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border-strong);
+    }
+    .debug-table td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); color: var(--fg); }
+    .debug-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .debug-table .mono { font-family: 'Courier New', monospace; font-size: 0.75rem; }
+
+    /* Status badges */
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 100px; font-size: 0.7rem; font-weight: 600; }
+    .badge-pass  { background: rgba(34,197,94,0.15);  color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+    .badge-fail  { background: rgba(239,68,68,0.15);   color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+    .badge-warn  { background: rgba(234,179,8,0.15);   color: #eab308; border: 1px solid rgba(234,179,8,0.3); }
+    .badge-ok    { background: rgba(59,130,246,0.15);  color: #3b82f6; border: 1px solid rgba(59,130,246,0.3); }
+    .badge-muted { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border); }
+
+    /* Buttons */
+    .btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.75rem 0; }
+    .btn {
+      padding: 0.45rem 0.9rem; border-radius: var(--radius-sm); font-size: 0.78rem;
+      font-weight: 500; cursor: pointer; border: none; font-family: inherit;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-danger  { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+    .btn-ghost   { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Forms */
+    .form-group { margin-bottom: 0.75rem; }
+    .form-label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--muted); margin-bottom: 0.3rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; background: var(--surface); border: 1px solid var(--border-strong);
+      color: var(--fg); border-radius: var(--radius-sm); padding: 0.5rem 0.75rem;
+      font-size: 0.85rem; font-family: 'Courier New', monospace;
+    }
+    .form-textarea { height: 120px; resize: vertical; }
+    .form-select { cursor: pointer; }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none; border-color: var(--accent);
+    }
+
+    /* Loading / empty states */
+    .state-msg { padding: 1rem; text-align: center; color: var(--muted); font-size: 0.8rem; }
+    .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 0.4rem; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .check-row { display: flex; gap: 0.75rem; align-items: flex-start; padding: 0.4rem 0; border-bottom: 1px solid var(--border); font-size: 0.8rem; }
+    .check-row:last-child { border-bottom: none; }
+    .check-name { min-width: 200px; font-family: 'Courier New', monospace; font-size: 0.75rem; color: var(--muted); padding-top: 0.15rem; }
+    .check-latency { font-size: 0.7rem; color: var(--muted-2); min-width: 60px; text-align: right; padding-top: 0.2rem; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+    @media (max-width: 700px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+    .kv-row { display: flex; gap: 0.75rem; padding: 0.3rem 0; font-size: 0.8rem; border-bottom: 1px solid var(--border); }
+    .kv-key { min-width: 280px; color: var(--accent); font-family: 'Courier New', monospace; font-size: 0.75rem; }
+    .kv-val { color: var(--fg); font-family: 'Courier New', monospace; font-size: 0.75rem; word-break: break-all; }
+
+    .sub-section { margin: 1rem 0; }
+    .sub-section-title { font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.5rem; }
+
+    .pagination { display: flex; gap: 0.3rem; align-items: center; margin-top: 0.75rem; }
+    .page-btn { padding: 0.3rem 0.6rem; background: var(--surface); border: 1px solid var(--border); color: var(--muted); border-radius: var(--radius-sm); font-size: 0.75rem; cursor: pointer; }
+    .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .response-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem; font-family: 'Courier New', monospace; font-size: 0.75rem; color: var(--muted); white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow-y: auto; }
+
+    .hint { font-size: 0.75rem; color: var(--muted-2); margin-top: 0.25rem; }
+
+    .log-entry { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.75rem; }
+    .log-entry:last-child { border-bottom: none; }
+    .log-time { color: var(--muted-2); font-family: 'Courier New', monospace; }
+    .log-actor { color: var(--accent); font-family: 'Courier New', monospace; }
+    .log-action { color: var(--fg); font-weight: 600; }
+
+    /* error flash */
+    .error-flash { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; padding: 0.75rem 1rem; border-radius: var(--radius-sm); font-size: 0.82rem; margin-bottom: 1rem; display: none; }
+    .error-flash.visible { display: block; }
+
+    .row-actions { display: flex; gap: 0.4rem; }
+    .row-actions form { display: inline; }
+    .row-actions button { font-size: 0.7rem; padding: 0.2rem 0.5rem; }
+
+    .section-header .status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--muted-2); margin-right: 0.5rem; display: inline-block;
+    }
+    .section-header .status-dot.pass { background: #22c55e; }
+    .section-header .status-dot.fail { background: #ef4444; }
+  </style>
+</head>
+<body>
+  <div class="debug-wrapper">
+    <div class="debug-header">
+      <h1>🔧 Internal Diagnostic Panel</h1>
+      <div style="display:flex;gap:0.75rem;align-items:center;">
+        <span class="debug-badge">Admin Only</span>
+        <span style="font-size:0.75rem;color:var(--muted);">wage-society.polsia.app/admin/debug</span>
+      </div>
+    </div>
+
+    <% if (error) { %>
+      <div class="error-flash visible"><%= error %></div>
+    <% } %>
+
+    <!-- ── Section 1: Supabase ─────────────────────────────────── -->
+    <div class="section-card" id="sec-supabase">
+      <div class="section-header" onclick="toggleSection('sec-supabase')">
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <span class="status-dot" id="dot-supabase"></span>
+          <span class="section-title"><span class="icon">⚡</span> Supabase Connection</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <span class="section-meta" id="meta-supabase"></span>
+          <span class="chevron">▾</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="runSupabaseCheck()">Run Full Diagnostic</button>
+        </div>
+        <div id="supabase-results"></div>
+
+        <div class="sub-section">
+          <div class="sub-section-title">Tables</div>
+          <div class="btn-row">
+            <button class="btn btn-ghost" onclick="loadTables()">Load Table List</button>
+          </div>
+          <div id="tables-results"></div>
+        </div>
+
+        <div class="sub-section">
+          <div class="sub-section-title">SQL Query Runner</div>
+          <div class="form-group">
+            <textarea class="form-textarea" id="sql-input" placeholder="SELECT * FROM member_profiles LIMIT 10"></textarea>
+          </div>
+          <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem;">
+            <label style="font-size:0.75rem;color:var(--muted);">
+              <input type="checkbox" id="sql-write-mode"> Enable write (type WRITE in input above)
+            </label>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="runSql()">Run Query</button>
+            <button class="btn btn-ghost" onclick="document.getElementById('sql-input').value='';document.getElementById('sql-output').innerHTML='';">Clear</button>
+          </div>
+          <div id="sql-output" class="response-block" style="display:none;margin-top:0.75rem;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 2: Env Vars ──────────────────────────────────── -->
+    <div class="section-card" id="sec-env">
+      <div class="section-header" onclick="toggleSection('sec-env')">
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <span class="status-dot" id="dot-env"></span>
+          <span class="section-title"><span class="icon">🔑</span> Environment Variables</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <span class="section-meta" id="meta-env"></span>
+          <span class="chevron">▾</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="loadEnv()">Load Env Vars</button>
+        </div>
+        <div id="env-results"></div>
+      </div>
+    </div>
+
+    <!-- ── Section 3: Server Status ─────────────────────────────── -->
+    <div class="section-card" id="sec-server">
+      <div class="section-header" onclick="toggleSection('sec-server')">
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <span class="status-dot pass" id="dot-server"></span>
+          <span class="section-title"><span class="icon">🖥️</span> Server Status</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <span class="section-meta" id="meta-server"></span>
+          <span class="chevron">▾</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="loadServerStatus()">Refresh Status</button>
+        </div>
+        <div id="server-results"></div>
+      </div>
+    </div>
+
+    <!-- ── Section 4: Route Health ─────────────────────────────── -->
+    <div class="section-card" id="sec-routes">
+      <div class="section-header" onclick="toggleSection('sec-routes')">
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <span class="status-dot" id="dot-routes"></span>
+          <span class="section-title"><span class="icon">🌐</span> Route Health</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <span class="section-meta" id="meta-routes"></span>
+          <span class="chevron">▾</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="checkRoutes()">Ping All Routes</button>
+        </div>
+        <div id="routes-results"></div>
+      </div>
+    </div>
+
+    <!-- ── Section 4b: OAuth Status ────────────────────────────────────── -->
+    <div class="section-card" id="sec-oauth">
+      <div class="section-header" onclick="toggleSection('sec-oauth')">
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <span class="status-dot" id="dot-oauth"></span>
+          <span class="section-title"><span class="icon">🔐</span> OAuth Status</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <span class="section-meta" id="meta-oauth"></span>
+          <span class="chevron">▾</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="runOAuthCheck()">Check OAuth Status</button>
+        </div>
+        <div id="oauth-results"></div>
+      </div>
+    </div>
+
+    <!-- ── Section 4c: Auth Sessions ─────────────────────────────────── -->
+    <div class="section-card" id="sec-sessions">
+      <div class="section-header" onclick="toggleSection('sec-sessions')">
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <span class="status-dot" id="dot-sessions"></span>
+          <span class="section-title"><span class="icon">🔑</span> Auth Sessions</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <span class="section-meta" id="meta-sessions"></span>
+          <span class="chevron">▾</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="loadSessions()">Decode Current Session</button>
+        </div>
+        <div id="sessions-current" style="margin-top:0.75rem;"></div>
+        <div class="sub-section" style="margin-top:1.5rem;">
+          <div class="sub-section-title">Query Sessions by Email</div>
+          <div class="form-group" style="display:flex;gap:0.5rem;align-items:center;">
+            <input type="email" class="form-input" id="session-email" placeholder="user@example.com" style="max-width:280px;">
+            <button class="btn btn-ghost" onclick="querySessionsByEmail()">Look Up</button>
+          </div>
+          <div id="sessions-by-email" style="margin-top:0.75rem;"></div>
+        </div>
+        <div style="margin-top:0.75rem;">
+          <span class="badge badge-muted">TTL</span>
+          <span style="font-size:0.8rem;color:var(--muted);margin-left:0.5rem;">30 days, secure, sameSite=lax, httpOnly</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 5: Stripe / Payments ───────────────────────── -->
+    <div class="section-card" id="sec-stripe">
+      <div class="section-header" onclick="toggleSection('sec-stripe')">
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <span class="status-dot" id="dot-stripe"></span>
+          <span class="section-title"><span class="icon">💳</span> Stripe / Payments</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <span class="section-meta" id="meta-stripe"></span>
+          <span class="chevron">▾</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="loadStripeStatus()">Check Stripe Status</button>
+        </div>
+        <div id="stripe-results"></div>
+      </div>
+    </div>
+
+    <!-- ── Section 6: Database Records ─────────────────────────── -->
+    <div class="section-card" id="sec-db">
+      <div class="section-header" onclick="toggleSection('sec-db')">
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <span class="status-dot" id="dot-db"></span>
+          <span class="section-title"><span class="icon">🗄️</span> Database Records</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <span class="section-meta" id="meta-db"></span>
+          <span class="chevron">▾</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="loadTables()">Load Tables</button>
+        </div>
+        <div id="db-browser-controls" style="margin-top:1rem;"></div>
+        <div id="db-results" style="margin-top:0.75rem;"></div>
+      </div>
+    </div>
+
+    <!-- ── Section 7: Email Diagnostics ────────────────────────── -->
+    <div class="section-card" id="sec-email">
+      <div class="section-header" onclick="toggleSection('sec-email')">
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <span class="status-dot" id="dot-email"></span>
+          <span class="section-title"><span class="icon">📧</span> Email Diagnostics</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <span class="section-meta" id="meta-email"></span>
+          <span class="chevron">▾</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="form-group">
+          <label class="form-label">Send Test Email To</label>
+          <div style="display:flex;gap:0.5rem;">
+            <input type="email" class="form-input" id="email-test-to" placeholder="you@example.com" style="flex:1;">
+            <button class="btn btn-primary" onclick="testEmail()">Send</button>
+          </div>
+        </div>
+        <div id="email-result" style="margin-top:0.75rem;"></div>
+      </div>
+    </div>
+
+    <!-- ── Section 8: Admin Action Logs ────────────────────────── -->
+    <div class="section-card" id="sec-logs">
+      <div class="section-header" onclick="toggleSection('sec-logs')">
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <span class="status-dot" id="dot-logs"></span>
+          <span class="section-title"><span class="icon">📋</span> Admin Action Logs</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <span class="section-meta" id="meta-logs"></span>
+          <span class="chevron">▾</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="loadAdminLogs()">Load Recent Logs</button>
+        </div>
+        <div id="admin-logs-results"></div>
+      </div>
+    </div>
+
+    <!-- ── Section 9: Webhooks ──────────────────────────────────── -->
+    <div class="section-card" id="sec-webhooks">
+      <div class="section-header" onclick="toggleSection('sec-webhooks')">
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <span class="status-dot" id="dot-webhooks"></span>
+          <span class="section-title"><span class="icon">🔔</span> Webhooks</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <span class="section-meta" id="meta-webhooks"></span>
+          <span class="chevron">▾</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="loadWebhooks()">Load Recent Webhooks</button>
+        </div>
+        <div id="webhooks-results"></div>
+      </div>
+    </div>
+
+    <!-- ── Section 10: Error Logs ─────────────────────────────────── -->
+    <div class="section-card" id="sec-errors">
+      <div class="section-header" onclick="toggleSection('sec-errors')">
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <span class="status-dot" id="dot-errors"></span>
+          <span class="section-title"><span class="icon">🚨</span> Error Logs</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <span class="section-meta" id="meta-errors"></span>
+          <span class="chevron">▾</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="btn-row">
+          <button class="btn btn-ghost" onclick="loadErrorLogs()">Load Error Logs</button>
+        </div>
+        <div id="error-logs-results" style="margin-top:0.75rem;"></div>
+      </div>
+    </div>
+
+    <!-- ── Section 10: Cache ────────────────────────────────────── -->
+    <div class="section-card" id="sec-cache">
+      <div class="section-header" onclick="toggleSection('sec-cache')">
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <span class="status-dot pass" id="dot-cache"></span>
+          <span class="section-title"><span class="icon">⚡</span> Cache</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <span class="section-meta" id="meta-cache">No external cache</span>
+          <span class="chevron">▾</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:0.75rem;">No Redis or external cache currently in use. In-memory caches would be flushed here.</p>
+        <button class="btn btn-danger" onclick="flushCache()">Flush All Caches</button>
+        <div id="cache-result" style="margin-top:0.75rem;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const pw = localStorage.getItem('debug_pw') || '';
+    function getHeaders() { return { 'x-debug-password': pw }; }
+
+    function show(id, html) {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = html;
+    }
+
+    function setSectionStatus(id, status, meta) {
+      const dot = document.getElementById('dot-' + id);
+      const metaEl = document.getElementById('meta-' + id);
+      if (dot) dot.className = 'status-dot ' + status;
+      if (metaEl && meta) metaEl.textContent = meta;
+    }
+
+    async function apiCall(path, method, body) {
+      const res = await fetch(path, {
+        method,
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      return res.json();
+    }
+
+    function toggleSection(id) {
+      const card = document.getElementById(id);
+      card.classList.toggle('open');
+    }
+
+    // ── Supabase ────────────────────────────────────────────────
+    async function runSupabaseCheck() {
+      show('supabase-results', '<div class="state-msg"><span class="spinner"></span>Running checks...</div>');
+      try {
+        const data = await apiCall('/admin/debug/api/supabase', 'POST');
+        const passed = data.checks.filter(c => c.status === 'pass').length;
+        const failed = data.checks.filter(c => c.status === 'fail').length;
+        setSectionStatus('supabase', failed > 0 ? 'fail' : 'pass', `${passed} pass, ${failed} fail`);
+        let html = '<table class="debug-table" style="margin-top:0.75rem;"><tr><th>Check</th><th>Status</th><th>Latency</th><th>Detail / Error</th></tr>';
+        for (const c of data.checks) {
+          const cls = c.status === 'pass' ? 'badge-pass' : c.status === 'warn' ? 'badge-warn' : 'badge-fail';
+          const detail = c.error || (c.detail ? JSON.stringify(c.detail) : '');
+          html += `<tr>
+            <td class="mono">${c.name}</td>
+            <td><span class="badge ${cls}">${c.status.toUpperCase()}</span></td>
+            <td class="mono" style="color:var(--muted-2)">${c.latency_ms}ms</td>
+            <td class="mono" style="font-size:0.72rem;color:var(--muted);max-width:400px;word-break:break-all;">${detail || '—'}</td>
+          </tr>`;
+        }
+        html += '</table>';
+        show('supabase-results', html);
+      } catch(e) {
+        show('supabase-results', `<div style="color:#ef4444;font-size:0.82rem;">Error: ${e.message}</div>`);
+      }
+    }
+
+    // ── Tables ──────────────────────────────────────────────────
+    async function loadTables() {
+      show('tables-results', '<div class="state-msg"><span class="spinner"></span>Loading...</div>');
+      try {
+        const data = await apiCall('/admin/debug/api/tables', 'POST');
+        if (!data.tables || data.tables.length === 0) {
+          show('tables-results', '<div class="state-msg">No tables found</div>');
+          return;
+        }
+        let html = '<table class="debug-table" style="margin-top:0.75rem;"><tr><th>Table</th><th>Rows (est)</th><th>Dead Tuples</th></tr>';
+        for (const t of data.tables) {
+          html += `<tr>
+            <td class="mono" style="color:var(--accent)">${t.table_name}</td>
+            <td class="mono">${t.row_count_estimate ?? '?'}</td>
+            <td class="mono" style="color:${t.dead_tuples > 10 ? '#ef4444' : 'var(--muted-2)'}">${t.dead_tuples ?? 0}</td>
+          </tr>`;
+        }
+        html += '</table>';
+        show('tables-results', html);
+        setSectionStatus('supabase', 'pass', `${data.tables.length} tables`);
+        // Also populate db-browser controls
+        populateDbControls(data.tables.map(t => t.table_name));
+      } catch(e) {
+        show('tables-results', `<div style="color:#ef4444;font-size:0.82rem;">${e.message}</div>`);
+      }
+    }
+
+    function populateDbControls(tables) {
+      const tables2 = tables.sort();
+      const controls = `
+        <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+          <select class="form-select" id="db-table-select" style="max-width:240px;" onchange="loadTableRows()">
+            <option value="">— select table —</option>
+            ${tables2.map(t => `<option value="${t}">${t}</option>`).join('')}
+          </select>
+          <button class="btn btn-ghost" onclick="loadTableRows()">Browse</button>
+          <button class="btn btn-primary" onclick="showCreateForm()">+ Create Row</button>
+        </div>`;
+      document.getElementById('db-browser-controls').innerHTML = controls;
+    }
+
+    let currentTablePage = 1;
+    async function loadTableRows(tableOverride) {
+      const table = tableOverride || document.getElementById('db-table-select')?.value;
+      if (!table) return;
+      setSectionStatus('db', 'pass', `browsing: ${table}`);
+      const page = currentTablePage;
+      show('db-results', '<div class="state-msg"><span class="spinner"></span>Loading rows...</div>');
+      try {
+        const data = await apiCall('/admin/debug/api/table-rows', 'POST', { table, page, pageSize: 50 });
+        if (!data.rows || data.rows.length === 0) {
+          show('db-results', '<div class="state-msg">No rows</div>');
+          return;
+        }
+        const cols = Object.keys(data.rows[0]);
+        const rows = data.rows;
+        let html = `<div style="margin-bottom:0.5rem;font-size:0.75rem;color:var(--muted);">${data.total} rows total — page ${data.page}</div>`;
+        html += '<div style="overflow-x:auto;"><table class="debug-table"><thead><tr>';
+        html += '<th>#</th>';
+        for (const c of cols) html += `<th>${c}</th>`;
+        html += '<th>Actions</th></tr></thead><tbody>';
+        rows.forEach((row, i) => {
+          const pkCol = cols[0]; // assume first col is PK
+          html += '<tr>';
+          html += `<td class="mono" style="color:var(--muted-2)">${(page-1)*50 + i+1}</td>`;
+          for (const c of cols) {
+            let val = row[c];
+            if (val === null) val = '<span style="color:var(--muted-2)">null</span>';
+            else if (typeof val === 'object') val = JSON.stringify(val).slice(0,80);
+            else val = String(val).slice(0,120);
+            html += `<td class="mono" style="font-size:0.72rem;max-width:200px;word-break:break-all;">${val}</td>`;
+          }
+          html += `<td class="row-actions">
+            <button class="btn btn-ghost" style="font-size:0.7rem;padding:0.2rem 0.5rem;" onclick="editRow('${table}','${pkCol}','${row[pkCol]}')">Edit</button>
+            <form onsubmit="return confirm('Delete this row?')" action="javascript:deleteRow('${table}','${pkCol}','${row[pkCol]}')">
+              <button class="btn btn-danger" type="submit">Delete</button>
+            </form>
+          </td>`;
+          html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+
+        const totalPages = Math.ceil(data.total / data.pageSize);
+        let pagHtml = '<div class="pagination">';
+        pagHtml += `<button class="page-btn" ${page <= 1 ? 'disabled' : ''} onclick="currentTablePage=${page-1};loadTableRows('${table}')">Prev</button>`;
+        pagHtml += `<span style="font-size:0.75rem;color:var(--muted);padding:0 0.5rem;">${page} / ${totalPages}</span>`;
+        pagHtml += `<button class="page-btn" ${page >= totalPages ? 'disabled' : ''} onclick="currentTablePage=${page+1};loadTableRows('${table}')">Next</button>`;
+        pagHtml += '</div>';
+
+        show('db-results', html + pagHtml);
+      } catch(e) {
+        show('db-results', `<div style="color:#ef4444;font-size:0.82rem;">${e.message}</div>`);
+      }
+    }
+
+    async function deleteRow(table, pkField, pkValue) {
+      try {
+        const data = await apiCall('/admin/debug/api/row-delete', 'POST', { table, pkField, pkValue });
+        if (data.deleted) {
+          show('db-results', `<div style="color:#22c55e;font-size:0.82rem;margin-bottom:0.5rem;">✓ Deleted ${data.deleted.length} row(s). Refreshing...</div>`);
+          setTimeout(() => loadTableRows(table), 800);
+        } else {
+          alert('Delete failed: ' + (data.error || 'unknown error'));
+        }
+      } catch(e) { alert(e.message); }
+    }
+
+    // ── SQL Runner ──────────────────────────────────────────────
+    async function runSql() {
+      const sql = document.getElementById('sql-input').value.trim();
+      if (!sql) return;
+      const writeMode = document.getElementById('sql-write-mode').checked;
+      const out = document.getElementById('sql-output');
+      out.style.display = 'block';
+      out.innerHTML = '<span class="spinner"></span> Running...';
+      try {
+        const data = await apiCall('/admin/debug/api/sql', 'POST', { sql, writeMode });
+        if (data.error) {
+          out.innerHTML = `<span style="color:#ef4444">ERROR: ${data.error}</span>`;
+        } else {
+          const preview = JSON.stringify({ rows: data.rows, fields: data.fields, duration_ms: data.duration_ms }, null, 2);
+          out.innerHTML = `<span style="color:#22c55e">OK — ${data.rows.length} rows in ${data.duration_ms}ms</span>\n\n${preview.slice(0, 2000)}${preview.length > 2000 ? '\n... (truncated)' : ''}`;
+        }
+      } catch(e) {
+        out.innerHTML = `<span style="color:#ef4444">${e.message}</span>`;
+      }
+    }
+
+    // ── Env ─────────────────────────────────────────────────────
+    async function loadEnv() {
+      show('env-results', '<div class="state-msg"><span class="spinner"></span>Loading...</div>');
+      try {
+        const data = await apiCall('/admin/debug/api/env', 'POST');
+        const keys = Object.keys(data.envVars).sort();
+        let html = '<div style="overflow-x:auto;margin-top:0.5rem;">';
+        html += '<table class="debug-table"><tr><th>Key</th><th>Value</th></tr>';
+        for (const k of keys) {
+          const v = data.envVars[k];
+          const isMasked = v && v.includes('[masked]');
+          html += `<tr>
+            <td class="mono" style="color:var(--accent)">${k}</td>
+            <td class="mono" style="font-size:0.72rem;max-width:500px;word-break:break-all;color:${isMasked ? 'var(--muted-2)' : 'var(--fg)'}">${v || '<span style="color:var(--muted-2)">(not set)</span>'}</td>
+          </tr>`;
+        }
+        html += '</table></div>';
+        show('env-results', html);
+        setSectionStatus('env', 'pass', `${keys.length} vars`);
+      } catch(e) {
+        show('env-results', `<div style="color:#ef4444;font-size:0.82rem;">${e.message}</div>`);
+      }
+    }
+
+    // ── Server Status ─────────────────────────────────────────────
+    async function loadServerStatus() {
+      show('server-results', '<div class="state-msg"><span class="spinner"></span>Loading...</div>');
+      try {
+        const data = await apiCall('/admin/debug/api/server-status', 'POST');
+        const upMin = Math.floor(data.uptimeSeconds / 60);
+        const html = `
+          <div class="grid-3" style="margin-top:0.75rem;">
+            <div style="background:var(--surface);padding:1rem;border-radius:var(--radius-sm);border:1px solid var(--border);">
+              <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;">Node.js</div>
+              <div style="font-size:1rem;font-weight:700;color:var(--fg);">${data.nodeVersion}</div>
+            </div>
+            <div style="background:var(--surface);padding:1rem;border-radius:var(--radius-sm);border:1px solid var(--border);">
+              <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;">Uptime</div>
+              <div style="font-size:1rem;font-weight:700;color:var(--fg);">${upMin}m</div>
+            </div>
+            <div style="background:var(--surface);padding:1rem;border-radius:var(--radius-sm);border:1px solid var(--border);">
+              <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;">Memory (RSS)</div>
+              <div style="font-size:1rem;font-weight:700;color:var(--fg);">${data.memoryRSS_MB} MB</div>
+            </div>
+            <div style="background:var(--surface);padding:1rem;border-radius:var(--radius-sm);border:1px solid var(--border);">
+              <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;">Heap Used</div>
+              <div style="font-size:1rem;font-weight:700;color:var(--fg);">${data.memoryHeapUsed_MB} MB</div>
+            </div>
+            <div style="background:var(--surface);padding:1rem;border-radius:var(--radius-sm);border:1px solid var(--border);">
+              <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;">Platform</div>
+              <div style="font-size:1rem;font-weight:700;color:var(--fg);">${data.platform}</div>
+            </div>
+            <div style="background:var(--surface);padding:1rem;border-radius:var(--radius-sm);border:1px solid var(--border);">
+              <div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.3rem;">PID</div>
+              <div style="font-size:1rem;font-weight:700;color:var(--fg);">${data.pid}</div>
+            </div>
+          </div>`;
+        show('server-results', html);
+      } catch(e) {
+        show('server-results', `<div style="color:#ef4444;font-size:0.82rem;">${e.message}</div>`);
+      }
+    }
+
+    // ── Route Health ────────────────────────────────────────────
+    async function checkRoutes() {
+      show('routes-results', '<div class="state-msg"><span class="spinner"></span>Pinging routes...</div>');
+      try {
+        const data = await apiCall('/admin/debug/api/route-health', 'POST');
+        const routes = data.routes || [];
+        let html = '<table class="debug-table" style="margin-top:0.75rem;"><tr><th>Route</th><th>Status</th><th>Note</th></tr>';
+        let failCount = 0;
+        for (const r of routes) {
+          const ok = r.status === 'ok';
+          if (!ok) failCount++;
+          html += `<tr>
+            <td class="mono" style="color:var(--accent)">${r.path}</td>
+            <td><span class="badge ${ok ? 'badge-pass' : 'badge-fail'}">${r.status}</span></td>
+            <td class="mono" style="font-size:0.72rem;color:var(--muted)">${r.note || '—'}</td>
+          </tr>`;
+        }
+        html += '</table>';
+        show('routes-results', html);
+        setSectionStatus('routes', failCount > 0 ? 'fail' : 'pass', `${routes.length} routes checked`);
+      } catch(e) {
+        show('routes-results', `<div style="color:#ef4444;font-size:0.82rem;">${e.message}</div>`);
+      }
+    }
+
+    // ── Stripe ───────────────────────────────────────────────────
+    async function loadStripeStatus() {
+      show('stripe-results', '<div class="state-msg"><span class="spinner"></span>Loading...</div>');
+      try {
+        const data = await apiCall('/admin/debug/api/stripe-status', 'POST');
+        const configured = data.stripe_payment_links_configured;
+        const stats = data.donationStats;
+        const links = [];
+        if (data.subscriptionLinksMonthly) for (const [k,v] of Object.entries(data.subscriptionLinksMonthly)) links.push({ name: k + ' (monthly)', url: v });
+        if (data.subscriptionLinksAnnual) for (const [k,v] of Object.entries(data.subscriptionLinksAnnual)) links.push({ name: k + ' (annual)', url: v });
+        let html = `
+          <div style="margin-top:0.75rem;">
+            <div style="margin-bottom:1rem;">
+              <span class="badge ${configured ? 'badge-pass' : 'badge-fail'}">${configured ? 'Payment Links Configured' : 'No Stripe Links Found'}</span>
+            </div>`;
+        if (stats) {
+          html += `<div class="grid-3" style="margin-bottom:1rem;">
+            <div style="background:var(--surface);padding:0.75rem;border-radius:var(--radius-sm);border:1px solid var(--border);text-align:center;">
+              <div style="font-size:1.5rem;font-weight:700;color:var(--fg);">${stats.completed}</div>
+              <div style="font-size:0.7rem;color:var(--muted)">Completed</div>
+            </div>
+            <div style="background:var(--surface);padding:0.75rem;border-radius:var(--radius-sm);border:1px solid var(--border);text-align:center;">
+              <div style="font-size:1.5rem;font-weight:700;color:#eab308;">${stats.pending}</div>
+              <div style="font-size:0.7rem;color:var(--muted)">Pending</div>
+            </div>
+            <div style="background:var(--surface);padding:0.75rem;border-radius:var(--radius-sm);border:1px solid var(--border);text-align:center;">
+              <div style="font-size:1.5rem;font-weight:700;color:#22c55e;">$${Number(stats.total_usd).toFixed(2)}</div>
+              <div style="font-size:0.7rem;color:var(--muted)">Total (USD)</div>
+            </div>
+          </div>`;
+        }
+        if (links.length > 0) {
+          html += `<div class="sub-section"><div class="sub-section-title">Configured Links</div><table class="debug-table"><tr><th>Plan</th><th>Link</th></tr>`;
+          for (const l of links) {
+            html += `<tr><td class="mono" style="color:var(--accent)">${l.name}</td><td class="mono" style="font-size:0.72rem;"><a href="${l.url}" target="_blank" style="color:#3b82f6;">${l.url || '(not set)'}</a></td></tr>`;
+          }
+          html += '</table></div>';
+        }
+        html += '</div>';
+        show('stripe-results', html);
+        setSectionStatus('stripe', configured ? 'pass' : 'fail', configured ? 'configured' : 'not configured');
+      } catch(e) {
+        show('stripe-results', `<div style="color:#ef4444;font-size:0.82rem;">${e.message}</div>`);
+      }
+    }
+
+    // ── Email ────────────────────────────────────────────────────
+    async function testEmail() {
+      const to = document.getElementById('email-test-to').value.trim();
+      if (!to) { alert('Enter an email address first'); return; }
+      show('email-result', '<div class="state-msg"><span class="spinner"></span>Sending test email...</div>');
+      try {
+        const data = await apiCall('/admin/debug/api/email-test', 'POST', { to });
+        if (data.sent) {
+          show('email-result', `<div style="color:#22c55e;font-size:0.82rem;">✓ Sent — message ID: ${data.messageId}</div>`);
+          setSectionStatus('email', 'pass', 'sent to ' + to);
+        } else {
+          show('email-result', `<div style="color:#ef4444;font-size:0.82rem;">✗ Not sent: ${data.reason}</div>`);
+          setSectionStatus('email', 'fail', 'failed');
+        }
+      } catch(e) {
+        show('email-result', `<div style="color:#ef4444;font-size:0.82rem;">${e.message}</div>`);
+      }
+    }
+
+    // ── Admin Logs ──────────────────────────────────────────────
+    async function loadAdminLogs() {
+      show('admin-logs-results', '<div class="state-msg"><span class="spinner"></span>Loading...</div>');
+      try {
+        const data = await apiCall('/admin/debug/api/admin-logs', 'POST');
+        if (!data.logs || data.logs.length === 0) {
+          show('admin-logs-results', '<div class="state-msg">No admin actions logged yet</div>');
+          return;
+        }
+        let html = '';
+        for (const log of data.logs) {
+          const ts = new Date(log.created_at).toLocaleString();
+          html += `<div class="log-entry">
+            <span class="log-time">${ts}</span>
+            <span style="margin:0 0.4rem;">|</span>
+            <span class="log-actor">${log.actor}</span>
+            <span style="margin:0 0.4rem;">|</span>
+            <span class="log-action">${log.action}</span>
+            ${log.detail ? `<span style="color:var(--muted-2);font-size:0.7rem;margin-left:0.5rem;">${JSON.stringify(log.detail)}</span>` : ''}
+          </div>`;
+        }
+        show('admin-logs-results', html);
+        setSectionStatus('logs', 'pass', `${data.logs.length} entries`);
+      } catch(e) {
+        show('admin-logs-results', `<div style="color:#ef4444;font-size:0.82rem;">${e.message}</div>`);
+      }
+    }
+
+    // ── Webhooks ─────────────────────────────────────────────────
+    async function loadWebhooks() {
+      show('webhooks-results', '<div class="state-msg"><span class="spinner"></span>Loading...</div>');
+      try {
+        const data = await apiCall('/admin/debug/api/webhooks', 'POST');
+        if (!data.webhooks || data.webhooks.length === 0) {
+          show('webhooks-results', '<div class="state-msg">No webhook events found</div>');
+          return;
+        }
+        let html = '<table class="debug-table" style="margin-top:0.75rem;"><tr><th>Type</th><th>ID</th><th>Amount</th><th>Status</th><th>Date</th></tr>';
+        for (const w of data.webhooks) {
+          const amt = w.amount_cents ? '$' + (w.amount_cents / 100).toFixed(2) : '—';
+          const ts = w.created_at ? new Date(w.created_at).toLocaleString() : '—';
+          const cls = w.status === 'completed' ? 'badge-pass' : w.status === 'pending' ? 'badge-warn' : 'badge-muted';
+          html += `<tr>
+            <td class="mono" style="color:var(--accent)">${w.type}</td>
+            <td class="mono" style="font-size:0.72rem;">${w.id}</td>
+            <td class="mono">${amt}</td>
+            <td><span class="badge ${cls}">${w.status}</span></td>
+            <td class="mono" style="font-size:0.72rem;color:var(--muted-2)">${ts}</td>
+          </tr>`;
+        }
+        html += '</table>';
+        show('webhooks-results', html);
+        setSectionStatus('webhooks', 'pass', `${data.webhooks.length} events`);
+      } catch(e) {
+        show('webhooks-results', `<div style="color:#ef4444;font-size:0.82rem;">${e.message}</div>`);
+      }
+    }
+
+    // ── Cache Flush ──────────────────────────────────────────────
+    async function flushCache() {
+      try {
+        const data = await apiCall('/admin/debug/api/cache-flush', 'POST');
+        document.getElementById('cache-result').innerHTML =
+          `<span style="color:#22c55e;font-size:0.82rem;">✓ Cache flushed. ${data.note}</span>`;
+      } catch(e) {
+        document.getElementById('cache-result').innerHTML = `<span style="color:#ef4444;font-size:0.82rem;">${e.message}</span>`;
+      }
+    }
+
+    // ── Password prompt on load ────────────────────────────────────
+    if (!pw) {
+      const entered = prompt('Enter the DEBUG_PASSWORD (check FOR_POLSIA.txt or Render env vars):');
+      if (entered) {
+        localStorage.setItem('debug_pw', entered);
+        location.reload();
+      }
+    }
+
+    // ── OAuth Status ───────────────────────────────────────────
+    async function runOAuthCheck() {
+      show('oauth-results', '<div class="state-msg"><span class="spinner"></span>Checking...</div>');
+      try {
+        const data = await apiCall('/admin/debug/api/oauth-status', 'POST');
+        let html = '<table class="debug-table" style="margin-top:0.75rem;"><tr><th>Provider</th><th>Status</th><th>Detail</th></tr>';
+        const providers = [
+          { key: 'google',  label: 'Google (Supabase)' },
+          { key: 'discord', label: 'Discord (bot)' },
+          { key: 'kick',    label: 'Kick' },
+        ];
+        let anyConfigured = false;
+        for (const p of providers) {
+          const d = data.providers?.[p.key] || {};
+          const configured = d.configured;
+          if (configured) anyConfigured = true;
+          html += `<tr>
+            <td class="mono" style="color:var(--accent)">${p.label}</td>
+            <td><span class="badge ${configured ? 'badge-pass' : 'badge-muted'}">${configured ? 'Configured' : 'Not configured'}</span></td>
+            <td class="mono" style="font-size:0.72rem;color:var(--muted)">${configured ? 'Active' : 'N/A'}</td>
+          </tr>`;
+        }
+        html += '</table>';
+        if (data.redirectUris && data.redirectUris.length) {
+          html += '<div class="sub-section"><div class="sub-section-title">Redirect URIs</div><table class="debug-table"><tr><th>Provider</th><th>Redirect URI</th></tr>';
+          for (const r of data.redirectUris) {
+            html += `<tr><td class="mono" style="color:var(--accent)">${r.provider}</td><td class="mono" style="font-size:0.72rem;word-break:break-all;color:var(--muted)">${r.url || '(not set)'}</td></tr>`;
+          }
+          html += '</table></div>';
+        }
+        show('oauth-results', html);
+        setSectionStatus('oauth', anyConfigured ? 'pass' : 'muted', anyConfigured ? `${providers.filter(p => data.providers?.[p.key]?.configured).length} providers` : 'none configured');
+      } catch(e) {
+        show('oauth-results', `<div style="color:#ef4444;font-size:0.82rem;">${e.message}</div>`);
+      }
+    }
+
+    // ── Auth Sessions ─────────────────────────────────────────
+    async function loadSessions() {
+      show('sessions-current', '<div class="state-msg"><span class="spinner"></span>Decoding session...</div>');
+      try {
+        const data = await apiCall('/admin/debug/api/auth-sessions', 'POST');
+        const s = data.currentSession;
+        if (!s) {
+          show('sessions-current', '<div class="state-msg">No active session for this request</div>');
+          return;
+        }
+        const html = `<table class="debug-table" style="margin-top:0.5rem;"><tr><th>Field</th><th>Value</th></tr>
+          <tr><td class="mono" style="color:var(--accent)">userEmail</td><td class="mono">${s.userEmail || '<span style="color:var(--muted-2)">null</span>'}</td></tr>
+          <tr><td class="mono" style="color:var(--accent)">userId</td><td class="mono">${s.userId || '<span style="color:var(--muted-2)">null</span>'}</td></tr>
+          <tr><td class="mono" style="color:var(--accent)">role</td><td class="mono">${s.role || '<span style="color:var(--muted-2)">null</span>'}</td></tr>
+          <tr><td class="mono" style="color:var(--accent)">cookie.maxAge</td><td class="mono">${s.cookieMaxAge_ms ? (s.cookieMaxAge_ms / 1000 / 60 / 60 / 24).toFixed(0) + ' days' : '<span style="color:var(--muted-2)">N/A</span>'}</td></tr>
+          <tr><td class="mono" style="color:var(--accent)">cookie.secure</td><td class="mono">${s.cookieSecure}</td></tr>
+          <tr><td class="mono" style="color:var(--accent)">cookie.httpOnly</td><td class="mono">${s.cookieHttpOnly}</td></tr>
+          <tr><td class="mono" style="color:var(--accent)">cookie.sameSite</td><td class="mono">${s.cookieSameSite}</td></tr>
+        </table>`;
+        show('sessions-current', html);
+        setSectionStatus('sessions', 'pass', s.userEmail || 'no email');
+      } catch(e) {
+        show('sessions-current', `<div style="color:#ef4444;font-size:0.82rem;">${e.message}</div>`);
+      }
+    }
+
+    async function querySessionsByEmail() {
+      const email = document.getElementById('session-email')?.value?.trim();
+      if (!email) { alert('Enter an email address'); return; }
+      show('sessions-by-email', '<div class="state-msg"><span class="spinner"></span>Querying...</div>');
+      try {
+        const data = await apiCall('/admin/debug/api/auth-sessions', 'POST', { email });
+        const sessions = data.userSessions;
+        if (!sessions) {
+          show('sessions-by-email', '<div class="state-msg">No session data returned</div>');
+          return;
+        }
+        if (sessions.error) {
+          show('sessions-by-email', `<div style="color:var(--muted);font-size:0.8rem;">${sessions.error}</div>`);
+          return;
+        }
+        if (!Array.isArray(sessions) || sessions.length === 0) {
+          show('sessions-by-email', '<div class="state-msg">No sessions found for ' + email + '</div>');
+          return;
+        }
+        let html = '<table class="debug-table" style="margin-top:0.5rem;"><tr><th>Session ID</th><th>Expires</th></tr>';
+        for (const s of sessions) {
+          html += `<tr>
+            <td class="mono" style="font-size:0.72rem;">${s.id}</td>
+            <td class="mono" style="font-size:0.72rem;color:var(--muted-2)">${new Date(s.expire).toLocaleString()}</td>
+          </tr>`;
+        }
+        html += '</table>';
+        show('sessions-by-email', html);
+      } catch(e) {
+        show('sessions-by-email', `<div style="color:#ef4444;font-size:0.82rem;">${e.message}</div>`);
+      }
+    }
+
+    // ── Row Edit / Create ──────────────────────────────────────
+    let editingRow = null;
+    let editingTable = null;
+    let editingPk = null;
+    let editingPkVal = null;
+    let creatingTable = null;
+
+    async function editRow(table, pkField, pkValue) {
+      try {
+        const data = await apiCall('/admin/debug/api/row-edit', 'POST', { table, pkField, pkValue });
+        if (data.error) { alert('Error: ' + data.error); return; }
+        editingRow = data.row;
+        editingTable = data.table;
+        editingPk = data.pkField;
+        editingPkVal = data.pkValue;
+
+        let html = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem;margin-top:0.75rem;">
+          <div style="font-size:0.8rem;font-weight:600;color:var(--accent);margin-bottom:0.75rem;">Editing ${table} — ${pkField}=${pkValue}</div>
+          <form onsubmit="return submitEdit(event)">`;
+        for (const [key, val] of Object.entries(data.row)) {
+          const colInfo = data.columns[key];
+          const type = colInfo?.data_type || 'text';
+          const isSerial = colInfo?.column_default?.includes('nextval') || key === 'id' || key === 'created_at';
+          const disabled = isSerial ? 'disabled' : '';
+          html += `<div class="form-group">
+            <label class="form-label" style="display:flex;justify-content:space-between;">
+              <span>${key}</span>
+              <span style="color:var(--muted-2);font-size:0.65rem;text-transform:none;font-weight:400;">${type}</span>
+            </label>`;
+          if (type === 'text' || type === 'jsonb' || type === 'json') {
+            html += `<textarea class="form-textarea" name="${key}" ${disabled} style="height:60px;">${val ?? ''}</textarea>`;
+          } else if (type === 'boolean') {
+            html += `<select class="form-select" name="${key}" ${disabled}>
+              <option value="true"  ${val === true  ? 'selected' : ''}>true</option>
+              <option value="false" ${val === false ? 'selected' : ''}>false</option>
+            </select>`;
+          } else {
+            html += `<input type="${type === 'integer' || type === 'bigint' || type === 'numeric' ? 'number' : 'text'}"
+              class="form-input" name="${key}" value="${val ?? ''}" ${disabled}
+              style="font-family:'Courier New',monospace;">`;
+          }
+          html += '</div>';
+        }
+        html += `<div class="btn-row" style="margin-top:1rem;">
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+          <button type="button" class="btn btn-ghost" onclick="cancelEdit()">Cancel</button>
+        </div></form></div>`;
+
+        // Insert below the DB results
+        const target = document.getElementById('db-results');
+        const existing = document.getElementById('edit-form-overlay');
+        if (existing) existing.remove();
+        const div = document.createElement('div');
+        div.id = 'edit-form-overlay';
+        div.innerHTML = html;
+        target.parentNode.insertBefore(div, target.nextSibling);
+      } catch(e) { alert(e.message); }
+    }
+
+    async function submitEdit(event) {
+      event.preventDefault();
+      const form = event.target;
+      const fd = new FormData(form);
+      const updates = {};
+      for (const [k, v] of fd.entries()) updates[k] = v === '' ? null : v;
+
+      try {
+        const data = await apiCall('/admin/debug/api/row-update', 'POST', {
+          table: editingTable, pkField: editingPk, pkValue: editingPkVal, updates
+        });
+        if (data.error) { alert('Update failed: ' + data.error); return; }
+        cancelEdit();
+        loadTableRows(editingTable);
+      } catch(e) { alert(e.message); }
+    }
+
+    function cancelEdit() {
+      const el = document.getElementById('edit-form-overlay');
+      if (el) el.remove();
+      editingRow = null; editingTable = null; editingPk = null; editingPkVal = null;
+    }
+
+    async function showCreateForm() {
+      const sel = document.getElementById('db-table-select');
+      const table = sel ? sel.value : null;
+      if (!table) { alert('Select a table first'); return; }
+      creatingTable = table;
+
+      try {
+        const data = await apiCall('/admin/debug/api/row-create-form', 'POST', { table });
+        if (data.error) { alert('Error: ' + data.error); return; }
+
+        let html = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem;margin-top:0.75rem;">
+          <div style="font-size:0.8rem;font-weight:600;color:var(--accent);margin-bottom:0.75rem;">Create Row in ${table}</div>
+          <form onsubmit="return submitCreate(event)">`;
+        for (const col of data.columns) {
+          const nullable = col.is_nullable === 'YES';
+          html += `<div class="form-group">
+            <label class="form-label" style="display:flex;justify-content:space-between;">
+              <span>${col.column_name}</span>
+              <span style="color:var(--muted-2);font-size:0.65rem;text-transform:none;font-weight:400;">${col.data_type}${nullable ? ' (nullable)' : ''}</span>
+            </label>`;
+          if (col.data_type === 'text' || col.data_type === 'jsonb') {
+            html += `<textarea class="form-textarea" name="${col.column_name}" style="height:60px;font-family:'Courier New',monospace;" placeholder="${nullable ? '(empty allowed)' : ''}"></textarea>`;
+          } else if (col.data_type === 'boolean') {
+            html += `<select class="form-select" name="${col.column_name}">
+              <option value="">— leave null —</option>
+              <option value="true">true</option>
+              <option value="false">false</option>
+            </select>`;
+          } else {
+            html += `<input type="${col.data_type === 'integer' || col.data_type === 'bigint' || col.data_type === 'numeric' ? 'number' : 'text'}"
+              class="form-input" name="${col.column_name}" style="font-family:'Courier New',monospace;"
+              placeholder="${nullable ? '(empty allowed)' : ''}">`;
+          }
+          html += '</div>';
+        }
+        html += `<div class="btn-row" style="margin-top:1rem;">
+          <button type="submit" class="btn btn-primary">Insert Row</button>
+          <button type="button" class="btn btn-ghost" onclick="cancelCreate()">Cancel</button>
+        </div></form></div>`;
+
+        const existing = document.getElementById('create-form-overlay');
+        if (existing) existing.remove();
+        const div = document.createElement('div');
+        div.id = 'create-form-overlay';
+        div.innerHTML = html;
+        const target = document.getElementById('db-results');
+        target.parentNode.insertBefore(div, target.nextSibling);
+      } catch(e) { alert(e.message); }
+    }
+
+    async function submitCreate(event) {
+      event.preventDefault();
+      const form = event.target;
+      const fd = new FormData(form);
+      const cols = [];
+      const vals = [];
+      let paramIdx = 1;
+      for (const [k, v] of fd.entries()) {
+        if (v !== '') { cols.push(k); vals.push(v === '' ? null : v); }
+      }
+
+      const sql = `INSERT INTO ${creatingTable} (${cols.map(c => `"${c}"`).join(', ')}) VALUES (${vals.map((_,i) => `$${i+1}`).join(', ')}) RETURNING *`;
+      const data = await apiCall('/admin/debug/api/sql', 'POST', { sql, writeMode: true });
+      if (data.error) { alert('Insert failed: ' + data.error); return; }
+      cancelCreate();
+      loadTableRows(creatingTable);
+    }
+
+    function cancelCreate() {
+      const el = document.getElementById('create-form-overlay');
+      if (el) el.remove();
+      creatingTable = null;
+    }
+
+    // ── Error Logs ─────────────────────────────────────────────
+    async function loadErrorLogs() {
+      show('error-logs-results', '<div class="state-msg"><span class="spinner"></span>Loading...</div>');
+      try {
+        const data = await apiCall('/admin/debug/api/error-logs', 'POST');
+        let html = '';
+
+        // Client errors
+        if (data.clientErrors && data.clientErrors.length > 0) {
+          html += `<div class="sub-section"><div class="sub-section-title">Client-Side Errors (${data.clientErrors.length})</div>
+            <table class="debug-table"><tr><th>Time</th><th>URL</th><th>Message</th><th>User Agent</th></tr>`;
+          for (const e of data.clientErrors) {
+            html += `<tr>
+              <td class="mono" style="font-size:0.7rem;color:var(--muted-2)">${new Date(e.created_at).toLocaleString()}</td>
+              <td class="mono" style="font-size:0.7rem;max-width:180px;word-break:break-all;">${e.url || '—'}</td>
+              <td class="mono" style="font-size:0.72rem;max-width:240px;word-break:break-all;color:#ef4444;">${(e.msg || '').slice(0,80)}</td>
+              <td class="mono" style="font-size:0.7rem;max-width:160px;word-break:break-all;">${(e.ua || '').slice(0,80)}</td>
+            </tr>`;
+          }
+          html += '</table></div>';
+        }
+
+        // Server errors
+        if (data.serverErrors && data.serverErrors.length > 0) {
+          html += `<div class="sub-section"><div class="sub-section-title">Server-Side Errors (${data.serverErrors.length})</div>
+            <table class="debug-table"><tr><th>Time</th><th>Actor</th><th>Action</th><th>Detail</th></tr>`;
+          for (const e of data.serverErrors) {
+            html += `<tr>
+              <td class="mono" style="font-size:0.7rem;color:var(--muted-2)">${new Date(e.created_at).toLocaleString()}</td>
+              <td class="mono" style="font-size:0.72rem;color:var(--accent)">${e.actor || '—'}</td>
+              <td class="mono" style="font-size:0.72rem;color:#ef4444">${e.action}</td>
+              <td class="mono" style="font-size:0.7rem;word-break:break-all;">${JSON.stringify(e.detail || {})}</td>
+            </tr>`;
+          }
+          html += '</table></div>';
+        }
+
+        if (!html) {
+          html = '<div class="state-msg">No errors logged. Client errors require window.onerror wiring in the app.</div>';
+        }
+
+        show('error-logs-results', html);
+        const total = (data.clientErrors?.length || 0) + (data.serverErrors?.length || 0);
+        setSectionStatus('errors', total > 0 ? 'fail' : 'pass', total > 0 ? `${total} errors` : 'clean');
+      } catch(e) {
+        show('error-logs-results', `<div style="color:#ef4444;font-size:0.82rem;">${e.message}</div>`);
+      }
+    }
+
+    // ── Client Error Collection (runs on page load) ─────────────────
+    window.addEventListener('error', function(e) {
+      const payload = {
+        ua: navigator.userAgent,
+        url: window.location.href,
+        msg: e.message,
+        stack: e.error?.stack || '',
+        line: String(e.lineno || ''),
+        col: String(e.colno || ''),
+      };
+      // Fire-and-forget to the log endpoint
+      const pw = localStorage.getItem('debug_pw') || '';
+      fetch('/admin/debug/api/log-client-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-debug-password': pw },
+        body: JSON.stringify(payload),
+      }).catch(() => {});
+    });
+
+    // Auto-open first section so it's not blank
+    toggleSection('sec-supabase');
+  </script>
+</body>
+</html>

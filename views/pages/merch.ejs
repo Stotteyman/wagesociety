@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Merch — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+  <%- include('../partials/nav') %>
+
+  <section class="merch-page">
+    <div class="merch-inner">
+      <div class="page-header">
+        <span class="section-label">Shop</span>
+        <h1 class="section-title">WAGE Merch</h1>
+        <p class="section-sub">Official W.A.G.E. Society merch for creators, marketers, and entrepreneurs building in public.</p>
+      </div>
+
+      <% if (items.length === 0) { %>
+        <div class="coming-soon">
+          <h2>Coming soon</h2>
+          <p>Merch drops are on the way. Check back soon.</p>
+        </div>
+      <% } else { %>
+        <div class="merch-grid">
+          <% items.forEach(function(item) { %>
+          <div class="merch-card">
+            <% if (item.image_url) { %>
+              <div class="merch-image-wrap">
+                <img src="<%= item.image_url %>" alt="<%= item.name %>" class="merch-image" />
+              </div>
+            <% } %>
+            <div class="merch-info">
+              <h3 class="merch-name"><%= item.name %></h3>
+              <p class="merch-desc"><%= item.description || '' %></p>
+              <div class="merch-footer">
+                <span class="merch-price"><%= item.price %></span>
+                <% if (item.external_link) { %>
+                  <a href="<%= item.external_link %>" target="_blank" rel="noopener" class="merch-badge" style="text-decoration:none; background: var(--accent); color: white;">Shop Now →</a>
+                <% } else { %>
+                  <span class="merch-badge" style="background:rgba(34,197,94,0.15);border-color:rgba(34,197,94,0.3);color:#15803d;">Available</span>
+                <% } %>
+              </div>
+            </div>
+          </div>
+          <% }) %>
+        </div>
+      <% } %>
+
+      <p class="merch-legal">Purchases are governed by our <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>. Questions? Email <a href="mailto:support@wagesociety.com">support@wagesociety.com</a></p>
+    </div>
+  </section>
+
+  <%- include('../partials/footer') %>
+</body>
+</html>

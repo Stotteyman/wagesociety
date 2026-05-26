@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Join the Society — W.A.G.E. Society</title>
+  <meta name="description" content="Join W.A.G.E. Society. Free, Creator, or Pro — pick your tier and start building without platform middlemen taking a cut.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    /* Join page — tier cards layout */
+    .join-hero {
+      padding: 5rem 3rem 3rem;
+      text-align: center;
+      background: radial-gradient(ellipse 60% 50% at 50% 20%, rgba(249,115,22,0.06) 0%, transparent 70%);
+    }
+    .join-eyebrow {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+    .join-title {
+      font-size: clamp(2.5rem, 5vw, 3.75rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.05;
+      margin-bottom: 1rem;
+    }
+    .join-sub {
+      color: var(--muted);
+      font-size: 1rem;
+      max-width: 50ch;
+      margin: 0 auto 3rem;
+      line-height: 1.7;
+    }
+
+    /* Tier cards */
+    .tiers-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 3rem 6rem;
+    }
+    @media (max-width: 800px) {
+      .tiers-grid { grid-template-columns: 1fr; padding: 0 1.5rem 4rem; }
+    }
+
+    .tier-card {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 2.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      position: relative;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .tier-card:hover { border-color: rgba(249,115,22,0.4); }
+    .tier-card.featured {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(249,115,22,0.2), 0 20px 60px rgba(249,115,22,0.08);
+    }
+    .tier-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      background: var(--accent);
+      color: #fff;
+      padding: 0.25rem 0.75rem;
+      border-radius: 100px;
+      display: inline-block;
+      margin-bottom: 1rem;
+      align-self: flex-start;
+    }
+    .tier-card.featured .tier-badge { background: var(--accent); }
+    .tier-name {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.35rem;
+    }
+    .tier-price {
+      display: flex;
+      align-items: baseline;
+      gap: 0.25rem;
+      margin-bottom: 0.5rem;
+    }
+    .tier-price-amount {
+      font-size: 2.75rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+    .tier-price-period {
+      font-size: 0.875rem;
+      color: var(--muted-2);
+      font-weight: 500;
+    }
+    .tier-tagline {
+      font-size: 0.875rem;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+    }
+    .tier-divider {
+      height: 1px;
+      background: var(--border);
+      margin-bottom: 1.5rem;
+    }
+    .tier-features {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      flex: 1;
+    }
+    .tier-features li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      font-size: 0.875rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .tier-features li svg {
+      flex-shrink: 0;
+      margin-top: 0.15rem;
+      color: var(--accent);
+    }
+
+    /* CTA button */
+    .tier-cta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      width: 100%;
+      padding: 0.875rem 1.5rem;
+      border-radius: var(--radius-btn);
+      font-weight: 700;
+      font-size: 0.875rem;
+      font-family: 'Space Grotesk', sans-serif;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .tier-cta-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .tier-cta-primary:hover { background: var(--accent-hover); box-shadow: 0 4px 20px rgba(249,115,22,0.25); }
+    .tier-cta-secondary {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid rgba(249,115,22,0.3);
+    }
+    .tier-cta-secondary:hover { background: var(--accent-dim); }
+    .tier-cta-current {
+      background: var(--surface);
+      color: var(--muted-2);
+      border: 1px solid var(--border);
+      cursor: default;
+    }
+    .tier-cta:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Already-logged-in banner */
+    .current-tier-banner {
+      max-width: 1100px;
+      margin: 0 auto 2rem;
+      padding: 0 3rem;
+    }
+    .current-tier-card {
+      background: var(--bg-2);
+      border: 1px solid rgba(249,115,22,0.3);
+      border-radius: var(--radius-card);
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .current-tier-info { display: flex; align-items: center; gap: 1rem; }
+    .current-tier-label { font-size: 0.8rem; color: var(--muted-2); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+    .current-tier-name { font-size: 1.1rem; font-weight: 700; }
+    .current-tier-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: var(--accent-dim);
+      border: 1px solid rgba(249,115,22,0.2);
+      color: var(--accent);
+      padding: 0.25rem 0.75rem;
+      border-radius: 100px;
+    }
+    .current-tier-upgrades { display: flex; gap: 0.75rem; }
+
+    /* Inline signup form (FREE tier) */
+    .free-form-wrap { margin-top: 1rem; }
+    .free-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .free-form-row {
+      display: flex;
+      gap: 0.75rem;
+    }
+    .free-form-row input { flex: 1; }
+    .auth-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-btn);
+      padding: 0.875rem 1rem;
+      font-family: inherit;
+      font-size: 0.9rem;
+      color: var(--fg);
+      outline: none;
+      transition: border-color 0.2s;
+      box-sizing: border-box;
+    }
+    .auth-input:focus { border-color: var(--accent); }
+    .toggle-link {
+      font-size: 0.8rem;
+      color: var(--muted-2);
+      text-align: center;
+      margin-top: 0.75rem;
+    }
+    .toggle-link a { color: var(--accent); text-decoration: none; font-weight: 600; cursor: pointer; }
+    .toggle-link a:hover { text-decoration: underline; }
+
+    /* Error / success messages */
+    .join-msg {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-radius: var(--radius);
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+    .join-msg.error {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #f87171;
+    }
+    .join-msg.success {
+      background: rgba(34,197,94,0.1);
+      border: 1px solid rgba(34,197,94,0.3);
+      color: #4ade80;
+    }
+
+    /* Loading state */
+    .btn-loading { opacity: 0.7; pointer-events: none; }
+
+    /* FREE card form states */
+    .free-form-section { display: none; }
+    .free-form-section.open { display: block; }
+
+    /* Fine print */
+    .join-fine-print {
+      text-align: center;
+      color: var(--muted-2);
+      font-size: 0.8rem;
+      padding: 0 3rem 4rem;
+    }
+    .join-fine-print a { color: var(--muted-2); }
+  </style>
+</head>
+<body>
+  <%- include('../partials/nav') %>
+
+  <section class="join-hero">
+    <p class="join-eyebrow">Join the Society</p>
+    <h1 class="join-title">We All<br>Gonna Eat.</h1>
+    <p class="join-sub">Pick your tier. No platform middlemen. No algorithm grief. You keep your cut.</p>
+  </section>
+
+  <% if (currentTier && currentTier !== 'none') { %>
+  <!-- Already logged in -->
+  <div class="current-tier-banner">
+    <div class="current-tier-card">
+      <div class="current-tier-info">
+        <div>
+          <div class="current-tier-label">Current plan</div>
+          <div class="current-tier-name"><%= currentTier.charAt(0).toUpperCase() + currentTier.slice(1) %></div>
+        </div>
+        <span class="current-tier-badge"><%= currentTier %></span>
+      </div>
+      <% if (currentTier === 'free' || currentTier === 'creator') { %>
+      <div class="current-tier-upgrades">
+        <% if (currentTier === 'free') { %>
+          <a href="<%= subscriptionLinksMonthly.creator %>" class="btn-primary" style="font-family:'Space Grotesk',sans-serif;display:inline-block;text-align:center;">Upgrade to Creator →</a>
+        <% } %>
+        <% if (currentTier !== 'pro') { %>
+          <a href="<%= subscriptionLinksMonthly.pro %>" class="btn-view" style="font-family:'Space Grotesk',sans-serif;display:inline-block;text-align:center;">Go Pro →</a>
+        <% } %>
+      </div>
+      <% } else { %>
+      <span style="color:var(--muted-2);font-size:0.875rem;">You have the highest tier.</span>
+      <% } %>
+    </div>
+  </div>
+  <% } %>
+
+  <div id="joinMsg" class="join-msg" style="display:none;max-width:1100px;margin:0 auto 1rem;padding:0 3rem;"></div>
+
+  <div class="tiers-grid">
+
+    <!-- ── FREE ─────────────────────────────────────────────── -->
+    <div class="tier-card" id="freeCard">
+      <span class="tier-badge">Free</span>
+      <h2 class="tier-name">FREE</h2>
+      <div class="tier-price">
+        <span class="tier-price-amount">$0</span>
+        <span class="tier-price-period">/forever</span>
+      </div>
+      <p class="tier-tagline">Just here to browse? That's fine. No commitment.</p>
+      <div class="tier-divider"></div>
+      <ul class="tier-features">
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Browse the creator directory
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Claim your public profile
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Follow creators & get updates
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Free forever, no credit card
+        </li>
+      </ul>
+
+      <% if (currentTier && currentTier !== 'none') { %>
+        <button class="tier-cta tier-cta-current" disabled>Current Plan</button>
+      <% } else { %>
+        <!-- Collapsed state: click to expand form -->
+        <div id="freeCollapsed">
+          <button class="tier-cta tier-cta-secondary" onclick="showFreeForm()">Join the Society</button>
+        </div>
+        <!-- Expanded form -->
+        <div id="freeFormSection" class="free-form-section">
+          <div class="free-form-wrap">
+            <!-- Password signup tab -->
+            <div id="freePasswordTab">
+              <div id="freeError" class="join-msg error" style="display:none;"></div>
+              <div id="freeSuccess" class="join-msg success" style="display:none;"></div>
+              <form id="freePasswordForm" class="free-form" onsubmit="submitFreePassword(event)">
+                <div class="free-form-row">
+                  <input type="email" id="freeEmail" class="auth-input" placeholder="Email address" required autocomplete="email">
+                </div>
+                <input type="password" id="freePassword" class="auth-input" placeholder="Password (6+ chars)" required minlength="6">
+                <button type="submit" id="freePasswordBtn" class="tier-cta tier-cta-primary">Create Free Account</button>
+              </form>
+              <p class="toggle-link">Have an account? <a href="/login">Sign in</a></p>
+              <p class="toggle-link" style="margin-top:0.5rem;">No password? <a onclick="showFreeMagic()">Use a magic link instead</a></p>
+            </div>
+            <!-- Magic link tab -->
+            <div id="freeMagicTab" style="display:none;">
+              <div id="freeMagicError" class="join-msg error" style="display:none;"></div>
+              <div id="freeMagicSent" class="join-msg success" style="display:none;"></div>
+              <form id="freeMagicForm" class="free-form" onsubmit="submitFreeMagic(event)">
+                <input type="email" id="freeMagicEmail" class="auth-input" placeholder="Email address" required autocomplete="email">
+                <button type="submit" id="freeMagicBtn" class="tier-cta tier-cta-primary">Send Magic Link</button>
+              </form>
+              <p class="toggle-link" style="margin-top:0.75rem;"><a onclick="showFreePassword()">← Back to password</a></p>
+            </div>
+          </div>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- ── CREATOR ─────────────────────────────────────────── -->
+    <div class="tier-card featured" id="creatorCard">
+      <span class="tier-badge">Popular</span>
+      <h2 class="tier-name">Creator</h2>
+      <div class="tier-price">
+        <span class="tier-price-amount">$29</span>
+        <span class="tier-price-period">/month</span>
+      </div>
+      <p class="tier-tagline">For creators ready to sell and build in public.</p>
+      <div class="tier-divider"></div>
+      <ul class="tier-features">
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Everything in Free
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Sell memberships & merch
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Go live with audience alerts
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Blog with built-in distribution
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Collaborate with other creators
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Discord tier sync
+        </li>
+      </ul>
+
+      <% if (currentTier === 'creator') { %>
+        <button class="tier-cta tier-cta-current" disabled>Current Plan</button>
+      <% } else if (currentTier === 'pro') { %>
+        <button class="tier-cta tier-cta-current" disabled>Included with Pro</button>
+      <% } else { %>
+        <button class="tier-cta tier-cta-primary" onclick="startCheckout('creator')">Start Creating →</button>
+      <% } %>
+    </div>
+
+    <!-- ── PRO ─────────────────────────────────────────────── -->
+    <div class="tier-card" id="proCard">
+      <h2 class="tier-name">Pro</h2>
+      <div class="tier-price">
+        <span class="tier-price-amount">$79</span>
+        <span class="tier-price-period">/month</span>
+      </div>
+      <p class="tier-tagline">Full access. No gates. Everything the platform can do.</p>
+      <div class="tier-divider"></div>
+      <ul class="tier-features">
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Everything in Creator
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          WAGE Pro Discord role
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Priority directory placement
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Advanced analytics & insights
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Exclusive Pro creator network
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Direct support channel
+        </li>
+      </ul>
+
+      <% if (currentTier === 'pro') { %>
+        <button class="tier-cta tier-cta-current" disabled>Current Plan</button>
+      <% } else { %>
+        <button class="tier-cta tier-cta-secondary" onclick="startCheckout('pro')">Go Pro →</button>
+      <% } %>
+    </div>
+  </div>
+
+  <p class="join-fine-print">
+    Cancel anytime. No hidden fees. Questions? <a href="mailto:hello@wagesociety.com">hello@wagesociety.com</a>
+  </p>
+
+  <%- include('../partials/footer') %>
+
+<script>
+// ── FREE form toggle ───────────────────────────────────────────────────────
+function showFreeForm() {
+  document.getElementById('freeCollapsed').style.display = 'none';
+  document.getElementById('freeFormSection').classList.add('open');
+  document.getElementById('freeEmail').focus();
+}
+function showFreePassword() {
+  document.getElementById('freePasswordTab').style.display = 'block';
+  document.getElementById('freeMagicTab').style.display = 'none';
+}
+function showFreeMagic() {
+  document.getElementById('freePasswordTab').style.display = 'none';
+  document.getElementById('freeMagicTab').style.display = 'block';
+  document.getElementById('freeMagicEmail').focus();
+}
+
+// ── FREE password signup ────────────────────────────────────────────────────
+async function submitFreePassword(e) {
+  e.preventDefault();
+  const email = document.getElementById('freeEmail').value.trim();
+  const password = document.getElementById('freePassword').value;
+  const btn = document.getElementById('freePasswordBtn');
+  const errEl = document.getElementById('freeError');
+  const succEl = document.getElementById('freeSuccess');
+
+  errEl.style.display = 'none';
+  succEl.style.display = 'none';
+  btn.disabled = true;
+  btn.classList.add('btn-loading');
+  btn.textContent = 'Creating account…';
+
+  try {
+    const r = await fetch('/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await r.json();
+    if (data.ok) {
+      if (data.confirm_email) {
+        succEl.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Account created! Check your email to confirm, then you can sign in.';
+        succEl.style.display = 'flex';
+        document.getElementById('freePasswordForm').reset();
+      } else {
+        window.location.href = '/dashboard';
+      }
+    } else {
+      errEl.textContent = data.error || 'Something went wrong. Try again.';
+      errEl.style.display = 'flex';
+      btn.disabled = false;
+      btn.classList.remove('btn-loading');
+      btn.textContent = 'Create Free Account';
+    }
+  } catch (_) {
+    errEl.textContent = 'Network error. Check your connection and try again.';
+    errEl.style.display = 'flex';
+    btn.disabled = false;
+    btn.classList.remove('btn-loading');
+    btn.textContent = 'Create Free Account';
+  }
+}
+
+// ── FREE magic link ──────────────────────────────────────────────────────────
+async function submitFreeMagic(e) {
+  e.preventDefault();
+  const email = document.getElementById('freeMagicEmail').value.trim();
+  const btn = document.getElementById('freeMagicBtn');
+  const errEl = document.getElementById('freeMagicError');
+  const sentEl = document.getElementById('freeMagicSent');
+
+  errEl.style.display = 'none';
+  sentEl.style.display = 'none';
+  btn.disabled = true;
+  btn.classList.add('btn-loading');
+  btn.textContent = 'Sending…';
+
+  try {
+    const r = await fetch('/auth/magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const data = await r.json();
+    if (data.ok) {
+      sentEl.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Magic link sent! Check your inbox (and spam folder).';
+      sentEl.style.display = 'flex';
+      document.getElementById('freeMagicForm').reset();
+    } else {
+      errEl.textContent = data.error || 'Something went wrong. Try again.';
+      errEl.style.display = 'flex';
+      btn.disabled = false;
+      btn.classList.remove('btn-loading');
+      btn.textContent = 'Send Magic Link';
+    }
+  } catch (_) {
+    errEl.textContent = 'Network error. Check your connection and try again.';
+    errEl.style.display = 'flex';
+    btn.disabled = false;
+    btn.classList.remove('btn-loading');
+    btn.textContent = 'Send Magic Link';
+  }
+}
+
+// ── Paid checkout (Creator/Pro) — direct Stripe subscription links ───
+function startCheckout(planSlug) {
+  // If logged in, jump straight to Stripe subscription link
+  <% if (userEmail) { %>
+    const links = { creator: '<%= subscriptionLinksMonthly.creator %>', pro: '<%= subscriptionLinksMonthly.pro %>' };
+    if (links[planSlug]) window.location.href = links[planSlug];
+  <% } else { %>
+    // Not logged in — prompt signup first
+    window.location.href = '/login?next=' + encodeURIComponent('/join?checkout=' + planSlug);
+  <% } %>
+}
+
+function upgradeCheckout(planSlug) {
+  startCheckout(planSlug);
+}
+
+// Auto-open FREE form if returning from login with checkout param
+<% if (autoOpenFree) { %>
+  showFreeForm();
+<% } %>
+
+// Auto-fire paid checkout if user arrived via login→redirect with ?checkout=plan
+<% if (userEmail && checkoutPlan && checkoutPlan !== 'free') { %>
+  window.location.href = '<%= subscriptionLinksMonthly[checkoutPlan] %>';
+<% } %>
+</script>
+</body>
+</html>

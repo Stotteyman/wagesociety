@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Change Password — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+<%- include('../partials/nav') %>
+
+<section class="dashboard-page">
+  <div class="dashboard-inner" style="max-width:540px;">
+
+    <% if (forceChange) { %>
+    <div style="background:rgba(249,115,22,0.12);border:1px solid rgba(249,115,22,0.4);border-radius:10px;padding:20px 24px;margin-bottom:1.5rem;">
+      <p style="color:var(--accent);font-weight:600;margin:0 0 6px;">⚠️ Required: Change your password before continuing</p>
+      <p style="color:var(--text-muted, #888);font-size:0.88rem;margin:0;">This is your first login as root admin. Choose a new password to protect your account.</p>
+    </div>
+    <% } else { %>
+    <div class="page-header" style="margin-bottom:1.5rem;">
+      <span class="section-label">Account</span>
+      <h1 class="section-title">Security</h1>
+    </div>
+    <% } %>
+
+    <% if (error) { %>
+    <div id="errorBanner" style="background:rgba(220,50,50,0.1);border:1px solid rgba(220,50,50,0.3);border-radius:8px;padding:14px 18px;margin-bottom:1.2rem;color:#dc3232;font-size:0.9rem;">
+      <% if (error === 'min_length') { %>
+        Password must be at least 8 characters.
+      <% } else if (error === 'no_reuse') { %>
+        Cannot reuse "admin" as your new password — that's too easy to guess.
+      <% } else if (error === 'mismatch') { %>
+        Passwords don't match. Try again.
+      <% } else { %>
+        Error: <%= error %>
+      <% } %>
+    </div>
+    <% } %>
+
+    <div class="dash-card">
+      <h3 class="dash-card-title">Change Password</h3>
+      <form action="/settings/security" method="POST" style="display:flex;flex-direction:column;gap:1rem;" onsubmit="return validateForm()">
+        <div>
+          <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.4rem;" for="new_password">New Password</label>
+          <input type="password" id="new_password" name="new_password" required minlength="8" class="auth-input" placeholder="At least 8 characters" style="width:100%;" />
+        </div>
+        <div>
+          <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.4rem;" for="confirm_password">Confirm New Password</label>
+          <input type="password" id="confirm_password" name="confirm_password" required minlength="8" class="auth-input" placeholder="Repeat new password" style="width:100%;" />
+        </div>
+        <div id="mismatchWarn" style="color:#dc3232;font-size:0.85rem;display:none;">Passwords don't match.</div>
+        <button type="submit" class="btn-primary" style="margin-top:0.5rem;">Update Password</button>
+      </form>
+    </div>
+
+    <% if (!forceChange) { %>
+    <div style="margin-top:1rem;">
+      <a href="/dashboard" style="color:var(--text-muted,#888);font-size:0.88rem;">← Back to dashboard</a>
+    </div>
+    <% } %>
+
+  </div>
+</section>
+
+<script>
+function validateForm() {
+  var np = document.getElementById('new_password').value;
+  var cp = document.getElementById('confirm_password').value;
+  if (np === 'admin') {
+    document.getElementById('mismatchWarn').textContent = 'Cannot reuse "admin" as your new password.';
+    document.getElementById('mismatchWarn').style.display = 'block';
+    return false;
+  }
+  if (np !== cp) {
+    document.getElementById('mismatchWarn').textContent = "Passwords don't match.";
+    document.getElementById('mismatchWarn').style.display = 'block';
+    return false;
+  }
+  return true;
+}
+</script>
+</body>
+</html>

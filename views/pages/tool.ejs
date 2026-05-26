@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Creator Tool — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+<%- include('../partials/nav') %>
+
+<section class="dashboard-page">
+  <div class="dashboard-inner" style="max-width:900px;">
+    <div style="margin-bottom:2rem;">
+      <a href="/dashboard" style="color:var(--muted);text-decoration:none;font-size:0.875rem;">← Back to Dashboard</a>
+    </div>
+
+    <% const toolMeta = {
+      'bulletin-board': { title: 'Bulletin Board', icon: '📌', desc: 'Post announcements, launches, and collaboration requests to keep your network aligned.' },
+      'content-calendar': { title: 'Content Calendar', icon: '📅', desc: 'Plan videos, newsletters, and social campaigns across a weekly cadence.' },
+      'revenue-tracker': { title: 'Revenue Tracker', icon: '💰', desc: 'Track recurring income streams and monitor which offers convert best each month.' },
+      'creator-task-board': { title: 'Creator Task Board', icon: '✅', desc: 'Break goals into weekly sprint tasks and keep momentum with clear priorities.' },
+      'collaboration-hub': { title: 'Collaboration Hub', icon: '🤝', desc: 'Coordinate partner campaigns, joint launches, and audience growth collaborations.' },
+      'knowledge-vault': { title: 'Knowledge Vault', icon: '📚', desc: 'Store swipe files, scripts, hooks, and reusable frameworks for repeatable execution.' },
+      'promotion-hub': { title: 'Promotion Hub', icon: '📣', desc: 'Compose and schedule posts to Kick, Twitch, X, Instagram, and Threads from one place.' },
+      'merch-studio': { title: 'Merch Studio', icon: '🛍️', desc: 'Submit merch mockups, track review status, and monitor your earnings splits.' },
+      'creator-growth-system': { title: 'Creator Growth System', icon: '🚀', desc: 'Build and track your creator operating system across 5 modules.' },
+    }; %>
+
+    <% const meta = toolMeta[tool] || { title: tool, icon: '⚙️', desc: 'Creator workspace tool.' }; %>
+
+    <div style="text-align:center;margin-bottom:3rem;">
+      <div style="font-size:3rem;margin-bottom:1rem;"><%= meta.icon %></div>
+      <h1 style="font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:900;letter-spacing:-0.02em;margin-bottom:0.75rem;"><%= meta.title %></h1>
+      <p style="color:var(--muted);font-size:1.05rem;max-width:55ch;margin:0 auto;"><%= meta.desc %></p>
+    </div>
+
+    <div class="dash-card" style="text-align:center;padding:3rem;">
+      <p style="color:var(--muted);margin-bottom:1.5rem;">This tool is part of the W.A.G.E. Creator OS. Additional features are in active development.</p>
+      <% if (tool === 'collaboration-hub') { %>
+        <a href="/directory" class="btn-primary">Browse Creators</a>
+      <% } else if (tool === 'knowledge-vault') { %>
+        <div style="text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.5rem;margin-top:1rem;">
+          <h3 style="font-weight:700;margin-bottom:1rem;">Getting Started</h3>
+          <ul style="color:var(--muted);line-height:2;margin-left:1.25rem;">
+            <li>Best-performing hooks from top creators</li>
+            <li>Email subject line swipe file</li>
+            <li>Launch checklist template</li>
+            <li>Content repurposing framework</li>
+          </ul>
+        </div>
+      <% } else { %>
+        <a href="/dashboard" class="btn-primary">Back to Dashboard</a>
+      <% } %>
+    </div>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>
+</body>
+</html>

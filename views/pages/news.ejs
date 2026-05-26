@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blog — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+  <%- include('../partials/nav') %>
+
+  <section class="news-page">
+    <div class="news-inner">
+      <div class="page-header">
+        <span class="section-label">Blog</span>
+        <h1 class="section-title">News & Updates</h1>
+        <% if (canPost) { %>
+          <button class="btn-primary" onclick="document.getElementById('postForm').classList.toggle('hidden')">Write Post</button>
+        <% } %>
+      </div>
+
+      <% if (canPost) { %>
+      <div id="postForm" class="news-post-form hidden">
+        <input type="text" id="postTitle" placeholder="Post title" class="form-input" />
+        <textarea id="postBody" placeholder="Write your post..." class="form-textarea"></textarea>
+        <button class="btn-primary" onclick="submitPost()">Publish</button>
+        <div id="postError" class="error-msg" style="display:none"></div>
+      </div>
+      <% } %>
+
+      <% if (posts.length === 0) { %>
+        <div class="empty-state"><p>No blog posts yet.</p></div>
+      <% } else { %>
+        <div class="news-list">
+          <% posts.forEach(function(post) { %>
+          <article class="news-article">
+            <h2 class="news-title"><%= post.title %></h2>
+            <p class="news-meta">By <%= post.author_name || post.author_email %> on <%= new Date(post.created_at).toLocaleString() %></p>
+            <div class="news-body">
+              <%- post.body.replace(/\n/g, '<br>') %>
+            </div>
+            <% if (post.image_urls && post.image_urls.length) { %>
+              <div class="news-images">
+                <% post.image_urls.forEach(function(url) { %>
+                  <img src="<%= url %>" alt="Blog image" class="news-image" />
+                <% }) %>
+              </div>
+            <% } %>
+          </article>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+  </section>
+
+  <%- include('../partials/footer') %>
+  <script>
+    var canPost = <%= canPost %>;
+    function submitPost() {
+      var title = document.getElementById('postTitle').value;
+      var body = document.getElementById('postBody').value;
+      var err = document.getElementById('postError');
+      err.style.display = 'none';
+      fetch('/api/news', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, body })
+      }).then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.error) { err.textContent = data.error; err.style.display = ''; }
+          else window.location.reload();
+        })
+        .catch(function() { err.textContent = 'Failed to publish post'; err.style.display = ''; });
+    }
+  </script>
+</body>
+</html>

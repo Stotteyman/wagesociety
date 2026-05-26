@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Onboarding — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+<nav class="nav"><div class="nav-inner"><a href="/" class="nav-logo">W.A.G.E.</a></div></nav>
+
+<div class="auth-page">
+  <div class="auth-card" style="max-width:520px;">
+    <div class="section-label">Welcome to W.A.G.E.</div>
+    <h1 class="auth-title" style="margin-bottom:0.5rem;">Set up your account</h1>
+    <p class="auth-sub">Your account starts on FREE. Finish setup now, then upgrade if you want more.</p>
+
+    <div class="auth-form" style="margin-top:1.5rem;">
+      <div>
+        <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.4rem;">Username</label>
+        <input type="text" id="displayName" class="auth-input" placeholder="your_username" maxlength="20" autocomplete="username">
+        <div id="usernameStatus" style="font-size:0.8rem;margin-top:0.4rem;color:var(--muted);"></div>
+      </div>
+      <div>
+        <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.4rem;">Bio <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+        <textarea id="bio" class="form-textarea" placeholder="Tell the community what you do..." style="min-height:80px;"></textarea>
+      </div>
+      <div id="onboarding-error" class="error-msg" style="display:none;"></div>
+      <div id="onboarding-success" style="color:#16a34a;font-size:0.875rem;display:none;"></div>
+      <button type="button" id="finishBtn" class="btn-primary auth-submit">Finish Setup →</button>
+    </div>
+
+    <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border);">
+      <a href="/dashboard" style="font-size:0.875rem;color:var(--muted);text-decoration:none;">Skip for now →</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const email = '<%= email %>';
+let debounceTimer = null;
+const displayNameInput = document.getElementById('displayName');
+const statusEl = document.getElementById('usernameStatus');
+const errorEl = document.getElementById('onboarding-error');
+const successEl = document.getElementById('onboarding-success');
+const finishBtn = document.getElementById('finishBtn');
+
+displayNameInput.addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  const val = displayNameInput.value.trim();
+  if (!val) { statusEl.textContent = ''; return; }
+  if (!/^[a-zA-Z0-9_-]{3,20}$/.test(val)) {
+    statusEl.textContent = '3–20 chars. Letters, numbers, underscores, hyphens.';
+    statusEl.style.color = '#dc2626';
+    return;
+  }
+  statusEl.textContent = 'Checking availability...';
+  statusEl.style.color = 'var(--muted)';
+  debounceTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(`/api/check-username?username=${encodeURIComponent(val)}&currentEmail=${encodeURIComponent(email)}`);
+      const data = await res.json();
+      if (data.available) {
+        statusEl.textContent = 'Username is available!';
+        statusEl.style.color = '#16a34a';
+      } else {
+        statusEl.textContent = data.reason || 'Username already taken.';
+        statusEl.style.color = '#dc2626';
+      }
+    } catch { statusEl.textContent = ''; }
+  }, 400);
+});
+
+finishBtn.addEventListener('click', async () => {
+  errorEl.style.display = 'none';
+  successEl.style.display = 'none';
+  finishBtn.disabled = true; finishBtn.textContent = 'Saving...';
+
+  const displayName = displayNameInput.value.trim();
+  const bio = document.getElementById('bio').value.trim();
+  if (!displayName) { showError('Username is required.'); return; }
+  if (!/^[a-zA-Z0-9_-]{3,20}$/.test(displayName)) { showError('Username must be 3–20 characters.'); return; }
+  if (statusEl.style.color === 'rgb(220, 38, 38)') { showError('Please choose an available username.'); return; }
+
+  try {
+    const res = await fetch('/api/me/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ display_name: displayName, bio }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showError(data.error || 'Could not save profile.'); return; }
+    successEl.textContent = 'Profile saved! Redirecting...';
+    successEl.style.display = 'block';
+    setTimeout(() => window.location.href = '/dashboard', 800);
+  } catch { showError('Could not complete onboarding.'); }
+  finally { finishBtn.disabled = false; finishBtn.textContent = 'Finish Setup →'; }
+});
+
+function showError(msg) { errorEl.textContent = msg; errorEl.style.display = 'block'; finishBtn.disabled = false; finishBtn.textContent = 'Finish Setup →'; }
+</script>
+</body>
+</html>

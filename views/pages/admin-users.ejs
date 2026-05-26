@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin: Members — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+<%- include('../partials/nav') %>
+
+<section class="dashboard-page">
+  <div class="dashboard-inner">
+    <div style="margin-bottom:2rem;">
+      <a href="/dashboard" style="color:var(--muted);text-decoration:none;font-size:0.875rem;">← Back to Dashboard</a>
+    </div>
+    <div class="page-header">
+      <span class="section-label" style="color:var(--accent);">Admin</span>
+      <h1 class="section-title">Manage Members</h1>
+    </div>
+
+    <div id="membersList" class="dash-card">
+      <p style="color:var(--muted);">Loading members...</p>
+    </div>
+  </div>
+</section>
+
+<script>
+fetch('/api/auth/me').then(r=>r.json()).then(data => {
+  if (!data.user || !['superadmin','admin'].includes(data.access?.role)) {
+    document.getElementById('membersList').innerHTML = '<p style="color:#dc2626;">Access denied. Admin only.</p>';
+    return;
+  }
+  fetch('/api/public-directory').then(r=>r.json()).then(dir => {
+    const entries = dir.entries || [];
+    if (!entries.length) { document.getElementById('membersList').innerHTML='<p style="color:var(--muted);">No members found.</p>'; return; }
+    document.getElementById('membersList').innerHTML = `
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="text-align:left;border-bottom:1px solid var(--border);">
+          <th style="padding:0.75rem 0;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);">Member</th>
+          <th style="padding:0.75rem 0;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);">Username</th>
+          <th style="padding:0.75rem 0;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);">Role</th>
+        </tr></thead>
+        <tbody>${entries.map(e=>`<tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:0.875rem 0;display:flex;align-items:center;gap:0.75rem;">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:0.9rem;">${(e.display_name||'?')[0].toUpperCase()}</div>
+            <span>${e.display_name || '—'}</span>
+          </td>
+          <td style="padding:0.875rem 0;color:var(--accent);font-weight:600;">@${e.username}</td>
+          <td style="padding:0.875rem 0;"><span style="font-size:0.8rem;background:var(--surface);border:1px solid var(--border);padding:0.2rem 0.75rem;border-radius:20px;">${e.role || 'user'}</span></td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+  });
+});
+</script>
+<%- include('../partials/footer') %>
+</body>
+</html>

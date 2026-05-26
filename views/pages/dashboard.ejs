@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+<%- include('../partials/nav') %>
+
+<section class="dashboard-page">
+  <div class="dashboard-inner">
+
+    <div class="page-header">
+      <span class="section-label">Creator OS</span>
+      <h1 class="section-title">Your Dashboard</h1>
+      <p class="section-sub">Welcome back, <strong><%= displayName %></strong>.</p>
+    </div>
+
+    <% if (role === 'banned') { %>
+    <div style="background:#2d1111;border:1px solid #7f1d1d;border-radius:12px;padding:2rem;margin-bottom:2rem;">
+      <h2 style="color:#fca5a5;font-size:1.5rem;margin-bottom:0.75rem;">Account Restricted</h2>
+      <p style="color:#fca5a5;">Your account is currently restricted. <a href="/appeals" style="color:#fca5a5;text-decoration:underline;">Submit an appeal</a>.</p>
+    </div>
+    <% } else { %>
+
+    <div class="dashboard-grid">
+
+      <div class="dash-card">
+        <h3 class="dash-card-title">Profile</h3>
+        <div style="display:flex;gap:1.25rem;align-items:center;margin-bottom:1.5rem;">
+          <% if (avatarUrl) { %>
+            <img src="<%= avatarUrl %>" alt="Avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover;">
+          <% } else { %>
+            <div style="width:72px;height:72px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:1.75rem;font-family:'Playfair Display',serif;font-weight:900;color:var(--muted);"><%= (displayName || '?')[0].toUpperCase() %></div>
+          <% } %>
+          <div>
+            <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;"><%= displayName %></div>
+            <div style="font-size:0.85rem;color:var(--accent);">@<%= username %></div>
+          </div>
+        </div>
+        <div class="dash-meta"><strong>Email:</strong> <%= email %></div>
+        <div class="dash-meta"><strong>Plan:</strong> <%= plan || 'free' %></div>
+        <div class="dash-meta"><strong>Role:</strong> <%= role %></div>
+        <% if (bio) { %>
+          <div class="dash-meta" style="margin-top:0.75rem;"><%= bio %></div>
+        <% } %>
+        <div class="dash-links" style="margin-top:1rem;">
+          <a href="/settings" class="dash-link">⚙️ Settings</a>
+          <a href="/<%= username %>" class="dash-link">👤 View Public Profile</a>
+        </div>
+      </div>
+
+      <div class="dash-card">
+        <h3 class="dash-card-title">Workspace</h3>
+        <p class="dash-profile-info">Your organization tools and quick links.</p>
+        <div style="display:flex;flex-direction:column;gap:0.75rem;">
+          <a href="/news" class="dash-link">📰 Organization News</a>
+          <a href="/directory" class="dash-link">👥 Creator Directory</a>
+          <a href="/live" class="dash-link">📡 Livestreams</a>
+          <a href="/merch" class="dash-link">🛍️ Merch</a>
+        </div>
+
+        <% if (hasCreatorTools) { %>
+        <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border);">
+          <div style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.75rem;">Creator Tools</div>
+          <div style="display:flex;flex-direction:column;gap:0.75rem;">
+            <a href="/dashboard/tools/bulletin-board" class="dash-link">📌 Bulletin Board</a>
+            <a href="/dashboard/tools/collaboration-hub" class="dash-link">🤝 Collaboration Hub</a>
+            <a href="/dashboard/tools/knowledge-vault" class="dash-link">📚 Knowledge Vault</a>
+            <a href="/dashboard/tools/creator-growth-system" class="dash-link">🚀 Creator Growth System</a>
+          </div>
+        </div>
+        <% } %>
+
+        <% if (role === 'superadmin' || role === 'admin') { %>
+        <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border);">
+          <div style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent);margin-bottom:0.75rem;">Admin</div>
+          <div style="display:flex;flex-direction:column;gap:0.75rem;">
+            <a href="/admin/users" class="dash-link">👥 Manage Members</a>
+            <a href="/admin/shop" class="dash-link">🛍️ Manage Shop</a>
+          </div>
+        </div>
+        <% } %>
+      </div>
+
+      <div class="dash-card">
+        <h3 class="dash-card-title">Account</h3>
+        <p class="dash-meta">Signed in as <strong><%= email %></strong></p>
+        <p class="dash-meta">Plan: <strong><%= plan || 'free' %></strong></p>
+        <p class="dash-meta">Role: <strong><%= role %></strong></p>
+        <div style="margin-top:1rem;display:flex;flex-direction:column;gap:0.5rem;">
+          <a href="/subscriptions" class="dash-link">💳 View Plans</a>
+          <a href="/terms" class="dash-link">📄 Terms</a>
+          <a href="/privacy" class="dash-link">🔒 Privacy</a>
+        </div>
+        <form action="/logout" method="POST" style="margin-top:1.5rem;">
+          <button type="submit" style="background:none;border:1px solid var(--border);padding:0.625rem 1.25rem;border-radius:6px;font-size:0.875rem;font-weight:600;color:var(--muted);cursor:pointer;width:100%;">Sign Out</button>
+        </form>
+      </div>
+
+    </div>
+    <% } %>
+
+  </div>
+</section>
+
+<%- include('../partials/footer') %>
+</body>
+</html>

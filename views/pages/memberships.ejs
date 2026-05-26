@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memberships — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    .billing-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      margin-bottom: 2.5rem;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .billing-toggle label {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .billing-toggle label.active {
+      color: var(--fg);
+      font-weight: 700;
+    }
+    .toggle-track {
+      position: relative;
+      width: 52px;
+      height: 28px;
+      background: var(--surface);
+      border: 2px solid var(--accent);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-track.annual {
+      background: var(--accent);
+    }
+    .toggle-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      background: var(--accent);
+      border-radius: 50%;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .toggle-track.annual .toggle-thumb {
+      transform: translateX(24px);
+      background: #fff;
+    }
+    .billing-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #fff;
+      background: #22c55e;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      letter-spacing: 0.03em;
+    }
+
+    .plan-card { transition: opacity 0.2s; }
+    .plan-card.inactive { opacity: 0.5; pointer-events: none; }
+
+    .price-display { min-height: 4rem; }
+    .price-amount { font-family: 'Playfair Display', serif; font-size: 2.5rem; font-weight: 900; color: var(--fg); }
+    .price-period { font-size: 1rem; font-weight: 400; color: var(--muted); }
+    .price-equiv { font-size: 0.8rem; color: var(--accent-warm); margin-top: 0.2rem; }
+
+    .savings-callout {
+      display: inline-block;
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      color: #92400e;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.65rem;
+      border-radius: 999px;
+      margin-top: 0.5rem;
+    }
+
+    .upgrade-btn {
+      display: block;
+      width: 100%;
+      padding: 0.8rem;
+      background: var(--on-surface);
+      color: #fff;
+      text-align: center;
+      text-decoration: none;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .upgrade-btn:hover { background: #3a2a1a; transform: translateY(-1px); }
+    .upgrade-btn.annual-btn {
+      background: var(--accent);
+    }
+    .upgrade-btn.annual-btn:hover {
+      background: var(--accent-warm);
+    }
+  </style>
+</head>
+<body>
+  <%- include('../partials/nav') %>
+
+  <section class="memberships-page">
+    <div class="memberships-inner">
+
+      <!-- ── Header ─────────────────────────────────────────────────────────── -->
+      <div class="page-header">
+        <span class="section-label">Memberships</span>
+        <h1 class="section-title">Choose Your Plan</h1>
+        <p class="section-sub">Join W.A.G.E. Society and build without platform middlemen taking a cut.</p>
+      </div>
+
+      <!-- ── Alerts ──────────────────────────────────────────────────────────── -->
+      <% if (success) { %>
+        <div style="background:#d4edda;border:1px solid #28a745;border-radius:8px;padding:1rem;margin-bottom:1.5rem;text-align:center;color:#155724;">
+          <strong>Welcome!</strong> Your membership is now active. Enjoy full access!
+        </div>
+      <% } else if (canceled) { %>
+        <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:1rem;margin-bottom:1.5rem;text-align:center;color:#856404;">
+          No charges were made. You can upgrade anytime.
+        </div>
+      <% } else if (upgrade) { %>
+        <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:1rem;margin-bottom:1.5rem;text-align:center;color:#856404;">
+          <strong>Upgrade required</strong> — this content needs a <strong><%= upgrade %></strong> membership or higher.
+        </div>
+      <% } %>
+
+      <% if (userEmail && currentMembership) { %>
+        <div style="text-align:center;padding:1rem;background:var(--surface);border-radius:8px;margin-bottom:2rem;color:var(--accent);">
+          You're currently on the <strong><%= currentMembership.name %></strong> plan<%= currentMembership.billing_cycle === 'annual' ? ' (annual)' : '' %>.
+        </div>
+      <% } %>
+
+      <!-- ── Billing toggle ──────────────────────────────────────────────────── -->
+      <div class="billing-toggle">
+        <label id="monthlyLabel" class="active" onclick="setBilling('monthly')">Monthly</label>
+        <div class="toggle-track" id="toggleTrack" onclick="setBilling(currentCycle === 'monthly' ? 'annual' : 'monthly')">
+          <div class="toggle-thumb" id="toggleThumb"></div>
+        </div>
+        <label id="annualLabel" onclick="setBilling('annual')">Annual</label>
+        <span class="billing-badge">2 months free</span>
+      </div>
+
+      <!-- ── Plan cards ──────────────────────────────────────────────────────── -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem;margin-bottom:2rem;">
+
+        <% plans.forEach(function(plan) {
+          const isCurrentPlan = currentMembership && currentMembership.plan_slug === plan.slug;
+          const isFeatured = plan.slug === 'creator';
+          const isFree = plan.slug === 'free';
+
+          // Annual pricing: $29×10=$290, $79×10=$790
+          const annualPrices = { creator: 290, pro: 790 };
+          const monthlyEquiv = annualPrices[plan.slug];
+        %>
+          <div class="plan-card<%= isCurrentPlan ? ' inactive' : '' %>" id="card-<%= plan.slug %>"
+            style="background:<%= isFeatured ? '#faf6f1' : '#fff' %>;border:2px solid <%= isCurrentPlan ? 'var(--accent)' : (isFeatured ? 'var(--accent)' : 'var(--border)') %>;border-radius:12px;padding:2rem;<%= isCurrentPlan ? 'box-shadow:0 0 0 3px rgba(139,94,60,0.15);' : '' %>">
+
+            <% if (isFeatured) { %>
+              <div style="position:absolute;top:-1px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-size:0.65rem;font-weight:700;padding:0.2rem 0.9rem;border-radius:0 0 6px 6px;letter-spacing:0.1em;display:none;">MOST POPULAR</div>
+            <% } %>
+
+            <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;margin-bottom:0.5rem;color:var(--on-surface);"><%= plan.name %></h3>
+
+            <!-- Price display — JS updates these -->
+            <div class="price-display" id="price-<%= plan.slug %>">
+              <% if (isFree) { %>
+                <div class="price-amount">$0</div>
+                <div class="price-period">forever free</div>
+              <% } else { %>
+                <!-- Monthly -->
+                <div class="price-amount" id="price-amount-<%= plan.slug %>"><%= plan.display_price.replace('/mo','') %><span class="price-period">/mo</span></div>
+                <div class="price-equiv" id="price-equiv-<%= plan.slug %>" style="display:none;"></div>
+              <% } %>
+            </div>
+
+            <!-- Savings callout (annual) -->
+            <% if (monthlyEquiv) { %>
+              <div id="savings-<%= plan.slug %>" style="display:none;">
+                <span class="savings-callout">Save $<%= (plan.display_price.replace(/[^0-9.]/g,'') * 2 - 0.01).toFixed(0) %>/yr — 2 months free</span>
+              </div>
+            <% } %>
+
+            <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1rem;margin-top:0.5rem;"><%= plan.description %></p>
+
+            <ul style="list-style:none;padding:0;margin-bottom:1.5rem;">
+              <% (plan.features || []).forEach(function(f) { %>
+                <li style="padding:0.25rem 0;color:var(--on-surface);font-size:0.88rem;">✓ <%= f %></li>
+              <% }); %>
+            </ul>
+
+            <% if (!userEmail) { %>
+              <a href="/join" class="upgrade-btn">Get Started</a>
+            <% } else if (isCurrentPlan) { %>
+              <button disabled style="display:block;width:100%;padding:0.8rem;background:var(--accent);color:#fff;border:none;border-radius:10px;font-weight:600;font-size:0.95rem;cursor:default;">Current Plan</button>
+            <% } else if (isFree) { %>
+              <button disabled style="display:block;width:100%;padding:0.8rem;background:#ccc;color:#fff;border:none;border-radius:10px;font-weight:600;font-size:0.95rem;">Free — included</button>
+            <% } else { %>
+              <a href="#" id="upgrade-btn-<%= plan.slug %>" class="upgrade-btn" onclick="handleUpgrade('<%= plan.slug %>', '<%= currentCycle || 'monthly' %>'); return false;">
+                Upgrade to <%= plan.name %>
+              </a>
+            <% } %>
+          </div>
+        <% }); %>
+      </div>
+
+      <p style="text-align:center;color:var(--muted);font-size:0.85rem;">
+        Questions? Email <a href="mailto:hello@wagesociety.com" style="color:var(--accent);">hello@wagesociety.com</a>
+      </p>
+    </div>
+  </section>
+
+  <%- include('../partials/footer') %>
+
+<script>
+  // ── Billing cycle state ───────────────────────────────────────────────────────
+  let currentCycle = 'monthly';
+
+  const prices = {
+    creator: { monthly: '$29', annual: '$290' },
+    pro:     { monthly: '$79', annual: '$790' },
+  };
+
+  const monthlyEquiv = {
+    creator: '$24.17/mo',
+    pro:     '$65.83/mo',
+  };
+
+  const savings = {
+    creator: 'Save $58/yr',
+    pro:     'Save $158/yr',
+  };
+
+  function setBilling(cycle) {
+    currentCycle = cycle;
+
+    // Update toggle UI
+    document.getElementById('monthlyLabel').classList.toggle('active', cycle === 'monthly');
+    document.getElementById('annualLabel').classList.toggle('active', cycle === 'annual');
+    document.getElementById('toggleTrack').classList.toggle('annual', cycle === 'annual');
+
+    // Update each plan card
+    ['creator', 'pro'].forEach(function(slug) {
+      const amt = prices[slug][cycle];
+      const equivEl = document.getElementById('price-equiv-' + slug);
+      const savingsEl = document.getElementById('savings-' + slug);
+      const btn = document.getElementById('upgrade-btn-' + slug);
+      const amountEl = document.getElementById('price-amount-' + slug);
+
+      if (amountEl) {
+        amountEl.innerHTML = amt + '<span class="price-period">/' + (cycle === 'monthly' ? 'mo' : 'yr') + '</span>';
+      }
+
+      if (equivEl) {
+        if (cycle === 'annual') {
+          equivEl.textContent = '≈ ' + monthlyEquiv[slug] + ' billed annually';
+          equivEl.style.display = 'block';
+        } else {
+          equivEl.style.display = 'none';
+        }
+      }
+
+      if (savingsEl) {
+        savingsEl.style.display = cycle === 'annual' ? 'block' : 'none';
+      }
+
+      if (btn) {
+        btn.classList.toggle('annual-btn', cycle === 'annual');
+        btn.textContent = (cycle === 'annual' ? 'Subscribe Annual' : 'Upgrade to ' + slug.charAt(0).toUpperCase() + slug.slice(1));
+      }
+    });
+  }
+
+  function handleUpgrade(planSlug, cycle) {
+    const links = {
+      creator: {
+        monthly: '<%= subscriptionLinksMonthly.creator %>',
+        annual:  '<%= subscriptionLinksAnnual.creator %>',
+      },
+      pro: {
+        monthly: '<%= subscriptionLinksMonthly.pro %>',
+        annual:  '<%= subscriptionLinksAnnual.pro %>',
+      },
+    };
+    const url = links[planSlug] && links[planSlug][cycle] ? links[planSlug][cycle] : links[planSlug].monthly;
+    window.location.href = url;
+  }
+
+  // Init
+  setBilling('monthly');
+</script>
+</body>
+</html>
