@@ -1,18 +1,6 @@
-FOR POLSIA
+ENV VARS FOR OAUTH 
 
-Actual values from the local development environment file `.env.local`.
 
-Supabase / app config:
-SUPABASE_URL=https://pqngaffhjqadrsntsvlp.supabase.co
-VITE_SUPABASE_URL=https://pqngaffhjqadrsntsvlp.supabase.co
-NEXT_PUBLIC_SUPABASE_URL=https://pqngaffhjqadrsntsvlp.supabase.co
-SUPABASE_PUBLISHABLE_KEY=sb_publishable_PYklH7WqzrRHtvuTFIRc2Q_Cwi8jGi8
-VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_PYklH7WqzrRHtvuTFIRc2Q_Cwi8jGi8
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_PYklH7WqzrRHtvuTFIRc2Q_Cwi8jGi8
-
-Stripe / payments:
-VITE_STRIPE_PUBLIC_KEY=pk_test_51TMb1OE2Sz1nHUTnL09ndDVzM7rMYsrf54MFOy5CzooqiBdnYEKgJZO1qtCWzQKoUuaNI1L2zckLyShiEZrG8FGK00npK0Q9Ih
-STRIPE_SECRET_KEY=sk_test_51TMb1OE2Sz1nHUTnIv5nnlsPK2ls4rsAHHXhKkvDLZE1xkx9cTTftcaf2G3TdB7vMoFqVcex3aFiDb1D1H70WRLn00GQDKZp3a
 
 Kick OAuth / redirect:
 KICK_CLIENT_ID=01KPA63EWNJK4W00WEMW93K6WS
@@ -20,3 +8,13 @@ KICK_CLIENT_SECRET=dbb0d206eef60ba6cee49c7aaa964f9ef2c1b287714d9af9c4203f31ee35b
 VITE_KICK_CLIENT_ID=01KPA63EWNJK4W00WEMW93K6WS
 VITE_KICK_CLIENT_SECRET=dbb0d206eef60ba6cee49c7aaa964f9ef2c1b287714d9af9c4203f31ee35b520
 VITE_AUTH_REDIRECT_ORIGIN=http://localhost:3000
+
+
+Discord: 
+Bot token: MTA3OTY5NjI5MTI2MjYzMTk2Ng.GwwPOP.jh65Gg6JaYw3MRuJEwnHvZNm_H4pxYbtjueGUk
+Client ID: 1079696291262631966
+Client Secret: DDVqnbflpSlTurHfqwLxxUhY3zihkZoe
+
+Google:
+Client ID: 678938108830-hdqoqtokdeh2pi00q2jvfj1ltnus3bfh.apps.googleusercontent.com
+Client Secret: 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
