@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin: Discord Bot — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    :root { --admin-sidebar-w: 220px; }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    .admin-nav { background: var(--bg); border-bottom: 1px solid var(--border); padding: 0.85rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+    .admin-nav-logo { font-weight: 800; font-size: 1rem; color: var(--fg); text-decoration: none; }
+    .admin-nav-logo span { color: var(--accent); }
+    .admin-nav-divider { width: 1px; height: 20px; background: var(--border); }
+    .admin-nav-right { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+    .admin-nav-link { font-size: 0.8rem; color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 0.3rem; }
+    .admin-nav-link:hover { color: var(--fg); }
+    .admin-body { display: flex; flex: 1; max-width: 1300px; margin: 0 auto; width: 100%; padding: 2rem 1.5rem; gap: 2rem; align-items: flex-start; }
+    .admin-sidebar { position: sticky; top: 1.5rem; width: var(--admin-sidebar-w); flex-shrink: 0; }
+    .admin-sidebar-section { margin-bottom: 1.5rem; }
+    .admin-sidebar-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 0.4rem; padding: 0 0.5rem; }
+    .admin-sidebar-link { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: 0.82rem; font-weight: 500; transition: background 0.1s, color 0.1s; }
+    .admin-sidebar-link:hover { background: var(--surface); color: var(--fg); }
+    .admin-sidebar-link.active { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+    .admin-sidebar-link .link-icon { font-size: 0.9rem; width: 18px; text-align: center; }
+    .admin-sidebar-link .link-badge { margin-left: auto; font-size: 0.6rem; font-weight: 700; background: rgba(255,102,0,0.15); color: var(--accent); padding: 0.1rem 0.4rem; border-radius: 10px; }
+    .admin-main { flex: 1; min-width: 0; }
+    .admin-page-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); display: block; margin-bottom: 0.2rem; }
+    .admin-page-title { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; font-weight: 800; margin: 0; }
+    .admin-page-subtitle { color: var(--muted); font-size: 0.875rem; margin: 0.3rem 0 0; }
+
+    /* Tab navigation */
+    .dc-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+    .dc-tab-btn { padding: 0.75rem 1.25rem; font-size: 0.85rem; font-weight: 600; color: var(--muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-family: inherit; transition: color 0.15s, border-color 0.15s; }
+    .dc-tab-btn:hover { color: var(--fg); }
+    .dc-tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .dc-tab-panel { display: none; }
+    .dc-tab-panel.active { display: block; }
+
+    /* Status cards */
+    .status-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    @media (max-width: 800px) { .status-grid { grid-template-columns: 1fr 1fr; } }
+    .status-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+    .status-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.25rem; }
+    .status-value { font-size: 1.5rem; font-weight: 800; }
+    .status-value.ok { color: #22c55e; }
+    .status-value.warn { color: #eab308; }
+    .status-value.error { color: #ef4444; }
+    .status-value.neutral { color: var(--muted); }
+
+    /* Cards */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.25rem; }
+    .card-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.25rem; }
+    .card-desc { font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem; line-height: 1.5; }
+    .section-title { font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem; }
+
+    /* Buttons */
+    .btn { font-size: 0.8rem; padding: 0.5rem 1rem; border-radius: 8px; border: none; cursor: pointer; font-family: inherit; font-weight: 600; transition: opacity 0.15s; display: inline-flex; align-items: center; gap: 0.4rem; }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-ghost { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+    .btn-danger { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+    .btn-sm { font-size: 0.75rem; padding: 0.35rem 0.75rem; }
+
+    /* Tables */
+    .dc-table { width: 100%; border-collapse: collapse; }
+    .dc-table th { text-align: left; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
+    .dc-table td { padding: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; font-size: 0.85rem; }
+    .dc-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .text-center { text-align: center; }
+
+    /* Role styles */
+    .role-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: middle; margin-right: 0.3rem; }
+    .role-color-input { width: 32px; height: 28px; padding: 0; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; background: transparent; }
+    .badge-managed { font-size: 0.6rem; font-weight: 700; background: rgba(88,101,242,0.15); color: #5865F2; padding: 0.1rem 0.4rem; border-radius: 4px; margin-left: 0.3rem; }
+
+    /* Cleanup panel */
+    .cleanup-row { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .cleanup-row:last-child { border-bottom: none; }
+    .cleanup-name { font-weight: 600; margin-right: 0.5rem; }
+    .cleanup-reason { font-size: 0.75rem; color: var(--muted); }
+    .cleanup-actions { display: flex; gap: 0.5rem; }
+
+    /* Channel list */
+    .channel-category { margin-bottom: 1rem; }
+    .channel-cat-name { font-size: 0.7rem; font-weight: 700; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 0.3rem; }
+    .channel-item { padding: 0.3rem 0 0.3rem 1.5rem; font-size: 0.85rem; color: var(--fg); }
+
+    /* Settings form */
+    .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .setting-row:last-child { border-bottom: none; }
+    .setting-label { font-weight: 600; font-size: 0.85rem; }
+    .setting-desc { font-size: 0.75rem; color: var(--muted); }
+    .toggle { position: relative; width: 44px; height: 24px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 12px; cursor: pointer; transition: background 0.2s; }
+    .toggle-slider:before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
+    .toggle input:checked + .toggle-slider { background: var(--accent); }
+    .toggle input:checked + .toggle-slider:before { transform: translateX(20px); }
+    .input-sm { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.6rem; color: var(--fg); font-family: inherit; font-size: 0.8rem; }
+    .input-sm:focus { outline: none; border-color: var(--accent); }
+    select.input-sm { cursor: pointer; }
+    textarea.input-sm { min-height: 60px; resize: vertical; width: 100%; }
+
+    /* Bot status */
+    .bot-status-card { display: flex; align-items: center; gap: 1rem; }
+    .bot-avatar-wrap { width: 48px; height: 48px; border-radius: 50%; overflow: hidden; background: var(--border); }
+    .bot-avatar-wrap img { width: 100%; height: 100%; object-fit: cover; }
+    .status-pill { font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.6rem; border-radius: 10px; }
+    .status-pill.ok { background: rgba(34,197,94,0.15); color: #22c55e; }
+    .status-pill.error { background: rgba(239,68,68,0.15); color: #ef4444; }
+
+    /* Event badge */
+    .event-badge { font-size: 0.7rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 4px; background: rgba(255,102,0,0.1); color: var(--accent); }
+
+    /* Sync log */
+    .log-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; font-size: 0.75rem; max-height: 250px; overflow-y: auto; margin-top: 0.75rem; display: none; }
+    .log-entry { padding: 0.2rem 0; display: flex; gap: 0.5rem; }
+    .log-result.ok { color: #22c55e; }
+    .log-result.fail { color: #ef4444; }
+
+    /* Server card */
+    .server-icon-sm { width: 40px; height: 40px; border-radius: 8px; }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 2rem; right: 2rem; padding: 0.75rem 1.25rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; z-index: 999; opacity: 0; transform: translateY(10px); transition: opacity 0.3s, transform 0.3s; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+    .toast.error { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+
+    /* Server icon */
+    .server-icon-lg { width: 48px; height: 48px; border-radius: 12px; display: none; }
+
+    /* Channel tree (Tab 4) */
+    .ch-category { margin-bottom: 0.5rem; }
+    .ch-cat-header {
+      display: flex; align-items: center; gap: 0.3rem;
+      padding: 0.35rem 0.5rem; cursor: pointer;
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--muted);
+      border-radius: 6px; transition: background 0.1s;
+    }
+    .ch-cat-header:hover { background: var(--surface); color: var(--fg); }
+    .ch-cat-icon { font-size: 0.65rem; width: 12px; }
+    .ch-cat-name { flex: 1; }
+    .ch-cat-count { font-size: 0.65rem; color: var(--muted); font-weight: 400; }
+    .ch-cat-children { padding-left: 1rem; }
+    .ch-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.25rem 0.5rem; border-radius: 6px; cursor: pointer;
+      font-size: 0.82rem; transition: background 0.1s;
+    }
+    .ch-row:hover { background: rgba(255,255,255,0.04); }
+    .ch-icon-btn { flex: 1; cursor: pointer; }
+    .ch-name { margin-left: 0.25rem; }
+    .ch-actions { display: flex; gap: 0.25rem; opacity: 0; transition: opacity 0.15s; }
+    .ch-row:hover .ch-actions { opacity: 1; }
+    .btn-xs { font-size: 0.7rem; padding: 0.15rem 0.35rem; border-radius: 4px; border: none; cursor: pointer; }
+    .btn-xs.btn-ghost { background: rgba(255,255,255,0.06); color: var(--muted); }
+    .btn-xs.btn-ghost:hover { background: rgba(255,255,255,0.1); color: var(--fg); }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000; backdrop-filter: blur(2px);
+    }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.5rem; min-width: 360px; max-width: 480px;
+    }
+    .modal-title { font-weight: 700; font-size: 1rem; margin-bottom: 1rem; }
+    .modal-field { margin-bottom: 1rem; }
+    .modal-label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--muted); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    .modal-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 0.8rem; color: var(--fg); font-family: inherit; font-size: 0.85rem; box-sizing: border-box; }
+    .modal-input:focus { outline: none; border-color: var(--accent); }
+    .modal-radio-group { display: flex; gap: 1rem; }
+    .modal-radio-group label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer; }
+    .modal-select { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 0.8rem; color: var(--fg); font-family: inherit; font-size: 0.85rem; cursor: pointer; }
+    .modal-select:focus { outline: none; border-color: var(--accent); }
+    .modal-warning { color: #ef4444; font-size: 0.78rem; margin-top: 0.5rem; display: none; }
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
+    .modal-danger-text { color: #ef4444; font-size: 0.78rem; margin-top: 0.35rem; }
+
+    /* Role Settings tab */
+    .rs-section { margin-bottom: 1.5rem; }
+    .rs-section-title { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.75rem; }
+    .rs-everyone-row { background: rgba(255,102,0,0.05); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1.5rem; }
+
+    @media (max-width: 768px) {
+      .admin-sidebar { display: none; }
+      .admin-body { padding: 1rem; }
+      .status-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Admin nav -->
+<nav class="admin-nav">
+  <a href="/dashboard" class="admin-nav-logo">W.A.G.E. <span>Admin</span></a>
+  <div class="admin-nav-divider"></div>
+  <span style="font-size:0.75rem;color:var(--muted);">Discord Bot</span>
+  <div class="admin-nav-right">
+    <a href="/admin" class="admin-nav-link">← Overview</a>
+    <a href="/dashboard" class="admin-nav-link">Dashboard</a>
+    <a href="/logout" class="admin-nav-link">Logout</a>
+  </div>
+</nav>
+
+<div class="admin-body">
+  <!-- Sidebar -->
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Management</div>
+      <a href="/admin" class="admin-sidebar-link"><span class="link-icon">🏠</span> Overview</a>
+      <a href="/admin/users" class="admin-sidebar-link"><span class="link-icon">👥</span> Members</a>
+      <a href="/admin/roles" class="admin-sidebar-link"><span class="link-icon">🔑</span> Roles &amp; Permissions</a>
+    </div>
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Platform</div>
+      <a href="/admin/discord" class="admin-sidebar-link active"><span class="link-icon">🤖</span> Discord Bot</a>
+      <a href="/admin/tiers" class="admin-sidebar-link"><span class="link-icon">💳</span> Tiers &amp; Pricing</a>
+      <a href="/admin/point-shop" class="admin-sidebar-link"><span class="link-icon">🏪</span> Point Shop</a>
+    </div>
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Tools</div>
+      <a href="/admin/diagnostics" class="admin-sidebar-link"><span class="link-icon">🔧</span> Diagnostics</a>
+      <a href="/admin/shop" class="admin-sidebar-link"><span class="link-icon">🛒</span> Merch Shop</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="admin-main">
+    <div class="admin-page-header">
+      <span class="admin-page-label">Admin</span>
+      <h1 class="admin-page-title">Discord Bot</h1>
+      <p class="admin-page-subtitle">Manage the WAGE Society Discord server, bot settings, role mappings, and view activity logs.</p>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="dc-tabs">
+      <button class="dc-tab-btn active" data-tab="server" onclick="switchTab('server')">Main Server</button>
+      <button class="dc-tab-btn" data-tab="settings" onclick="switchTab('settings')">Bot Settings</button>
+      <button class="dc-tab-btn" data-tab="servers" onclick="switchTab('servers')">Other Servers</button>
+      <button class="dc-tab-btn" data-tab="channels" onclick="switchTab('channels')">Channels &amp; Permissions</button>
+      <button class="dc-tab-btn" data-tab="roles-settings" onclick="switchTab('roles-settings')">Role Settings</button>
+      <button class="dc-tab-btn" data-tab="logs" onclick="switchTab('logs')">Logs</button>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- TAB 1: Main Server                                                 -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="dc-tab-panel active" id="tab-server">
+
+      <!-- Server overview -->
+      <div class="status-grid">
+        <div class="status-card">
+          <div class="status-label">Connection</div>
+          <div class="status-value neutral" id="server-status">Loading...</div>
+        </div>
+        <div class="status-card">
+          <div class="status-label">Server</div>
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <img id="server-icon" class="server-icon-lg" src="" alt="">
+            <span class="status-value neutral" id="server-name" style="font-size:1.1rem;">—</span>
+          </div>
+        </div>
+        <div class="status-card">
+          <div class="status-label">Members</div>
+          <div class="status-value neutral" id="server-members">—</div>
+        </div>
+        <div class="status-card">
+          <div class="status-label">Roles</div>
+          <div class="status-value neutral" id="server-role-count">—</div>
+        </div>
+        <div class="status-card">
+          <div class="status-label">Linked Users</div>
+          <div class="status-value ok" id="server-linked">—</div>
+        </div>
+        <div class="status-card">
+          <div class="status-label">Verification Level</div>
+          <div class="status-value neutral" id="server-vl">—</div>
+        </div>
+      </div>
+
+      <!-- Managed Roles -->
+      <div class="card">
+        <div class="card-title">Managed Roles</div>
+        <div class="card-desc">All roles in the Discord server. Edit color and sync changes to Discord.</div>
+        <div style="overflow-x:auto;">
+          <table class="dc-table">
+            <thead>
+              <tr>
+                <th>Role</th>
+                <th>Color</th>
+                <th class="text-center">Hoist</th>
+                <th class="text-center">Mentionable</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="roles-tbody">
+              <tr><td colspan="5" style="color:var(--muted);text-align:center;padding:2rem;">Loading roles...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Role Cleanup -->
+      <div class="card">
+        <div class="card-title">🧹 Role Cleanup</div>
+        <div class="card-desc">Roles flagged for review. Keep or delete based on whether they're still needed.</div>
+        <div id="role-cleanup-list">
+          <div style="color:var(--muted);padding:1rem;text-align:center;">Loading...</div>
+        </div>
+      </div>
+
+      <!-- Channel Management -->
+      <div class="card">
+        <div class="card-title">📁 Channels</div>
+        <div class="card-desc">Current channel structure. Run setup to create missing channels per the WAGE Society template.</div>
+        <div style="margin-bottom:1rem;">
+          <button class="btn btn-primary" id="channel-setup-btn" onclick="runChannelSetup()">Run Channel Setup</button>
+          <button class="btn btn-ghost" id="verify-btn" onclick="recreateVerify()">Recreate #verify</button>
+        </div>
+        <div id="channels-list" style="max-height:400px;overflow-y:auto;">
+          <div style="color:var(--muted);padding:1rem;">Loading channels...</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- TAB 2: Bot Settings                                                -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="dc-tab-panel" id="tab-settings">
+
+      <!-- Bot Status -->
+      <div class="card">
+        <div class="card-title">Bot Status</div>
+        <div class="bot-status-card">
+          <div class="bot-avatar-wrap"><img id="bot-avatar" src="" alt="" style="display:none;"></div>
+          <div>
+            <div style="font-weight:700;" id="bot-username">—</div>
+            <div style="font-size:0.75rem;color:var(--muted);">ID: <span id="bot-id">—</span></div>
+          </div>
+          <span class="status-pill neutral" id="bot-conn-status">Loading...</span>
+        </div>
+      </div>
+
+      <!-- Bot Behavior Settings -->
+      <div class="card">
+        <div class="card-title">Bot Behavior</div>
+        <div class="setting-row">
+          <div><div class="setting-label">Auto-assign roles on OAuth connect</div><div class="setting-desc">When a user links their Discord, assign their tier role automatically</div></div>
+          <label class="toggle"><input type="checkbox" id="set-auto-assign"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label">Role sync frequency</div><div class="setting-desc">How often to automatically sync all user roles</div></div>
+          <select class="input-sm" id="set-sync-freq">
+            <option value="on_demand">On demand</option>
+            <option value="hourly">Hourly</option>
+            <option value="every_6h">Every 6 hours</option>
+            <option value="daily">Daily</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label">Kick unlinked members</div><div class="setting-desc">Kick Discord members who don't have a linked WAGE account</div></div>
+          <label class="toggle"><input type="checkbox" id="set-kick-unlinked"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label">DM on role change</div><div class="setting-desc">Send a DM when a user's role changes</div></div>
+          <label class="toggle"><input type="checkbox" id="set-dm-role-change"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label">@everyone lockdown</div><div class="setting-desc">Lock @everyone from sending messages in all channels</div></div>
+          <label class="toggle"><input type="checkbox" id="set-lockdown"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label">Welcome message</div><div class="setting-desc">Send a welcome message when new members join</div></div>
+          <label class="toggle"><input type="checkbox" id="set-welcome-enabled"><span class="toggle-slider"></span></label>
+        </div>
+        <div class="setting-row">
+          <div style="flex:1;"><div class="setting-label">Welcome message text</div>
+          <textarea class="input-sm" id="set-welcome-text" style="margin-top:0.5rem;"></textarea></div>
+        </div>
+        <div class="setting-row">
+          <div style="flex:1;"><div class="setting-label">Verify embed text</div>
+          <textarea class="input-sm" id="set-verify-text" style="margin-top:0.5rem;"></textarea></div>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label">Auto-role on join</div><div class="setting-desc">Role to assign when a new member joins the server</div></div>
+          <input type="text" class="input-sm" id="set-auto-role" placeholder="Member">
+        </div>
+        <div style="margin-top:1rem;text-align:right;">
+          <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+        </div>
+      </div>
+
+      <!-- Tier → Role Mapping -->
+      <div class="card">
+        <div class="card-title">Tier → Role Mapping</div>
+        <div class="card-desc">Map WAGE Society membership tiers to Discord roles.</div>
+        <table class="dc-table">
+          <thead><tr><th>Tier</th><th>Discord Role</th><th>Role ID</th></tr></thead>
+          <tbody id="tier-map-tbody">
+            <tr><td colspan="3" style="color:var(--muted);text-align:center;padding:2rem;">Loading...</td></tr>
+          </tbody>
+        </table>
+        <div style="margin-top:1rem;display:flex;gap:0.75rem;justify-content:flex-end;">
+          <button class="btn btn-primary" onclick="saveTierMap()">Save Mapping</button>
+        </div>
+      </div>
+
+      <!-- Sync All Roles -->
+      <div class="card">
+        <div class="card-title">Sync All Roles</div>
+        <div class="card-desc">Re-run role sync for all linked users. Updates Discord roles based on their WAGE Society tier.</div>
+        <button class="btn btn-primary" id="sync-all-btn" onclick="syncAllRoles()">Sync All Roles Now</button>
+        <div class="log-box" id="sync-log"></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- TAB 3: Other Servers                                               -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="dc-tab-panel" id="tab-servers">
+      <div class="card">
+        <div class="card-title">Additional Servers</div>
+        <div class="card-desc">Manage other Discord servers the WAGE Society bot is connected to.</div>
+        <div id="other-servers-list">
+          <div style="color:var(--muted);text-align:center;padding:3rem;">
+            No additional servers. The primary server is managed in the "Main Server" tab.
+          </div>
+        </div>
+        <div style="margin-top:1.5rem;">
+          <a href="https://discord.com/api/oauth2/authorize?client_id=<%= process.env.DISCORD_CLIENT_ID || '' %>&permissions=268435456&scope=bot+applications.commands" target="_blank" class="btn btn-primary" style="text-decoration:none;">
+            Invite Bot to a Server
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- TAB 4: Channels & Permissions                                       -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="dc-tab-panel" id="tab-channels">
+
+      <!-- Channel tree + permission panel layout -->
+      <div style="display:grid;grid-template-columns:320px 1fr;gap:1.5rem;align-items:start;">
+
+        <!-- Channel tree -->
+        <div class="card">
+          <div class="card-title">Server Management</div>
+          <div class="card-desc">Manage channels, categories, and permissions. Click any channel to configure it.</div>
+          <div style="margin-bottom:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="openCreateChannelModal()">+ New Channel</button>
+            <button class="btn btn-ghost btn-sm" onclick="openCreateCategoryModal()">+ New Category</button>
+            <button class="btn btn-ghost btn-sm" id="sync-structure-btn" onclick="syncServerStructure()">🔄 Sync from Discord</button>
+          </div>
+          <div id="cp-channel-tree" style="max-height:500px;overflow-y:auto;font-size:0.82rem;"></div>
+        </div>
+
+        <!-- Permission panel -->
+        <div class="card" id="cp-permission-panel" style="display:none;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+            <div>
+              <div class="card-title" id="cp-channel-name">Channel Permissions</div>
+              <div class="card-desc" id="cp-channel-desc">Configure role access for this channel.</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="clearChannelPanel()" style="flex-shrink:0;">✕ Close</button>
+          </div>
+          <div id="cp-permission-list" style="margin-top:1rem;"></div>
+          <div style="margin-top:1rem;display:flex;gap:0.75rem;justify-content:flex-end;align-items:center;">
+            <button class="btn btn-ghost btn-sm" id="cp-apply-cat-btn" onclick="void(0)" style="display:none;">Apply to all in category</button>
+            <button class="btn btn-primary btn-sm" id="cp-save-btn" onclick="saveChannelPermissions()">Save Changes</button>
+          </div>
+        </div>
+
+        <!-- No channel selected placeholder -->
+        <div class="card" id="cp-empty-panel" style="display:block;">
+          <div style="text-align:center;padding:3rem;color:var(--muted);">
+            <div style="font-size:2rem;margin-bottom:0.75rem;">📁</div>
+            <div style="font-weight:600;margin-bottom:0.5rem;">Select a channel</div>
+            <div style="font-size:0.8rem;">Click any channel in the tree to manage who can read, view, or send messages.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- TAB: Role Settings                                                 -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="dc-tab-panel" id="tab-roles-settings">
+      <div class="rs-section">
+        <div class="rs-section-title">Global Role Management</div>
+        <div class="card-desc" style="margin-bottom:1rem;">Edit role name, color, hoist, and mentionable settings. Changes sync directly to Discord. Role hierarchy (position) is managed by Discord's role ordering — drag roles on Discord to reorder.</div>
+        <div id="rs-role-table"></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- MODALS                                                             -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+
+    <!-- Create Channel Modal -->
+    <div id="create-channel-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeModal('create-channel-modal')">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">Create Channel</div>
+        <div class="modal-field">
+          <label class="modal-label">Channel Name</label>
+          <input type="text" class="modal-input" id="cm-channel-name" placeholder="e.g. new-channel">
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Channel Type</label>
+          <div class="modal-radio-group">
+            <label><input type="radio" name="cm-type" id="cm-channel-type-0" value="0" checked> 💬 Text</label>
+            <label><input type="radio" name="cm-type" id="cm-channel-type-2" value="2"> 🔊 Voice</label>
+          </div>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Category (optional)</label>
+          <select class="modal-select" id="cm-parent-cat">
+            <option value="">No category</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Topic / Description (optional)</label>
+          <input type="text" class="modal-input" id="cm-channel-topic" placeholder="What is this channel for?">
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal('create-channel-modal')">Cancel</button>
+          <button class="btn btn-primary" onclick="submitCreateChannel()">Create Channel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Category Modal -->
+    <div id="create-category-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeModal('create-category-modal')">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">Create Category</div>
+        <div class="modal-field">
+          <label class="modal-label">Category Name</label>
+          <input type="text" class="modal-input" id="cat-name" placeholder="e.g. 🎮 Gaming">
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal('create-category-modal')">Cancel</button>
+          <button class="btn btn-primary" onclick="submitCreateCategory()">Create Category</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rename Category Modal -->
+    <div id="rename-category-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeModal('rename-category-modal')">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">Rename Category</div>
+        <div class="modal-field">
+          <label class="modal-label">Current Name</label>
+          <div style="font-weight:600;padding:0.6rem 0.8rem;background:var(--bg);border-radius:6px;" id="rc-current-name"></div>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">New Name</label>
+          <input type="text" class="modal-input" id="rc-new-name">
+          <input type="hidden" id="rc-category-id">
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal('rename-category-modal')">Cancel</button>
+          <button class="btn btn-primary" onclick="submitRenameCategory()">Rename</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Category Modal -->
+    <div id="delete-category-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeModal('delete-category-modal')">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">Delete Category</div>
+        <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:1rem;margin-bottom:1rem;">
+          <div style="font-weight:600;color:#ef4444;margin-bottom:0.25rem;">⚠️ This will delete the category AND all channels inside it</div>
+          <div style="font-size:0.8rem;color:var(--muted);">All messages in those channels will be permanently lost.</div>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Category to delete</label>
+          <div style="font-weight:600;padding:0.6rem 0.8rem;background:var(--bg);border-radius:6px;" id="dc-cat-name"></div>
+          <input type="hidden" id="dc-category-id">
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Type the category name to confirm</label>
+          <input type="text" class="modal-input" id="dc-confirm-name" placeholder="Type category name to confirm">
+          <div class="modal-warning" id="dc-confirm-warning">Category name does not match — please type the exact name to confirm.</div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal('delete-category-modal')">Cancel</button>
+          <button class="btn btn-danger" onclick="submitDeleteCategory()">Delete Category</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rename Channel Modal -->
+    <div id="rename-channel-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeModal('rename-channel-modal')">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">Rename Channel</div>
+        <div class="modal-field">
+          <label class="modal-label">Current Name</label>
+          <div style="font-weight:600;padding:0.5rem 0;background:var(--bg);border-radius:6px;padding:0.6rem 0.8rem;" id="rm-current-name"></div>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">New Name</label>
+          <input type="text" class="modal-input" id="rm-new-name">
+          <input type="hidden" id="rm-channel-id">
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal('rename-channel-modal')">Cancel</button>
+          <button class="btn btn-primary" onclick="submitRenameChannel()">Rename</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Channel Modal -->
+    <div id="delete-channel-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeModal('delete-channel-modal')">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-title">Delete Channel</div>
+        <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:1rem;margin-bottom:1rem;">
+          <div style="font-weight:600;color:#ef4444;margin-bottom:0.25rem;">⚠️ This cannot be undone</div>
+          <div style="font-size:0.8rem;color:var(--muted);">Deleting a channel permanently removes all messages and content.</div>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Channel to delete</label>
+          <div style="font-weight:600;padding:0.6rem 0.8rem;background:var(--bg);border-radius:6px;" id="dm-channel-name"></div>
+          <input type="hidden" id="dm-channel-id">
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Type the channel name to confirm</label>
+          <input type="text" class="modal-input" id="dm-confirm-name" placeholder="Type channel name to confirm deletion">
+          <div class="modal-warning" id="dm-confirm-warning">Channel name does not match — please type the exact name to confirm.</div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal('delete-channel-modal')">Cancel</button>
+          <button class="btn btn-danger" onclick="submitDeleteChannel()">Delete Channel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- TAB 5: Logs                                                        -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="dc-tab-panel" id="tab-logs">
+      <div class="card">
+        <div class="card-title">Bot Activity Log</div>
+        <div style="margin-bottom:1rem;display:flex;gap:0.75rem;align-items:center;">
+          <select class="input-sm" id="log-filter-event" onchange="filterLogs()">
+            <option value="">All Events</option>
+            <option value="role_updated">role_updated</option>
+            <option value="role_deleted">role_deleted</option>
+            <option value="roles_synced">roles_synced</option>
+            <option value="channel_setup">channel_setup</option>
+            <option value="verify_recreated">verify_recreated</option>
+            <option value="settings_updated">settings_updated</option>
+            <option value="tier_map_updated">tier_map_updated</option>
+            <option value="sync_completed">sync_completed</option>
+          </select>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="dc-table">
+            <thead><tr><th>Time</th><th>Event</th><th>User</th><th>Details</th></tr></thead>
+            <tbody id="logs-tbody">
+              <tr><td colspan="4" style="color:var(--muted);text-align:center;padding:2rem;">Select the Logs tab to load activity</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="logs-pagination" style="margin-top:1rem;display:flex;gap:0.5rem;justify-content:center;"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="/js/admin-discord.js"></script>
+</body>
+</html>

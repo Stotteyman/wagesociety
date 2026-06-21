@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin: Referral Management — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    :root { --admin-sidebar-w: 220px; }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    .admin-nav { background: var(--bg); border-bottom: 1px solid var(--border); padding: 0.85rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+    .admin-nav-logo { font-weight: 800; font-size: 1rem; color: var(--fg); text-decoration: none; }
+    .admin-nav-logo span { color: var(--accent); }
+    .admin-nav-divider { width: 1px; height: 20px; background: var(--border); }
+    .admin-nav-right { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+    .admin-nav-link { font-size: 0.8rem; color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 0.3rem; }
+    .admin-nav-link:hover { color: var(--fg); }
+    .admin-body { display: flex; flex: 1; max-width: 1300px; margin: 0 auto; width: 100%; padding: 2rem 1.5rem; gap: 2rem; }
+    .admin-sidebar { position: sticky; top: 1.5rem; width: var(--admin-sidebar-w); flex-shrink: 0; }
+    .admin-sidebar-section { margin-bottom: 1.5rem; }
+    .admin-sidebar-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 0.4rem; padding: 0 0.5rem; }
+    .admin-sidebar-link { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: 0.82rem; font-weight: 500; transition: background 0.1s, color 0.1s; }
+    .admin-sidebar-link:hover { background: var(--surface); color: var(--fg); }
+    .admin-sidebar-link.active { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+    .admin-sidebar-link .link-icon { font-size: 0.9rem; width: 18px; text-align: center; }
+    .admin-main { flex: 1; min-width: 0; }
+    .admin-page-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); display: block; margin-bottom: 0.2rem; }
+    .admin-page-title { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; font-weight: 800; margin: 0; }
+    .admin-page-subtitle { color: var(--muted); font-size: 0.875rem; margin: 0.3rem 0 0; }
+    .section-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .section-title { font-size: 1rem; font-weight: 700; margin: 0 0 0.25rem; }
+    .section-desc { font-size: 0.8rem; color: var(--muted); margin: 0 0 1.25rem; }
+    .form-row { display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap; }
+    .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .form-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+    .form-input { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 0.65rem 0.875rem; font-size: 0.875rem; color: var(--text); font-family: inherit; min-width: 200px; }
+    .form-input:focus { outline: none; border-color: var(--accent); }
+    .form-input::placeholder { color: var(--muted); }
+    .btn { font-size: 0.8rem; padding: 0.6rem 1.25rem; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--fg); cursor: pointer; font-family: inherit; font-weight: 600; transition: all 0.15s; white-space: nowrap; }
+    .btn:hover { border-color: var(--accent); color: var(--accent); }
+    .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn.primary:hover { opacity: 0.85; }
+    .btn.danger { border-color: rgba(239,68,68,0.3); color: #ef4444; }
+    .btn.danger:hover { background: rgba(239,68,68,0.1); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .toast { border-radius: 8px; padding: 0.875rem 1rem; font-size: 0.875rem; margin-bottom: 1rem; display: none; }
+    .toast.success { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: #22c55e; }
+    .toast.error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
+    .toast.warn { background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.3); color: #eab308; }
+    .autocomplete-wrap { position: relative; }
+    .autocomplete-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; z-index: 50; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: none; }
+    .autocomplete-dropdown.show { display: block; }
+    .autocomplete-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.875rem; cursor: pointer; font-size: 0.875rem; transition: background 0.1s; }
+    .autocomplete-item:hover { background: var(--bg); }
+    .autocomplete-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-dim); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.75rem; color: var(--accent); flex-shrink: 0; }
+    .autocomplete-name { font-weight: 600; }
+    .autocomplete-email { font-size: 0.75rem; color: var(--muted); }
+    .toggle-row { display: flex; align-items: center; gap: 0.75rem; }
+    .toggle-label { font-size: 0.8rem; color: var(--muted); }
+    .toggle-switch { position: relative; width: 44px; height: 24px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 24px; transition: 0.2s; }
+    .toggle-slider::before { content: ''; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px; background: var(--muted); border-radius: 50%; transition: 0.2s; }
+    .toggle-switch input:checked + .toggle-slider { background: rgba(255,102,0,0.2); border-color: var(--accent); }
+    .toggle-switch input:checked + .toggle-slider::before { background: var(--accent); transform: translateX(20px); }
+    .existing-warning { background: rgba(234,179,8,0.08); border: 1px solid rgba(234,179,8,0.25); border-radius: 8px; padding: 0.875rem; font-size: 0.8rem; color: var(--muted); margin-top: 0.75rem; display: none; }
+    .existing-warning.show { display: block; }
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.25rem; }
+    .stat-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+    .stat-value { font-size: 1.75rem; font-weight: 800; }
+    .stat-sub { font-size: 0.75rem; color: var(--muted); }
+    .history-table { width: 100%; border-collapse: collapse; }
+    .history-table th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .history-table td { padding: 0.75rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.825rem; vertical-align: middle; }
+    .history-table tr:last-child td { border-bottom: none; }
+    .history-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .user-chip { display: inline-flex; align-items: center; gap: 0.4rem; }
+    .user-chip-avatar { width: 22px; height: 22px; border-radius: 50%; background: var(--accent-dim); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.65rem; color: var(--accent); }
+    .code-badge { font-family: monospace; font-size: 0.75rem; background: var(--surface); border: 1px solid var(--border); padding: 0.1rem 0.4rem; border-radius: 4px; color: var(--accent); }
+    .points-badge { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 20px; background: rgba(255,102,0,0.12); color: var(--accent); white-space: nowrap; }
+    .pagination { display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; font-size: 0.8rem; color: var(--muted); }
+    .pagination-controls { display: flex; gap: 0.5rem; }
+    .pagination-btn { padding: 0.35rem 0.75rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--muted); cursor: pointer; font-size: 0.8rem; font-family: inherit; }
+    .pagination-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .pagination-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .search-row { display: flex; gap: 0.75rem; margin-bottom: 1rem; align-items: center; }
+    .search-input { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.875rem; font-size: 0.8rem; color: var(--text); font-family: inherit; flex: 1; max-width: 280px; }
+    .search-input:focus { outline: none; border-color: var(--accent); }
+    .empty-state { text-align: center; padding: 2.5rem; color: var(--muted); font-size: 0.875rem; }
+    .override-section { display: none; margin-top: 0.75rem; }
+    .override-section.show { display: block; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 1rem; }
+    .modal-overlay.hidden { display: none; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; width: 100%; max-width: 440px; }
+    .modal h2 { font-size: 1.1rem; font-weight: 700; margin: 0 0 0.5rem; }
+    .modal p { font-size: 0.875rem; color: var(--muted); margin: 0 0 1.25rem; }
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+    @media (max-width: 768px) {
+      .admin-sidebar { display: none; }
+      .admin-body { padding: 1rem; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .form-row { flex-direction: column; }
+      .form-input { min-width: unset; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Admin nav -->
+<nav class="admin-nav">
+  <a href="/dashboard" class="admin-nav-logo">W.A.G.E. <span>Admin</span></a>
+  <div class="admin-nav-divider"></div>
+  <span style="font-size:0.75rem;color:var(--muted);">Referral Management</span>
+  <div class="admin-nav-right">
+    <a href="/admin" class="admin-nav-link">← Overview</a>
+    <a href="/dashboard" class="admin-nav-link">Dashboard</a>
+    <a href="/logout" class="admin-nav-link">Logout</a>
+  </div>
+</nav>
+
+<!-- Body -->
+<div class="admin-body">
+
+  <!-- Sidebar -->
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Management</div>
+      <a href="/admin" class="admin-sidebar-link"><span class="link-icon">🏠</span> Overview</a>
+      <a href="/admin/users" class="admin-sidebar-link"><span class="link-icon">👥</span> Members</a>
+      <a href="/admin/roles" class="admin-sidebar-link"><span class="link-icon">🔑</span> Roles &amp; Permissions</a>
+      <a href="/admin/referrals" class="admin-sidebar-link active"><span class="link-icon">🔗</span> Referrals</a>
+    </div>
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Platform</div>
+      <a href="/admin/discord" class="admin-sidebar-link"><span class="link-icon">🤖</span> Discord Bot</a>
+      <a href="/admin/tiers" class="admin-sidebar-link"><span class="link-icon">⭐</span> Membership Tiers</a>
+      <a href="/admin/point-shop" class="admin-sidebar-link"><span class="link-icon">🏪</span> Point Shop</a>
+    </div>
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Tools</div>
+      <a href="/admin/diagnostics" class="admin-sidebar-link"><span class="link-icon">🔧</span> Diagnostics</a>
+      <a href="/admin/shop" class="admin-sidebar-link"><span class="link-icon">🛒</span> Merch Shop</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="admin-main">
+
+    <!-- Page header -->
+    <div style="margin-bottom: 1.75rem;">
+      <span class="admin-page-label">Admin</span>
+      <h1 class="admin-page-title" style="font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:800;margin:0;">Referral Management</h1>
+      <p class="admin-page-subtitle">Manually attribute referral signups and view attribution history.</p>
+    </div>
+
+    <!-- Toasts -->
+    <div id="toast-success" class="toast success"></div>
+    <div id="toast-error" class="toast error"></div>
+    <div id="toast-warn" class="toast warn"></div>
+
+    <!-- Stats overview -->
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Manual Attributions</div>
+        <div class="stat-value" id="stat-manual" style="color:var(--accent);">—</div>
+        <div class="stat-sub">total attributed by admins</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Organic Referrals</div>
+        <div class="stat-value" id="stat-organic" style="color:var(--fg);">—</div>
+        <div class="stat-sub">via referral links</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Points Awarded</div>
+        <div class="stat-value" id="stat-points" style="color:var(--accent);">—</div>
+        <div class="stat-sub">from manual attributions</div>
+      </div>
+    </div>
+
+    <!-- Section 1: Manual Attribution -->
+    <div class="section-card">
+      <h2 class="section-title">Manual Attribution</h2>
+      <p class="section-desc">Assign a referral to a user who signed up without using a referral link. Both parties receive points.</p>
+
+      <div class="form-row">
+        <div class="form-group autocomplete-wrap" style="flex:1;min-width:200px;">
+          <label class="form-label">Find Referee (user being attributed)</label>
+          <input type="text" id="referee-search" class="form-input" placeholder="Search by name or email…" autocomplete="off" />
+          <div id="referee-dropdown" class="autocomplete-dropdown"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Referral Code</label>
+          <input type="text" id="referral-code-input" class="form-input" placeholder="WAGE-XXXXXX" style="min-width:180px;" />
+        </div>
+        <div class="form-group" style="padding-bottom:2px;">
+          <label class="form-label">&nbsp;</label>
+          <button class="btn primary" id="attr-btn" onclick="submitAttribution()" disabled>Attribute Referral</button>
+        </div>
+      </div>
+
+      <!-- Selected referee preview -->
+      <div id="selected-referee" style="display:none;margin-top:0.875rem;padding:0.875rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;display:none;align-items:center;gap:0.75rem;">
+        <div id="referee-avatar" style="width:32px;height:32px;border-radius:50%;background:var(--accent-dim);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.8rem;color:var(--accent);"></div>
+        <div>
+          <div id="referee-name" style="font-weight:600;font-size:0.875rem;"></div>
+          <div id="referee-email" style="font-size:0.75rem;color:var(--muted);"></div>
+        </div>
+        <button onclick="clearReferee()" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.875rem;padding:0.25rem 0.5rem;">✕</button>
+      </div>
+
+      <!-- Existing attribution warning -->
+      <div id="existing-warning" class="existing-warning">
+        <strong style="color:#eab308;">⚠ User already has a referral attribution.</strong><br/>
+        Current referrer: <strong id="existing-referrer"></strong> · attributed by <span id="existing-admin"></span> on <span id="existing-date"></span>.<br/>
+        <span style="margin-top:0.5rem;display:inline-block;">Enable <strong>Override</strong> below to replace it.</span>
+      </div>
+
+      <!-- Override toggle -->
+      <div class="override-section" id="override-section">
+        <div class="toggle-row">
+          <label class="toggle-switch">
+            <input type="checkbox" id="override-toggle" />
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label">Override existing attribution — will reverse old points and apply new one</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: Attribution History -->
+    <div class="section-card">
+      <h2 class="section-title">Attribution History</h2>
+      <div class="search-row">
+        <input type="text" id="history-search" class="search-input" placeholder="Search by name…" oninput="loadHistory(1)" />
+        <span style="font-size:0.8rem;color:var(--muted);" id="history-count"></span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Referee</th>
+              <th>Referrer</th>
+              <th>Code</th>
+              <th>Admin</th>
+              <th>Points</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="history-body">
+            <tr><td colspan="7" class="empty-state">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <span id="pagination-info" style="color:var(--muted);font-size:0.8rem;"></span>
+        <div class="pagination-controls">
+          <button class="pagination-btn" id="prev-btn" onclick="goPage(currentPage - 1)" disabled>← Prev</button>
+          <button class="pagination-btn" id="next-btn" onclick="goPage(currentPage + 1)" disabled>Next →</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Reverse confirmation modal -->
+<div id="reverse-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>Reverse Attribution?</h2>
+    <p>This will remove the attribution and deduct <strong>+100 pts</strong> from the referrer and <strong>+200 pts</strong> from the referee. This cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('reverse-modal')">Cancel</button>
+      <button class="btn danger" id="reverse-confirm-btn" onclick="confirmReverse()">Reverse &amp; Deduct Points</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+var selectedRefereeId = null;
+var selectedRefereeName = null;
+var selectedRefereeEmail = null;
+var currentExisting = null;
+var currentPage = 1;
+var pendingReverseId = null;
+
+// ── Auth guard ─────────────────────────────────────────────────────────────────
+fetch('/api/auth/me').then(function(r) { return r.json(); }).then(function(data) {
+  if (!data.user || (!data.access?.permissions?.includes('users.manage') && !data.access?.isSuperadmin)) {
+    document.querySelector('.admin-main').innerHTML =
+      '<div class="empty-state" style="color:#ef4444;">Access denied — users.manage permission required.</div>';
+    return;
+  }
+  initPage();
+}).catch(function() {
+  document.querySelector('.admin-main').innerHTML =
+    '<div class="empty-state" style="color:#ef4444;">Failed to check permissions. Refresh to try again.</div>';
+});
+
+function initPage() {
+  loadOverview();
+  loadHistory(1);
+}
+
+// ── Overview ───────────────────────────────────────────────────────────────────
+function loadOverview() {
+  fetch('/api/admin/referrals/overview').then(function(r) { return r.json(); }).then(function(data) {
+    document.getElementById('stat-manual').textContent = data.totalManualAttributions || 0;
+    document.getElementById('stat-organic').textContent = data.organicReferrals || 0;
+    // Estimate points: 300 per attribution
+    var pts = (data.totalManualAttributions || 0) * 300;
+    document.getElementById('stat-points').textContent = pts.toLocaleString();
+  }).catch(function() {});
+}
+
+// ── Referee autocomplete ───────────────────────────────────────────────────────
+var refereeTimeout = null;
+document.getElementById('referee-search').addEventListener('input', function() {
+  clearTimeout(refereeTimeout);
+  var q = this.value.trim();
+  if (q.length < 2) { hideDropdown(); return; }
+  refereeTimeout = setTimeout(function() { searchReferees(q); }, 250);
+});
+
+document.getElementById('referee-search').addEventListener('focus', function() {
+  if (this.value.trim().length >= 2) searchReferees(this.value.trim());
+});
+
+function searchReferees(q) {
+  fetch('/api/admin/referrals/search-users?q=' + encodeURIComponent(q)).then(function(r) { return r.json(); }).then(function(data) {
+    var dropdown = document.getElementById('referee-dropdown');
+    if (!data.users || !data.users.length) { dropdown.classList.remove('show'); return; }
+    dropdown.innerHTML = data.users.map(function(u) {
+      return '<div class="autocomplete-item" onclick="selectReferee(\u0027' + u.id + '\u0027,\u0027' + escAttr(u.display_name || u.email) + '\u0027,\u0027' + escAttr(u.email) + '\u0027)">' +
+        '<div class="autocomplete-avatar">' + (u.display_name || u.email)[0].toUpperCase() + '</div>' +
+        '<div><div class="autocomplete-name">' + escHtml(u.display_name || u.email) + '</div>' +
+        '<div class="autocomplete-email">' + escHtml(u.email) + '</div></div></div>';
+    }).join('');
+    dropdown.classList.add('show');
+  }).catch(function() { hideDropdown(); });
+}
+
+function selectReferee(id, name, email) {
+  selectedRefereeId = id;
+  selectedRefereeName = name;
+  selectedRefereeEmail = email;
+  document.getElementById('referee-search').value = name;
+  document.getElementById('referee-search').disabled = true;
+  hideDropdown();
+  // Show selected preview
+  var preview = document.getElementById('selected-referee');
+  document.getElementById('referee-avatar').textContent = (name || '?')[0].toUpperCase();
+  document.getElementById('referee-name').textContent = name;
+  document.getElementById('referee-email').textContent = email;
+  preview.style.display = 'flex';
+  // Check for existing attribution
+  checkExistingAttribution(id);
+  updateAttrBtn();
+}
+
+function clearReferee() {
+  selectedRefereeId = null;
+  selectedRefereeName = null;
+  selectedRefereeEmail = null;
+  currentExisting = null;
+  document.getElementById('referee-search').value = '';
+  document.getElementById('referee-search').disabled = false;
+  document.getElementById('selected-referee').style.display = 'none';
+  document.getElementById('existing-warning').classList.remove('show');
+  document.getElementById('override-section').classList.remove('show');
+  document.getElementById('override-toggle').checked = false;
+  updateAttrBtn();
+}
+
+function hideDropdown() {
+  document.getElementById('referee-dropdown').classList.remove('show');
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.autocomplete-wrap')) hideDropdown();
+});
+
+// Check if referee already has an attribution
+function checkExistingAttribution(refereeId) {
+  fetch('/api/admin/referrals/attribution-history?search=' + encodeURIComponent(selectedRefereeName || ''))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var match = (data.rows || []).find(function(r) { return r.referee_id === refereeId; });
+      if (match) {
+        currentExisting = match;
+        document.getElementById('existing-referrer').textContent = match.referrer_name || match.referrer_email || '?';
+        document.getElementById('existing-admin').textContent = match.admin_name || 'admin';
+        document.getElementById('existing-date').textContent = new Date(match.created_at).toLocaleDateString();
+        document.getElementById('existing-warning').classList.add('show');
+        document.getElementById('override-section').classList.add('show');
+      } else {
+        currentExisting = null;
+        document.getElementById('existing-warning').classList.remove('show');
+        document.getElementById('override-section').classList.remove('show');
+        document.getElementById('override-toggle').checked = false;
+      }
+    }).catch(function() {});
+}
+
+document.getElementById('referral-code-input').addEventListener('input', updateAttrBtn);
+function updateAttrBtn() {
+  var code = document.getElementById('referral-code-input').value.trim();
+  document.getElementById('attr-btn').disabled = !(selectedRefereeId && code.length > 0);
+}
+
+// ── Submit attribution ──────────────────────────────────────────────────────────
+function submitAttribution() {
+  var btn = document.getElementById('attr-btn');
+  var code = document.getElementById('referral-code-input').value.trim();
+  var override = document.getElementById('override-toggle').checked;
+  if (!selectedRefereeId || !code) return;
+
+  // If existing and no override, show warning
+  if (currentExisting && !override) {
+    showToast('warn', 'This user already has a referral attribution. Enable Override to replace it.');
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Attributing…';
+  hideToasts();
+
+  fetch('/api/admin/referrals/attribute', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ referee_user_id: selectedRefereeId, referral_code: code, override_existing: override }),
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    btn.disabled = false; btn.textContent = 'Attribute Referral';
+    if (data.error) {
+      if (data.override_required) {
+        document.getElementById('existing-referrer').textContent = data.existing.referrer_name || data.existing.referrer_email || '?';
+        document.getElementById('existing-admin').textContent = data.existing.admin_name || 'admin';
+        document.getElementById('existing-date').textContent = new Date(data.existing.created_at).toLocaleDateString();
+        document.getElementById('existing-warning').classList.add('show');
+        document.getElementById('override-section').classList.add('show');
+        showToast('warn', 'User already has an attribution. Enable Override to replace it.');
+      } else {
+        showToast('error', data.error || 'Failed to attribute referral.');
+      }
+      return;
+    }
+    var referrerName = data.referrer ? data.referrer.username : (selectedRefereeName || 'referee');
+    var refereeName = data.referee ? data.referee.username : selectedRefereeName;
+    showToast('success',
+      '✅ Attribution saved. Referrer: ' + refereeName + ' earned ' + data.points_credited.referrer + 'pts, Referee: ' + refereeName + ' earned ' + data.points_credited.referee + 'pts.');
+    clearReferee();
+    document.getElementById('referral-code-input').value = '';
+    loadOverview();
+    loadHistory(1);
+  }).catch(function() {
+    btn.disabled = false; btn.textContent = 'Attribute Referral';
+    showToast('error', 'Request failed. Check console.');
+  });
+}
+
+// ── Attribution history ───────────────────────────────────────────────────────
+function loadHistory(page) {
+  currentPage = page;
+  var search = document.getElementById('history-search').value.trim();
+  fetch('/api/admin/referrals/attribution-history?page=' + page + '&pageSize=20&search=' + encodeURIComponent(search))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      renderHistory(data.rows || [], data.total || 0, data.page, data.pageSize);
+    }).catch(function() {
+      document.getElementById('history-body').innerHTML = '<tr><td colspan="7" class="empty-state" style="color:#ef4444;">Failed to load history.</td></tr>';
+    });
+}
+
+function renderHistory(rows, total, page, pageSize) {
+  var tbody = document.getElementById('history-body');
+  document.getElementById('history-count').textContent = total + ' total';
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No manual attributions yet.</td></tr>';
+    document.getElementById('pagination-info').textContent = '';
+    return;
+  }
+
+  var html = '';
+  rows.forEach(function(r) {
+    var date = new Date(r.created_at);
+    var dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    html += '<tr>' +
+      '<td style="color:var(--muted);white-space:nowrap;font-size:0.75rem;">' + dateStr + '</td>' +
+      '<td><div class="user-chip"><div class="user-chip-avatar">' + (r.referee_name || '?')[0].toUpperCase() + '</div><span>' + escHtml(r.referee_name || r.referee_email || '?') + '</span></div></td>' +
+      '<td><div class="user-chip"><div class="user-chip-avatar">' + (r.referrer_name || '?')[0].toUpperCase() + '</div><span>' + escHtml(r.referrer_name || r.referrer_email || '?') + '</span></div></td>' +
+      '<td><span class="code-badge">' + escHtml(r.referral_code_used || '') + '</span></td>' +
+      '<td style="color:var(--muted);font-size:0.75rem;">' + escHtml(r.admin_name || 'admin') + '</td>' +
+      '<td><span class="points-badge">+' + (r.points_referrer || 0) + ' / +' + (r.points_referee || 0) + '</span></td>' +
+      '<td><button class="btn danger" style="font-size:0.7rem;padding:0.2rem 0.6rem;" onclick="openReverseModal(\u0027' + r.referee_id + '\u0027)">Reverse</button></td>' +
+    '</tr>';
+  });
+  tbody.innerHTML = html;
+
+  // Pagination
+  var totalPages = Math.ceil(total / pageSize);
+  document.getElementById('pagination-info').textContent = total ? (page - 1) * pageSize + 1 + '-' + Math.min(page * pageSize, total) + ' of ' + total : '';
+  document.getElementById('prev-btn').disabled = page <= 1;
+  document.getElementById('next-btn').disabled = page >= totalPages;
+}
+
+function goPage(p) { loadHistory(p); }
+
+// ── Reverse modal ──────────────────────────────────────────────────────────────
+function openReverseModal(refereeId) {
+  pendingReverseId = refereeId;
+  document.getElementById('reverse-modal').classList.remove('hidden');
+}
+
+function confirmReverse() {
+  var btn = document.getElementById('reverse-confirm-btn');
+  btn.disabled = true; btn.textContent = 'Reversing…';
+  fetch('/api/admin/referrals/attribution/' + pendingReverseId, { method: 'DELETE' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      btn.disabled = false; btn.textContent = 'Reverse & Deduct Points';
+      closeModal('reverse-modal');
+      if (data.error) { showToast('error', data.error); return; }
+      showToast('success', '✅ Attribution reversed. 100pts deducted from referrer, 200pts deducted from referee.');
+      loadOverview();
+      loadHistory(currentPage);
+    }).catch(function() {
+      btn.disabled = false; btn.textContent = 'Reverse & Deduct Points';
+      showToast('error', 'Request failed.');
+    });
+}
+
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+document.querySelectorAll('.modal-overlay').forEach(function(o) {
+  o.addEventListener('click', function(e) { if (e.target === o) closeModal(o.id); });
+});
+
+// ── Toasts ─────────────────────────────────────────────────────────────────────
+function showToast(type, msg) {
+  hideToasts();
+  var el = document.getElementById('toast-' + type);
+  if (!el) return;
+  el.textContent = msg; el.style.display = 'block';
+}
+function hideToasts() {
+  ['toast-success','toast-error','toast-warn'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function escHtml(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s) { if (!s) return ''; return s.replace(/'/g,"\\'").replace(/"/g,'\\"'); }
+</script>
+
+</body>
+</html>

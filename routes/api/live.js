@@ -1,14 +1,14 @@
 // routes/api/live.js — Livestream and autoclipper API endpoints.
 const express = require('express');
 const router = express.Router();
-const { getAllStreams } = require('../../db/livestreams');
+const { getPublicStreams } = require('../../db/livestreams');
 const { getJobs, createJob, updateJobStatus } = require('../../db/autoclipper');
-const { getMemberAccess } = require('../../db/profiles');
+const { getMemberAccess } = require('../../db/orgAccess');
 
 // GET /api/live/streams — public stream list + auth flags
 router.get('/streams', async (req, res) => {
   try {
-    const streams = await getAllStreams();
+    const streams = await getPublicStreams();
     const email = req.session?.userEmail;
     let canManage = false;
     let canUseAutoclipper = false;

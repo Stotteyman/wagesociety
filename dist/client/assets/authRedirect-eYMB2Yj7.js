@@ -1,1 +1,0 @@
-const r=new Set(["localhost","127.0.0.1"]);function e(n){return n?n.startsWith("/")?n:`/${n}`:"/"}function i(n){try{const t=new URL(n);return r.has(t.hostname)&&t.port!=="3000"&&(t.port="3000"),t.origin}catch{return n}}function o(n,t){return`${i(n)}${e(t)}`}function u(n){return typeof window>"u"?n:o(window.location.origin,n)}export{u as g};

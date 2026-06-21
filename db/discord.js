@@ -21,7 +21,8 @@ async function getUserIdByEmail(email) {
   return result.rows[0]?.id || null;
 }
 
-// Upsert a Discord link row — inserts on first link, updates on re-link
+// Upsert a Discord link row — inserts on first link, updates on re-link.
+// guildIds (optional): array of Discord guild IDs the user is a member of.
 async function upsertDiscordLink({
   userId,
   discordId,
@@ -30,11 +31,12 @@ async function upsertDiscordLink({
   accessToken,
   refreshToken,
   tokenExpiresAt,
+  guildIds,
 }) {
   await pool.query(
     `INSERT INTO discord_links
-       (user_id, discord_id, discord_username, discord_avatar, access_token, refresh_token, token_expires_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+       (user_id, discord_id, discord_username, discord_avatar, access_token, refresh_token, token_expires_at, guild_ids)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      ON CONFLICT (user_id)
      DO UPDATE SET
        discord_id       = EXCLUDED.discord_id,
@@ -43,8 +45,9 @@ async function upsertDiscordLink({
        access_token     = EXCLUDED.access_token,
        refresh_token    = EXCLUDED.refresh_token,
        token_expires_at = EXCLUDED.token_expires_at,
+       guild_ids        = EXCLUDED.guild_ids,
        linked_at        = now()`,
-    [userId, discordId, discordUsername, discordAvatar || null, accessToken, refreshToken, tokenExpiresAt]
+    [userId, discordId, discordUsername, discordAvatar || null, accessToken, refreshToken, tokenExpiresAt, guildIds || null]
   );
 }
 
@@ -67,6 +70,18 @@ async function getAllLinkedUsers() {
   return result.rows;
 }
 
+// Update the selected guild for the bot install.
+// Stores guildId + guildName from the Discord OAuth guild list.
+async function updateSelectedGuild(userId, guildId, guildName) {
+  await pool.query(
+    `UPDATE discord_links
+     SET selected_guild_id   = $2,
+         selected_guild_name = $3
+     WHERE user_id = $1`,
+    [userId, guildId, guildName || null]
+  );
+}
+
 // Partial update — pass only the fields you want to change.
 // Supports: access_token, refresh_token, token_expires_at, last_synced_at
 async function updateDiscordLink(userId, fields) {
@@ -78,6 +93,23 @@ async function updateDiscordLink(userId, fields) {
   await pool.query(`UPDATE discord_links SET ${setClauses} WHERE user_id = $1`, values);
 }
 
+// Look up a discord link row by discord_id (reverse lookup for member events)
+async function getDiscordLinkByDiscordId(discordId) {
+  const result = await pool.query(
+    'SELECT * FROM discord_links WHERE discord_id = $1',
+    [discordId]
+  );
+  return result.rows[0] || null;
+}
+
+// Get all discord_ids that have linked accounts — used for bulk role assignment
+async function getAllLinkedDiscordIds() {
+  const result = await pool.query(
+    'SELECT discord_id, user_id FROM discord_links'
+  );
+  return result.rows;
+}
+
 module.exports = {
   getDiscordLinkByUserId,
   getUserIdByEmail,
@@ -86,4 +118,7 @@ module.exports = {
   upsertDiscordLink,
   deleteDiscordLinkByUserId,
   updateDiscordLink,
+  updateSelectedGuild,
+  getDiscordLinkByDiscordId,
+  getAllLinkedDiscordIds,
 };

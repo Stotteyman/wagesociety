@@ -3,12 +3,20 @@
 // Does NOT own: route logic, auth, or UI rendering.
 const { pool } = require('./index');
 
-// Log an admin action to admin_actions_log.
+// Log an admin action to admin_actions_log (legacy) and admin_audit_log (new).
 async function logAdminAction({ actor, action, detail = {}, ip }) {
-  await pool.query(
-    `INSERT INTO admin_actions_log (actor, action, detail, ip_address) VALUES ($1, $2, $3, $4)`,
-    [actor, action, JSON.stringify(detail), ip || null]
-  );
+  const json = JSON.stringify(detail);
+  // Write to both tables for backward compat + new audit trail
+  await Promise.all([
+    pool.query(
+      `INSERT INTO admin_actions_log (actor, action, detail, ip_address) VALUES ($1, $2, $3, $4)`,
+      [actor, action, json, ip || null]
+    ).catch(() => {}), // silently skip if table doesn't exist
+    pool.query(
+      `INSERT INTO admin_audit_log (actor, action, detail, ip_address) VALUES ($1, $2, $3, $4)`,
+      [actor, action, json, ip || null]
+    ).catch(() => {}), // silently skip if table doesn't exist yet
+  ]);
 }
 
 // List all tables with estimated row counts.
@@ -80,10 +88,38 @@ async function executeSql({ sql, writeMode = false, actor = 'unknown' }) {
 // Get recent admin action log.
 async function getRecentAdminLogs({ limit = 100 } = {}) {
   const { rows } = await pool.query(
-    `SELECT * FROM admin_actions_log ORDER BY created_at DESC LIMIT $1`,
+    `SELECT * FROM admin_audit_log ORDER BY created_at DESC LIMIT $1`,
     [limit]
   );
   return rows;
+}
+
+// Get audit log for a specific user (for subscription/tier change history).
+async function getAuditLogForUser(email, { limit = 50 } = {}) {
+  const { rows } = await pool.query(
+    `SELECT * FROM admin_audit_log
+     WHERE detail->>'email' = $1 OR detail->>'targetEmail' = $1
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [email.toLowerCase(), limit]
+  );
+  return rows;
+}
+
+// Log an admin tier change (specific action type for easier filtering).
+async function logTierChange({ adminEmail, targetEmail, previousTier, newTier, ip }) {
+  await pool.query(
+    `INSERT INTO admin_audit_log (actor, action, detail, ip_address) VALUES ($1, $2, $3, $4)`,
+    [adminEmail, 'tier_change', JSON.stringify({ email: targetEmail, previousTier, newTier }), ip || null]
+  );
+}
+
+// Log a bulk tier change.
+async function logBulkTierChange({ adminEmail, emails, previousTier, newTier, count, ip }) {
+  await pool.query(
+    `INSERT INTO admin_audit_log (actor, action, detail, ip_address) VALUES ($1, $2, $3, $4)`,
+    [adminEmail, 'bulk_tier_change', JSON.stringify({ emails, previousTier, newTier, count }), ip || null]
+  );
 }
 
 module.exports = {
@@ -92,4 +128,7 @@ module.exports = {
   getTableRows,
   executeSql,
   getRecentAdminLogs,
+  getAuditLogForUser,
+  logTierChange,
+  logBulkTierChange,
 };

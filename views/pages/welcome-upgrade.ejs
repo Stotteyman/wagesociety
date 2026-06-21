@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  
+
+<%- include('../partials/head-pwa') %>
+  <title>Welcome — Choose Your Plan — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    .welcome-hero {
+      text-align: center;
+      padding: 3rem 2rem 1rem;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .welcome-hero h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 0.75rem;
+      background: linear-gradient(135deg, #fff 0%, rgba(255,102,0,0.9) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .welcome-hero p { color: var(--muted); font-size: 1rem; margin-bottom: 0.5rem; }
+    .welcome-hero .trial-note { color: var(--accent); font-weight: 600; font-size: 0.85rem; }
+    .welcome-toggle {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0.75rem; margin: 1.5rem auto; max-width: 400px;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .welcome-toggle label { font-size: 0.9rem; font-weight: 500; color: var(--muted); cursor: pointer; }
+    .welcome-toggle label.active { color: var(--fg); font-weight: 700; }
+    .wt-track {
+      position: relative; width: 52px; height: 28px;
+      background: var(--surface); border: 2px solid var(--accent);
+      border-radius: 999px; cursor: pointer; flex-shrink: 0;
+    }
+    .wt-track.annual { background: var(--accent); }
+    .wt-thumb {
+      position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
+      background: var(--accent); border-radius: 50%; transition: transform 0.2s, background 0.2s;
+    }
+    .wt-track.annual .wt-thumb { transform: translateX(24px); background: #fff; }
+    .wt-badge {
+      font-size: 0.7rem; font-weight: 700; color: #166534;
+      background: #dcfce7; padding: 0.2rem 0.6rem; border-radius: 999px;
+    }
+    .w-plans {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.25rem; max-width: 1100px; margin: 0 auto 2rem; padding: 0 1.25rem;
+    }
+    .w-card {
+      background: var(--surface); border: 2px solid var(--border);
+      border-radius: 14px; padding: 1.75rem; position: relative;
+      display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .w-card:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+    .w-card.featured { background: rgba(255,102,0,0.05); border-color: var(--accent); }
+    .w-trial {
+      position: absolute; top: -1px; right: 16px;
+      background: linear-gradient(135deg, #f97316, #ea580c); color: #fff;
+      font-size: 0.6rem; font-weight: 800; letter-spacing: 0.1em;
+      padding: 0.25rem 0.6rem; border-radius: 0 0 8px 8px; text-transform: uppercase;
+    }
+    .w-name {
+      font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem;
+      font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--muted); margin-bottom: 0.3rem;
+    }
+    .featured .w-name { color: var(--accent); }
+    .w-desc { font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem; min-height: 2rem; }
+    .w-price { display: flex; align-items: baseline; gap: 0.25rem; margin-bottom: 0.75rem; }
+    .w-price .amt { font-family: 'Space Grotesk', sans-serif; font-size: 2.2rem; font-weight: 900; color: var(--fg); }
+    .w-price .per { font-size: 0.9rem; color: var(--muted); }
+    .w-features { list-style: none; padding: 0; margin: 0 0 1.25rem; flex: 1; }
+    .w-features li { padding: 0.3rem 0; font-size: 0.82rem; color: var(--fg); display: flex; gap: 0.4rem; }
+    .w-features li .ck { color: var(--accent); flex-shrink: 0; }
+    .w-cta {
+      display: block; width: 100%; padding: 0.8rem; border-radius: 10px;
+      font-weight: 700; font-size: 0.9rem; text-align: center; text-decoration: none;
+      cursor: pointer; border: none; font-family: 'Space Grotesk', sans-serif;
+      transition: background 0.2s;
+    }
+    .w-cta.primary { background: var(--accent); color: #fff; }
+    .w-cta.primary:hover { background: var(--accent-warm); }
+    .w-cta.secondary { background: var(--surface); color: var(--fg); border: 1px solid var(--border); }
+    .w-cta.secondary:hover { background: rgba(255,255,255,0.08); }
+    .w-subtext { font-size: 0.72rem; color: var(--muted); text-align: center; margin-top: 0.4rem; }
+    .skip-link {
+      display: block; text-align: center; margin: 0 auto 3rem; padding: 0.75rem 2rem;
+      color: var(--muted); font-size: 0.9rem; text-decoration: none;
+      transition: color 0.2s;
+    }
+    .skip-link:hover { color: var(--fg); }
+    .annual-label, .per-annual { display: none; }
+    body.annual-mode .monthly-label, body.annual-mode .per-monthly { display: none; }
+    body.annual-mode .annual-label, body.annual-mode .per-annual { display: inline; }
+  </style>
+</head>
+<body>
+<%- include('../partials/nav') %>
+
+<main style="padding-bottom: 2rem;">
+  <div class="welcome-hero">
+    <h1>YOU'RE IN. NOW LEVEL UP.</h1>
+    <p>Your free account is ready. Upgrade to unlock creator tools, analytics, and featured placement.</p>
+    <p class="trial-note">Every paid tier includes a 7-day free trial — cancel anytime, $0 charged.</p>
+  </div>
+
+  <div class="welcome-toggle">
+    <label id="wm-label" class="active" onclick="setWCycle('monthly')">Monthly</label>
+    <div class="wt-track" id="wt-track" onclick="toggleWCycle()">
+      <div class="wt-thumb"></div>
+    </div>
+    <label id="wa-label" onclick="setWCycle('annual')">Annual</label>
+    <span class="wt-badge">2 months free</span>
+  </div>
+
+  <div class="w-plans">
+    <% plans.forEach(function(plan) {
+      const isFree = plan.slug === 'free';
+      const isPaid = plan.price_cents > 0;
+      const isFeatured = plan.slug === 'pro';
+    %>
+      <div class="w-card<%= isFeatured ? ' featured' : '' %>" data-plan="<%= plan.slug %>">
+        <% if (isPaid) { %><div class="w-trial">7-Day Free Trial</div><% } %>
+        <div class="w-name"><%= plan.name %></div>
+        <div class="w-desc"><%= plan.description || '' %></div>
+        <div class="w-price">
+          <% if (isFree) { %>
+            <span class="amt">$0</span><span class="per">forever</span>
+          <% } else { %>
+            <span class="amt">
+              <span class="monthly-label">$<%= (plan.price_cents / 100).toFixed(0) %></span>
+              <span class="annual-label">$<%= (plan.annual_price / 100).toFixed(0) %></span>
+            </span>
+            <span class="per per-monthly">/mo</span><span class="per per-annual">/yr</span>
+          <% } %>
+        </div>
+        <ul class="w-features">
+          <% (plan.features || []).forEach(function(f) { %>
+            <li><span class="ck">✓</span> <%= f %></li>
+          <% }); %>
+        </ul>
+        <% if (isFree) { %>
+          <a href="/dashboard" class="w-cta secondary">Continue Free</a>
+        <% } else { %>
+          <a href="#" class="w-cta primary" id="wcta-<%= plan.slug %>" onclick="handleWUpgrade('<%= plan.slug %>'); return false;">
+            Start 7-Day Free Trial
+          </a>
+          <p class="w-subtext">No charge for 7 days. Cancel anytime.</p>
+        <% } %>
+      </div>
+    <% }); %>
+  </div>
+
+  <a href="/dashboard" class="skip-link">Continue with Free →</a>
+</main>
+
+<%- include('../partials/footer') %>
+
+<script>
+  var wCycle = 'monthly';
+  function toggleWCycle() { wCycle = wCycle === 'monthly' ? 'annual' : 'monthly'; applyWCycle(); }
+  function setWCycle(c) { wCycle = c; applyWCycle(); }
+  function applyWCycle() {
+    var t = document.getElementById('wt-track');
+    var ml = document.getElementById('wm-label');
+    var al = document.getElementById('wa-label');
+    if (wCycle === 'annual') {
+      t.classList.add('annual'); al.classList.add('active'); ml.classList.remove('active');
+      document.body.classList.add('annual-mode');
+    } else {
+      t.classList.remove('annual'); ml.classList.add('active'); al.classList.remove('active');
+      document.body.classList.remove('annual-mode');
+    }
+  }
+  async function handleWUpgrade(slug) {
+    var btn = document.getElementById('wcta-' + slug);
+    if (btn) { btn.textContent = 'Redirecting…'; btn.style.pointerEvents = 'none'; }
+    try {
+      var res = await fetch('/api/checkout/redirect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planSlug: slug, cycle: wCycle }),
+      });
+      var data = await res.json();
+      if (data.redirectUrl) { window.location.href = data.redirectUrl; }
+      else { alert('Could not start checkout. Please try again.'); if (btn) { btn.textContent = 'Start 7-Day Free Trial'; btn.style.pointerEvents = ''; } }
+    } catch (e) {
+      alert('Checkout error. Please try again.');
+      if (btn) { btn.textContent = 'Start 7-Day Free Trial'; btn.style.pointerEvents = ''; }
+    }
+  }
+</script>
+</body>
+</html>

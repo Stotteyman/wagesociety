@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof pageTitle !== 'undefined' ? pageTitle + ' — ' : '' %>Admin — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    /* ── Shared Admin Layout ───────────────────────────────────────────────── */
+    :root {
+      --admin-sidebar-w: 220px;
+    }
+
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* Override nav for admin pages — no nav links to /admin, just dashboard + logout */
+    .admin-nav {
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 0.85rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .admin-nav-logo {
+      font-weight: 800;
+      font-size: 1rem;
+      color: var(--fg);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .admin-nav-logo span { color: var(--accent); }
+    .admin-nav-divider {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+    }
+    .admin-nav-section {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .admin-nav-right { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+    .admin-nav-link {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .admin-nav-link:hover { color: var(--fg); }
+    .admin-avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--surface); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.8rem; color: var(--accent);
+      text-decoration: none;
+    }
+
+    /* ── Admin Body ─────────────────────────────────────────────────────── */
+    .admin-body {
+      display: flex;
+      flex: 1;
+      max-width: 1300px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 2rem 1.5rem;
+      gap: 2rem;
+      align-items: flex-start;
+    }
+
+    /* ── Sidebar ──────────────────────────────────────────────────────── */
+    .admin-sidebar {
+      position: sticky;
+      top: 1.5rem;
+      width: var(--admin-sidebar-w);
+      flex-shrink: 0;
+    }
+    .admin-sidebar-section {
+      margin-bottom: 1.5rem;
+    }
+    .admin-sidebar-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+      padding: 0 0.5rem;
+    }
+    .admin-sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 500;
+      transition: background 0.1s, color 0.1s;
+    }
+    .admin-sidebar-link:hover {
+      background: var(--surface);
+      color: var(--fg);
+    }
+    .admin-sidebar-link.active {
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .admin-sidebar-link .link-icon {
+      font-size: 0.9rem;
+      width: 18px;
+      text-align: center;
+    }
+    .admin-sidebar-link .link-badge {
+      margin-left: auto;
+      font-size: 0.6rem;
+      font-weight: 700;
+      background: rgba(255,102,0,0.15);
+      color: var(--accent);
+      padding: 0.1rem 0.4rem;
+      border-radius: 10px;
+    }
+
+    /* ── Main Content ───────────────────────────────────────────────────── */
+    .admin-main { flex: 1; min-width: 0; }
+    .admin-page-header { margin-bottom: 1.75rem; }
+    .admin-page-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+    .admin-page-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 800;
+      margin: 0;
+      color: var(--fg);
+    }
+    .admin-page-subtitle {
+      color: var(--muted);
+      font-size: 0.875rem;
+      margin: 0.3rem 0 0;
+    }
+
+    /* ── Breadcrumb ────────────────────────────────────────────────────── */
+    .admin-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .admin-breadcrumb a {
+      color: var(--muted);
+      text-decoration: none;
+    }
+    .admin-breadcrumb a:hover { color: var(--fg); }
+    .admin-breadcrumb-sep { opacity: 0.4; }
+
+    /* ── Responsive ─────────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .admin-sidebar { display: none; }
+      .admin-body { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Admin Nav Bar ───────────────────────────────────────────────────────── -->
+<nav class="admin-nav">
+  <a href="/dashboard" class="admin-nav-logo">
+    W.A.G.E. <span>Admin</span>
+  </a>
+  <div class="admin-nav-divider"></div>
+  <span class="admin-nav-section"><%= typeof navSection ? navSection : 'Admin' %></span>
+  <div class="admin-nav-right">
+    <a href="/dashboard" class="admin-nav-link">
+      <span>←</span> Dashboard
+    </a>
+    <% if (typeof currentUserAvatar !== 'undefined' && currentUserAvatar) { %>
+      <img src="<%= currentUserAvatar %>" alt="Avatar" class="admin-avatar" style="border-radius:50%;width:30px;height:30px;object-fit:cover;" />
+    <% } else { %>
+      <a href="/dashboard" class="admin-avatar">
+        <%= typeof userEmail !== 'undefined' ? (userEmail || 'A')[0].toUpperCase() : 'A' %>
+      </a>
+    <% } %>
+    <a href="/logout" class="admin-nav-link" style="font-size:0.75rem;">Logout</a>
+  </div>
+</nav>
+
+<!-- ── Body: Sidebar + Main ────────────────────────────────────────────────── -->
+<div class="admin-body">
+
+  <!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Management</div>
+      <a href="/admin" class="admin-sidebar-link<%= typeof activeTab !== 'undefined' && activeTab === 'home' ? ' active' : '' %>">
+        <span class="link-icon">🏠</span> Overview
+      </a>
+      <a href="/admin/users" class="admin-sidebar-link<%= typeof activeTab !== 'undefined' && activeTab === 'users' ? ' active' : '' %>">
+        <span class="link-icon">👥</span> Members
+      </a>
+      <a href="/admin/roles" class="admin-sidebar-link<%= typeof activeTab !== 'undefined' && activeTab === 'roles' ? ' active' : '' %>">
+        <span class="link-icon">🔑</span> Roles &amp; Permissions
+      </a>
+    </div>
+
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Platform</div>
+      <a href="/admin/discord" class="admin-sidebar-link<%= typeof activeTab !== 'undefined' && activeTab === 'discord' ? ' active' : '' %>">
+        <span class="link-icon">🤖</span> Discord Bot
+      </a>
+      <a href="/admin/tiers" class="admin-sidebar-link<%= typeof activeTab !== 'undefined' && activeTab === 'tiers' ? ' active' : '' %>">
+        <span class="link-icon">⭐</span> Membership Tiers
+      </a>
+      <a href="/admin/point-shop" class="admin-sidebar-link<%= typeof activeTab !== 'undefined' && activeTab === 'point-shop' ? ' active' : '' %>">
+        <span class="link-icon">🏪</span> Point Shop
+      </a>
+    </div>
+
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Tools</div>
+      <a href="/admin/diagnostics" class="admin-sidebar-link">
+        <span class="link-icon">🔧</span> Diagnostics
+      </a>
+      <a href="/admin/shop" class="admin-sidebar-link<%= typeof activeTab !== 'undefined' && activeTab === 'shop' ? ' active' : '' %>">
+        <span class="link-icon">🛒</span> Merch Shop
+      </a>
+    </div>
+  </aside>
+
+  <!-- ── Main Content ──────────────────────────────────────────────────────── -->
+  <main class="admin-main">
+    <%- body %>
+  </main>
+
+</div>
+
+<script>
+// Highlight active sidebar link based on current path
+(function() {
+  const path = window.location.pathname;
+  document.querySelectorAll('.admin-sidebar-link').forEach(function(link) {
+    const href = link.getAttribute('href');
+    if (href && path.startsWith(href) && href !== '/admin') {
+      link.classList.add('active');
+    } else if (href === '/admin' && path === '/admin') {
+      link.classList.add('active');
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

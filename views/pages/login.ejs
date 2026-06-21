@@ -2,12 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login — W.A.G.E. Society</title>
-  <meta name="version" content="oauth-fix-v6-pkce-sdk-2026-05-25">
+  
+
+<%- include('../partials/head-pwa') %>
+  <title>Sign In — W.A.G.E. Society</title>
+  <meta name="description" content="Sign in to your W.A.G.E. Society account. Access your creator dashboard, memberships, and referral tools.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Sign In — W.A.G.E. Society">
+  <meta property="og:description" content="Sign in to your W.A.G.E. Society account. Access your creator dashboard, memberships, and referral tools.">
+  <meta property="og:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
+  <meta property="og:url" content="https://wagesociety.com/login">
+  <meta property="og:site_name" content="WAGE Society">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Sign In — W.A.G.E. Society">
+  <meta name="twitter:description" content="Sign in to your W.A.G.E. Society account. Access your creator dashboard, memberships, and referral tools.">
+  <meta name="twitter:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
+  <meta name="auth-fix" content="2026-05-26-fix">
+  <meta name="version" content="custom-auth-2026-05-26">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/theme.css">
   <link rel="stylesheet" href="/css/pages.css">
 </head>
@@ -19,114 +33,85 @@
   </nav>
 
   <section class="auth-page">
+    <!-- Portal edge glow effect -->
+    <div class="auth-portal-glow" aria-hidden="true"></div>
     <div class="auth-card">
-      <h1 class="auth-title">Sign in</h1>
-      <p class="auth-sub">Enter your email and we'll send you a login link. No password needed.</p>
 
-      <!-- Shown only while handling a magic link hash token redirect -->
-      <div id="magicLinkLoading" style="display:none;align-items:center;gap:12px;background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.3);border-radius:8px;padding:16px 20px;font-size:0.9rem;color:var(--text);">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2" style="animation:spin 1s linear infinite">
-          <circle cx="12" cy="12" r="10" stroke-dasharray="31.4" stroke-dashoffset="10"/>
-        </svg>
-        Signing you in…
+      <h1 class="auth-title">Welcome back</h1>
+      <p class="auth-sub">Sign in to your W.A.G.E. Society account</p>
+
+      <!-- Tabs -->
+      <div class="custom-auth-tabs">
+        <button class="auth-tab auth-tab--active" id="tab-signin" onclick="switchTab('signin')">Sign In</button>
+        <button class="auth-tab" id="tab-signup" onclick="switchTab('signup')">Create Account</button>
+        <button class="auth-tab" id="tab-magic" onclick="switchTab('magic')">Magic Link</button>
       </div>
 
-      <style>
-        @keyframes spin { to { transform: rotate(360deg); } }
-      </style>
-
-      <div id="linkSent" style="display:none" class="auth-success-msg">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-        <span>Check your email — link sent! It expires in 1 hour.</span>
-      </div>
-
-      <div id="errorMsg" class="error-msg" style="display:none"></div>
-
-      <!-- OAuth provider buttons -->
-      <div class="oauth-buttons">
-        <button class="oauth-btn oauth-btn--google" id="googleBtn" onclick="signInWithGoogle()">
+      <!-- OAuth provider buttons (shown in all tabs) -->
+      <div class="oauth-providers">
+        <a href="/auth/google" class="oauth-btn oauth-btn--google">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
             <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
           </svg>
           Continue with Google
-        </button>
-
-        <button class="oauth-btn oauth-btn--discord" id="discordBtn" onclick="signInWithDiscord()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.043.034.055a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.1 13.1 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
-          </svg>
-          Continue with Discord
-        </button>
-
-        <button class="oauth-btn oauth-btn--kick" id="kickBtn" onclick="signInWithKick()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+        </a>
+        <a href="/auth/kick" class="oauth-btn oauth-btn--kick">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#53d900" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" fill="#53d900"/>
+            <path d="M16.5 8.5L10 15.5H8.5L7 14V10L16.5 8.5Z" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="0.5" stroke-linejoin="round"/>
           </svg>
           Continue with Kick
-        </button>
+        </a>
+        <a href="/auth/discord-login" class="oauth-btn oauth-btn--discord">
+          <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z" fill="#5865F2"/>
+          </svg>
+          Continue with Discord
+        </a>
       </div>
 
-      <p id="authUnavailableHint" style="display:none;font-size:0.8rem;color:var(--text-muted,#888);margin:8px 0 0;text-align:center">
-        Having trouble signing in? <a href="mailto:hello@wagesociety.com" style="color:var(--accent)">Email us</a> and we'll get it sorted.
-      </p>
+      <div class="oauth-divider"><span>or</span></div>
 
-      <!-- Admin login — toggled via "Admin Login" link -->
-      <div id="adminLoginSection" style="display:none;margin-top:6px;">
-        <div style="background:rgba(249,115,22,0.07);border:1px solid rgba(249,115,22,0.25);border-radius:8px;padding:16px 20px;">
-          <p style="font-size:0.82rem;font-weight:600;color:var(--accent);margin:0 0 12px;">🔑 Admin Access</p>
-          <form id="adminLoginForm" class="auth-form" onsubmit="doAdminLogin(event)">
-            <input type="text" id="adminUsernameOrEmail" placeholder="Username or email" required class="auth-input" autocomplete="username" />
-            <input type="password" id="adminPassword" placeholder="Password" required class="auth-input" autocomplete="current-password" style="margin-top:8px" />
-            <button type="submit" class="btn-primary auth-submit" id="adminLoginBtn" style="margin-top:10px">Sign in as Admin</button>
-          </form>
-          <div id="adminError" class="error-msg" style="margin-top:10px;display:none;font-size:0.85rem;"></div>
-        </div>
-      </div>
-
-      <p style="text-align:center;margin:10px 0 0;">
-        <a href="#" id="adminLoginToggle" onclick="toggleAdminLogin(event)" style="color:var(--text-muted,#888);font-size:0.82rem;">Admin Login</a>
-      </p>
-
-      <div class="auth-divider">
-        <span>or use email</span>
-      </div>
-
-      <!-- Magic link form (default) -->
-      <div id="magicLinkSection">
-        <form id="magicForm" class="auth-form" onsubmit="sendMagicLink(event)">
-          <input type="email" id="emailInput" placeholder="Email address" required class="auth-input" autocomplete="email" />
-          <button type="submit" class="btn-primary auth-submit" id="submitBtn">Send me a login link</button>
+      <!-- ── Sign In (email + password) ── -->
+      <div id="panel-signin">
+        <div id="signinError" class="error-msg" style="display:none;margin-bottom:14px;"></div>
+        <form id="signinForm" onsubmit="doSignin(event)">
+          <input type="email" id="signin-email" placeholder="Email address" required class="auth-input" autocomplete="email" />
+          <input type="password" id="signin-password" placeholder="Password" required class="auth-input" autocomplete="current-password" style="margin-top:10px" />
+          <button type="submit" class="btn-primary auth-submit" id="signinBtn">Sign In</button>
         </form>
-        <p class="auth-alt">New here? Same form — we'll create your account automatically.</p>
-        <p class="auth-alt" style="margin-top:6px">
-          <a href="#" id="showPasswordToggle" onclick="showPasswordForm(event)" style="color:var(--accent);font-size:0.85rem">Sign in with password instead</a>
+        <p class="auth-alt" style="margin-top:10px">
+          Forgot your password? <a href="#" onclick="switchTab('magic');return false" style="color:var(--accent)">Get a login link</a>
         </p>
       </div>
 
-      <!-- Email + password section (hidden by default) -->
-      <div id="passwordSection" style="display:none">
-        <div id="passwordTabs" style="display:flex;gap:8px;margin-bottom:16px">
-          <button class="pw-tab pw-tab--active" id="signinTab" onclick="switchTab('signin',event)">Sign in</button>
-          <button class="pw-tab" id="signupTab" onclick="switchTab('signup',event)">Create account</button>
+      <!-- ── Create Account ── -->
+      <div id="panel-signup" style="display:none">
+        <div id="signupError" class="error-msg" style="display:none;margin-bottom:14px;"></div>
+        <form id="signupForm" onsubmit="doSignup(event)">
+          <input type="email" id="signup-email" placeholder="Email address" required class="auth-input" autocomplete="email" />
+          <input type="password" id="signup-password" placeholder="Password (min 8 characters)" required class="auth-input" autocomplete="new-password" minlength="8" style="margin-top:10px" />
+          <input type="password" id="signup-confirm" placeholder="Confirm password" required class="auth-input" autocomplete="new-password" style="margin-top:10px" />
+          <button type="submit" class="btn-primary auth-submit" id="signupBtn">Create Account</button>
+        </form>
+      </div>
+
+      <!-- ── Magic Link ── -->
+      <div id="panel-magic" style="display:none">
+        <div id="magicSuccess" class="auth-success-msg" style="display:none;margin-bottom:14px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>Check your email — link sent! It expires in 15 minutes.</span>
         </div>
-
-        <form id="signinForm" class="auth-form" onsubmit="doSignIn(event)">
-          <input type="email" id="signinEmail" placeholder="Email address" required class="auth-input" autocomplete="email" />
-          <input type="password" id="signinPassword" placeholder="Password" required class="auth-input" autocomplete="current-password" minlength="6" style="margin-top:8px" />
-          <button type="submit" class="btn-primary auth-submit" id="signinBtn">Sign in</button>
+        <div id="magicError" class="error-msg" style="display:none;margin-bottom:14px;"></div>
+        <form id="magicForm" onsubmit="doMagicLink(event)">
+          <input type="email" id="magic-email" placeholder="Email address" required class="auth-input" autocomplete="email" />
+          <button type="submit" class="btn-primary auth-submit" id="magicBtn">Send Login Link</button>
         </form>
-
-        <form id="signupForm" class="auth-form" onsubmit="doSignUp(event)" style="display:none">
-          <input type="email" id="signupEmail" placeholder="Email address" required class="auth-input" autocomplete="email" />
-          <input type="password" id="signupPassword" placeholder="Password (min 6 characters)" required class="auth-input" autocomplete="new-password" minlength="6" style="margin-top:8px" />
-          <button type="submit" class="btn-primary auth-submit" id="signupBtn">Create account</button>
-        </form>
-
-        <p class="auth-alt" style="margin-top:12px">
-          <a href="#" onclick="showMagicLinkForm(event)" style="color:var(--accent);font-size:0.85rem">Use magic link instead</a>
+        <p class="auth-alt" style="margin-top:10px">
+          Prefer a password? <a href="#" onclick="switchTab('signin');return false" style="color:var(--accent)">Sign in with email + password</a>
         </p>
       </div>
 
@@ -134,6 +119,79 @@
   </section>
 
   <style>
+    /* Auth page glassmorphism + portal effect */
+    .auth-portal-glow {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(245,158,11,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 20% 100%, rgba(245,158,11,0.05) 0%, transparent 50%),
+        radial-gradient(ellipse 60% 50% at 80% 100%, rgba(245,158,11,0.05) 0%, transparent 50%);
+    }
+    .auth-page { min-height: 80vh; display: flex; align-items: center; justify-content: center; padding: 4rem 3rem; position: relative; overflow: hidden; }
+    .auth-card {
+      width: 100%;
+      max-width: 440px;
+      background: var(--wage-glass-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--wage-border);
+      border-radius: var(--wage-radius-card);
+      padding: 3rem;
+      position: relative;
+      z-index: 1;
+      box-shadow: var(--wage-glass-shadow), 0 0 80px rgba(245,158,11,0.05);
+    }
+    .auth-title { font-size: 2rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.5rem; }
+    .auth-sub { color: var(--wage-text-secondary); font-size: 0.95rem; line-height: 1.6; margin-bottom: 2rem; }
+    .auth-input {
+      width: 100%;
+      background: var(--wage-bg-primary);
+      border: 1px solid var(--wage-border);
+      border-radius: var(--wage-radius-btn);
+      padding: 0.875rem 1rem;
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      font-size: 16px;
+      color: var(--wage-text-primary);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      box-sizing: border-box;
+    }
+    .auth-input:focus {
+      border-color: var(--wage-gold);
+      box-shadow: 0 0 0 3px rgba(245,158,11,0.15);
+    }
+    .custom-auth-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 8px;
+      padding: 4px;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted, #888);
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .auth-tab--active {
+      background: var(--accent, #ff6600);
+      color: #fff;
+    }
+    .auth-tab:not(.auth-tab--active):hover {
+      background: rgba(255,255,255,0.08);
+      color: var(--text, #e5e0d8);
+    }
     .auth-success-msg {
       display: flex;
       align-items: center;
@@ -144,446 +202,208 @@
       border-radius: 8px;
       padding: 12px 16px;
       font-size: 0.9rem;
-      margin-bottom: 18px;
     }
-    .oauth-buttons {
+    .auth-alt {
+      font-size: 0.82rem;
+      color: var(--text-muted, #888);
+      text-align: center;
+    }
+    .oauth-providers {
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      margin-bottom: 6px;
+      gap: 8px;
+      margin-bottom: 16px;
     }
     .oauth-btn {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 10px;
-      width: 100%;
       padding: 11px 16px;
       border-radius: 8px;
       font-family: inherit;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       font-weight: 500;
-      cursor: pointer;
+      text-decoration: none;
       transition: opacity 0.15s, transform 0.1s;
-      border: none;
-      line-height: 1;
-    }
-    .oauth-btn:hover { opacity: 0.88; transform: translateY(-1px); }
-    .oauth-btn:active { transform: translateY(0); }
-    .oauth-btn--google {
-      background: #fff;
-      color: #3c4043;
-      border: 1.5px solid #dadce0;
-    }
-    .oauth-btn--discord {
-      background: #5865F2;
-      color: #fff;
-    }
-    .oauth-btn--kick {
-      background: #53fc18;
-      color: #111;
-      font-weight: 700;
-    }
-    .oauth-btn--kick:hover { background: #3edb12; }
-    .pw-tab {
-      flex: 1;
-      padding: 8px 12px;
-      border: 1.5px solid var(--border, #e0d9cc);
-      background: transparent;
-      color: var(--text-muted, #888);
-      font-family: inherit;
-      font-size: 0.88rem;
-      font-weight: 500;
-      border-radius: 6px;
       cursor: pointer;
-      transition: all 0.15s;
+      border: none;
     }
-    .pw-tab--active {
-      background: var(--accent, #f97316);
-      border-color: var(--accent, #f97316);
-      color: #fff;
-    }
-    .pw-tab:not(.pw-tab--active):hover { opacity: 0.75; }
-    .auth-divider {
-      display: flex;
-      align-items: center;
-      gap: 12px;
+    .oauth-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+    .oauth-btn:active { transform: translateY(0); }
+    .oauth-btn--google  { background: rgba(255,255,255,0.08); color: var(--fg); border: 1px solid var(--border); }
+    .oauth-btn--kick    { background: #1a1a1a; color: #fff; border: 1px solid #333; }
+    .oauth-btn--discord { background: #5865F2; color: #fff; }
+    .oauth-divider {
+      position: relative;
+      text-align: center;
+      margin-bottom: 16px;
       color: var(--text-muted, #888);
       font-size: 0.82rem;
-      margin: 18px 0 14px;
     }
-    .auth-divider::before,
-    .auth-divider::after {
+    .oauth-divider::before,
+    .oauth-divider::after {
       content: '';
-      flex: 1;
+      position: absolute;
+      top: 50%;
+      width: 42%;
       height: 1px;
-      background: var(--border, #e0d9cc);
+      background: rgba(255,255,255,0.12);
     }
+    .oauth-divider::before { left: 0; }
+    .oauth-divider::after  { right: 0; }
+    .oauth-divider span { background: var(--bg-2); padding: 0 10px; position: relative; }
   </style>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
 <script>
-// v7 — 2026-05-25 — Manual PKCE (no SDK PKCE magic).
-// We generate code_verifier + code_challenge ourselves, store verifier with a
-// known localStorage key, redirect to Supabase authorize, then exchange on the
-// callback page via POST /auth/exchange (server-side, uses Supabase admin SDK).
-var SUPABASE_URL  = '<%- supabaseUrl %>';
-var SUPABASE_KEY  = '<%- supabaseAnonKey %>';
-var APP_URL       = '<%- appUrl %>';
-var PKCE_VERIFIER_KEY = 'wage_pkce_verifier'; // Known key — same on login + callback pages
-
-// ── PKCE helpers (inline, no dependencies) ───────────────────────────────────
-// RFC 4648 §5 base64url: URL-safe encoding without padding.
-// Works on raw bytes (0-255) — safe for any random Uint8Array.
-// btoa() receives only Latin1 chars (byte values 0-255), never throws.
-function base64urlEncode(buffer) {
-  var bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-  var binary = '';
-  for (var i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]); // byte → Latin1 char, always safe for btoa
-  }
-  return btoa(binary).replace(/\//g, '_').replace(/[+]/g, '-').replace(/=/g, '');
+// ── Tab switching ────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  const panels = ['signin', 'signup', 'magic'];
+  panels.forEach(t => {
+    const p = document.getElementById('panel-' + t);
+    const b = document.getElementById('tab-' + t);
+    if (p) p.style.display = t === tab ? '' : 'none';
+    if (b) b.classList.toggle('auth-tab--active', t === tab);
+  });
+  // Clear errors
+  ['signinError', 'signupError', 'magicError', 'magicSuccess'].forEach(id => {
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
 }
 
-function generateCodeVerifier() {
-  var array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return base64urlEncode(array); // pass Uint8Array directly — no intermediate plain array
-}
-
-async function sha256(plain) {
-  var encoder = new TextEncoder();
-  var data = encoder.encode(plain);
-  var hash = await crypto.subtle.digest('SHA-256', data);
-  return new Uint8Array(hash); // pass Uint8Array directly — base64urlEncode handles both types
-}
-
-async function generateCodeChallenge(verifier) {
-  var hash = await sha256(verifier);
-  return base64urlEncode(hash);
-}
-
-// ── OAuth flow: generate PKCE → store verifier → redirect to Supabase ─────────
-async function oauthSignIn(provider, scopes) {
-  if (!SUPABASE_URL) {
-    showError('Authentication is not configured.');
-    return;
-  }
-  var verifier = generateCodeVerifier();
-  var challenge = await generateCodeChallenge(verifier);
-  console.log('[oauth] provider=' + provider + ' | verifier_len=' + verifier.length + ' | challenge_len=' + challenge.length);
-  // Store verifier with known key so auth-callback.ejs can retrieve it by the same key
-  localStorage.setItem(PKCE_VERIFIER_KEY, verifier);
-
-  var redirectTo = APP_URL + '/auth/callback';
-  var url = SUPABASE_URL + '/auth/v1/authorize?' +
-    'provider=' + encodeURIComponent(provider) +
-    '&redirect_to=' + encodeURIComponent(redirectTo) +
-    '&code_challenge=' + challenge +
-    '&code_challenge_method=S256' +
-    (scopes ? '&scopes=' + encodeURIComponent(scopes) : '');
-
-  window.location.href = url;
-}
-
-function signInWithGoogle() {
-  var btn = document.getElementById('googleBtn');
-  btn.disabled = true; btn.textContent = 'Redirecting\u2026';
-  oauthSignIn('google').catch(function(e) { showError(e.message); btn.disabled = false; btn.textContent = 'Continue with Google'; });
-}
-
-function signInWithDiscord() {
-  var btn = document.getElementById('discordBtn');
-  btn.disabled = true; btn.textContent = 'Redirecting\u2026';
-  oauthSignIn('discord', 'identify email guilds.join').catch(function(e) { showError(e.message); btn.disabled = false; btn.textContent = 'Continue with Discord'; });
-}
-
-function signInWithKick() {
-  var btn = document.getElementById('kickBtn');
-  if (!btn) return;
-  btn.disabled = true; btn.textContent = 'Redirecting\u2026';
-  // Kick is a custom OIDC provider — requires "custom:" prefix in Supabase
-  oauthSignIn('custom:kick').catch(function(e) { showError(e.message); btn.disabled = false; btn.textContent = 'Continue with Kick'; });
-}
-
-function showAuthHint() {
-  var hint = document.getElementById('authUnavailableHint');
-  if (hint) hint.style.display = 'block';
-}
-
-async function sendMagicLink(e) {
-  e.preventDefault();
-  var email = document.getElementById('emailInput').value.trim();
-  var btn = document.getElementById('submitBtn');
-  var errEl = document.getElementById('errorMsg');
-  var sentEl = document.getElementById('linkSent');
-
-  errEl.style.display = 'none';
-  sentEl.style.display = 'none';
-  btn.disabled = true;
-  btn.textContent = 'Sending…';
-
-  try {
-    var r = await fetch('/auth/magic-link', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email })
-    });
-    var data = await r.json();
-    if (data.ok) {
-      document.getElementById('magicForm').style.display = 'none';
-      sentEl.style.display = 'flex';
-    } else {
-      showError(data.error || 'Something went wrong. Try again.');
-      btn.disabled = false;
-      btn.textContent = 'Send me a login link';
-    }
-  } catch (_) {
-    showError('Network error. Check your connection and try again.');
-    btn.disabled = false;
-    btn.textContent = 'Send me a login link';
-  }
-}
-
-function showError(msg) {
-  var el = document.getElementById('errorMsg');
+// ── Error helpers ───────────────────────────────────────────────────────────
+function showError(id, msg) {
+  var el = document.getElementById(id);
   if (el) { el.textContent = msg; el.style.display = ''; }
 }
 
-// Handle magic link tokens returned in the URL hash fragment.
-// Two flows:
-//   PKCE (default):  ?code=xxx#access_token=...&type=magiclink
-//     → redirect to /auth/verify?code=xxx (server exchanges PKCE + sets Express session)
-//   Non-PKCE:        #access_token=...&type=magiclink  (no ?code= in query)
-//     → POST tokens to /auth/token-session so server can validate + set Express session
-(function handleMagicLinkHash() {
-   var hash = window.location.hash;
-   var search = window.location.search;
-
-   // Exit early if no hash or not a magic link token
-   if (!hash || !hash.includes('access_token') || !hash.includes('type=magiclink')) return;
-
-   // Show loading state immediately so user doesn't see a flash of the form
-   var loadingEl = document.getElementById('magicLinkLoading');
-   var errEl = document.getElementById('errorMsg');
-   var formEl = document.getElementById('magicForm');
-   if (loadingEl) loadingEl.style.display = 'flex';
-   if (errEl) errEl.style.display = 'none';
-   if (formEl) formEl.style.display = 'none';
-
-   // Determine which flow we're in
-   var hasPkceCode = search.includes('code=');
-   var code = null;
-   if (hasPkceCode) {
-     var qp = new URLSearchParams(search);
-     code = qp.get('code');
-   }
-
-   // PKCE flow — redirect to server so it exchanges code + sets Express session
-   if (code) {
-     var verifyUrl = APP_URL + '/auth/verify?code=' + encodeURIComponent(code);
-     if (window.history.replaceState) {
-       window.history.replaceState({}, '', window.location.pathname);
-     }
-     window.location.href = verifyUrl;
-     return;
-   }
-
-   // Non-PKCE flow — tokens only in hash (no ?code= in query string).
-   // POST tokens to the server so it can validate them and set an Express session.
-   var hashParams = new URLSearchParams(hash.slice(1)); // strip leading '#'
-   var access_token  = hashParams.get('access_token');
-   var refresh_token = hashParams.get('refresh_token') || '';
-
-   if (!access_token) {
-     window.location.href = APP_URL + '/auth/verify';
-     return;
-   }
-
-   fetch('/auth/token-session', {
-     method: 'POST',
-     headers: { 'Content-Type': 'application/json' },
-     body: JSON.stringify({ access_token: access_token, refresh_token: refresh_token }),
-   }).then(function(r) { return r.json(); }).then(function(data) {
-     if (window.history.replaceState) {
-       window.history.replaceState({}, '', window.location.pathname);
-     }
-     window.location.href = data.redirect || '/dashboard';
-   }).catch(function(err) {
-     console.error('[login] token-session error:', err.message);
-     showError('Sign-in failed. Please try again.');
-     if (loadingEl) loadingEl.style.display = 'none';
-     if (formEl) formEl.style.display = '';
-   });
-})();
-
-// Show error from redirect param (expired link, OAuth error, etc.)
-(function() {
-  var params = new URLSearchParams(window.location.search);
-  var err = params.get('error');
-  if (!err) return;
-  var msgs = {
-    link_expired: 'That link has expired or already been used. Request a new one.',
-    no_code: 'Invalid link. Request a new one.',
-    no_link_code: 'That magic link has already been used. Request a new one.',
-    no_user: 'Could not verify your account. Try again.',
-    auth_failed: 'Sign-in failed. Please try again.'
-  };
-  showError(msgs[err] || decodeURIComponent(err) || 'Sign-in failed. Please try again.');
-})();
-
-// ── Password form helpers ────────────────────────────────────────────────────
-
-function showPasswordForm(e) {
-  if (e) e.preventDefault();
-  document.getElementById('magicLinkSection').style.display = 'none';
-  document.getElementById('passwordSection').style.display = 'block';
-  document.getElementById('errorMsg').style.display = 'none';
+function hideError(id) {
+  var el = document.getElementById(id);
+  if (el) el.style.display = 'none';
 }
 
-function showMagicLinkForm(e) {
-  if (e) e.preventDefault();
-  document.getElementById('passwordSection').style.display = 'none';
-  document.getElementById('magicLinkSection').style.display = 'block';
-  document.getElementById('adminLoginSection').style.display = 'none';
-  document.getElementById('errorMsg').style.display = 'none';
-}
-
-function toggleAdminLogin(e) {
-  if (e) e.preventDefault();
-  var adminSection = document.getElementById('adminLoginSection');
-  if (adminSection.style.display === 'none') {
-    adminSection.style.display = 'block';
-    document.getElementById('adminUsernameOrEmail').focus();
-  } else {
-    adminSection.style.display = 'none';
-  }
-}
-
-async function doAdminLogin(e) {
+// ── Sign In ─────────────────────────────────────────────────────────────────
+async function doSignin(e) {
   e.preventDefault();
-  var input = document.getElementById('adminUsernameOrEmail').value.trim();
-  var password = document.getElementById('adminPassword').value;
-  var btn = document.getElementById('adminLoginBtn');
-  var errEl = document.getElementById('adminError');
-  btn.disabled = true;
-  btn.textContent = 'Signing in…';
-  errEl.style.display = 'none';
-
-  // Look up email if user entered "root"
-  var email = input;
-  if (input.toLowerCase() === 'root') {
-    try {
-      var r = await fetch('/auth/lookup-root', { method: 'POST' });
-      var data = await r.json();
-      if (!data.email) throw new Error('root not found');
-      email = data.email;
-    } catch (_) {
-      errEl.textContent = 'Admin account not found.';
-      errEl.style.display = 'block';
-      btn.disabled = false;
-      btn.textContent = 'Sign in as Admin';
-      return;
-    }
-  }
-
-  // Proceed with normal email+password signin using the found email
-  try {
-    var r2 = await fetch('/auth/signin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email, password: password })
-    });
-    var data2 = await r2.json();
-    if (data2.ok) {
-      window.location.href = data2.redirect || '/dashboard';
-    } else {
-      errEl.textContent = data2.error || 'Sign-in failed.';
-      errEl.style.display = 'block';
-      btn.disabled = false;
-      btn.textContent = 'Sign in as Admin';
-    }
-  } catch (_) {
-    errEl.textContent = 'Network error. Try again.';
-    errEl.style.display = 'block';
-    btn.disabled = false;
-    btn.textContent = 'Sign in as Admin';
-  }
-}
-
-function switchTab(tab, e) {
-  if (e) e.preventDefault();
-  var isSignin = tab === 'signin';
-  document.getElementById('signinForm').style.display = isSignin ? '' : 'none';
-  document.getElementById('signupForm').style.display = isSignin ? 'none' : '';
-  document.getElementById('signinTab').classList.toggle('pw-tab--active', isSignin);
-  document.getElementById('signupTab').classList.toggle('pw-tab--active', !isSignin);
-  document.getElementById('errorMsg').style.display = 'none';
-}
-
-async function doSignIn(e) {
-  e.preventDefault();
-  var email = document.getElementById('signinEmail').value.trim();
-  var password = document.getElementById('signinPassword').value;
+  var email = document.getElementById('signin-email').value.trim();
+  var password = document.getElementById('signin-password').value;
   var btn = document.getElementById('signinBtn');
+
+  hideError('signinError');
   btn.disabled = true;
-  btn.textContent = 'Signing in…';
-  document.getElementById('errorMsg').style.display = 'none';
+  btn.textContent = 'Signing in\u2026';
+
   try {
-    var r = await fetch('/auth/signin', {
+    var r = await fetch('/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email, password: password })
+      body: JSON.stringify({ email: email, password: password }),
     });
     var data = await r.json();
     if (data.ok) {
       window.location.href = data.redirect || '/dashboard';
     } else {
-      showError(data.error || 'Sign-in failed. Try again.');
+      showError('signinError', data.error || 'Sign in failed. Try again.');
       btn.disabled = false;
-      btn.textContent = 'Sign in';
+      btn.textContent = 'Sign In';
     }
   } catch (_) {
-    showError('Network error. Check your connection and try again.');
+    showError('signinError', 'Network error. Check your connection and try again.');
     btn.disabled = false;
-    btn.textContent = 'Sign in';
+    btn.textContent = 'Sign In';
   }
 }
 
-async function doSignUp(e) {
+// ── Sign Up ─────────────────────────────────────────────────────────────────
+async function doSignup(e) {
   e.preventDefault();
-  var email = document.getElementById('signupEmail').value.trim();
-  var password = document.getElementById('signupPassword').value;
+  var email = document.getElementById('signup-email').value.trim();
+  var password = document.getElementById('signup-password').value;
+  var confirm = document.getElementById('signup-confirm').value;
   var btn = document.getElementById('signupBtn');
+
+  hideError('signupError');
+
+  if (password !== confirm) {
+    showError('signupError', 'Passwords do not match.');
+    return;
+  }
+  if (password.length < 8) {
+    showError('signupError', 'Password must be at least 8 characters.');
+    return;
+  }
+
   btn.disabled = true;
-  btn.textContent = 'Creating account…';
-  document.getElementById('errorMsg').style.display = 'none';
+  btn.textContent = 'Creating account\u2026';
+
   try {
     var r = await fetch('/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email, password: password })
+      body: JSON.stringify({ email: email, password: password }),
     });
     var data = await r.json();
-    if (data.ok && data.redirect) {
-      window.location.href = data.redirect;
-    } else if (data.ok && data.confirm_email) {
-      // Email confirmation required — show magic-link-style success
-      document.getElementById('passwordSection').style.display = 'none';
-      var sentEl = document.getElementById('linkSent');
-      sentEl.querySelector('span').textContent = 'Account created! Check your email to confirm it, then sign in.';
-      sentEl.style.display = 'flex';
+    if (data.ok) {
+      window.location.href = data.redirect || '/dashboard';
     } else {
-      showError(data.error || 'Sign-up failed. Try again.');
+      showError('signupError', data.error || 'Account creation failed. Try again.');
       btn.disabled = false;
-      btn.textContent = 'Create account';
+      btn.textContent = 'Create Account';
     }
   } catch (_) {
-    showError('Network error. Check your connection and try again.');
+    showError('signupError', 'Network error. Check your connection and try again.');
     btn.disabled = false;
-    btn.textContent = 'Create account';
+    btn.textContent = 'Create Account';
   }
 }
+
+// ── Magic Link ──────────────────────────────────────────────────────────────
+async function doMagicLink(e) {
+  e.preventDefault();
+  var email = document.getElementById('magic-email').value.trim();
+  var btn = document.getElementById('magicBtn');
+
+  hideError('magicError');
+  document.getElementById('magicSuccess').style.display = 'none';
+
+  btn.disabled = true;
+  btn.textContent = 'Sending\u2026';
+
+  try {
+    var r = await fetch('/auth/magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email }),
+    });
+    var data = await r.json();
+    if (data.ok) {
+      document.getElementById('magicSuccess').style.display = 'flex';
+      document.getElementById('magicForm').reset();
+      btn.textContent = 'Sent!';
+    } else {
+      showError('magicError', data.error || 'Failed to send link. Try again.');
+      btn.disabled = false;
+      btn.textContent = 'Send Login Link';
+    }
+  } catch (_) {
+    showError('magicError', 'Network error. Check your connection and try again.');
+    btn.disabled = false;
+    btn.textContent = 'Send Login Link';
+  }
+}
+
+// ── Show errors from URL params (e.g. link_expired after magic link) ─────────
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var err = params.get('error');
+  if (!err) return;
+  var msgs = {
+    link_expired: 'That link has expired or already been used.',
+    no_token: 'Invalid link. Please request a new one.',
+  };
+  showError('signinError', msgs[err] || 'Something went wrong. Please try again.');
+})();
 </script>
 </body>
 </html>

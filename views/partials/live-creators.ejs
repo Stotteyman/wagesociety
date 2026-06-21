@@ -1,0 +1,107 @@
+<% var streams = (typeof liveCreators !== 'undefined') ? liveCreators : []; %>
+<% var liveCount = streams.filter(function(s) { return s.status === 'live'; }).length; %>
+<section class="live-creators scroll-reveal" aria-labelledby="live-creators-title">
+  <div class="live-creators-inner">
+    <div class="live-creators-header">
+      <div class="live-creators-title-group">
+        <span class="live-dot">●</span>
+        <h2 class="live-creators-title">LIVE CREATORS</h2>
+        <% if (liveCount > 0) { %>
+          <span class="live-creators-count"><%= liveCount %> live</span>
+        <% } %>
+      </div>
+      <div class="live-creators-nav">
+        <a href="/streams" class="live-creators-viewall">View all streams →</a>
+        <% if (streams.length > 0) { %>
+          <button class="carousel-btn carousel-prev" aria-label="Previous" onclick="scrollCarousel(-1)">‹</button>
+          <button class="carousel-btn carousel-next" aria-label="Next" onclick="scrollCarousel(1)">›</button>
+        <% } %>
+      </div>
+    </div>
+
+    <% if (streams.length > 0) { %>
+      <div class="creator-carousel" id="creatorCarousel">
+        <% streams.forEach(function(s) {
+          // Normalize field names — supports both legacy (member_livestreams) and new (livestreams) shapes
+          var name  = s.creator_name || s.display_name || s.channel_name || 'Creator';
+          var avatar = s.creator_avatar || s.avatar_url || null;
+          var thumb  = s.stream_thumbnail || s.thumbnail_url || null;
+          var title  = s.stream_title || s.title || s.channel_name || '';
+          var plat   = (s.platform || '').toLowerCase();
+          var url    = s.stream_url || '/streams';
+          var vc     = s.viewer_count || 0;
+          var isLive = s.status === 'live';
+        %>
+          <a href="<%= url %>" class="creator-card" target="_blank" rel="noopener">
+            <div class="creator-card-thumb">
+              <% if (thumb) { %>
+                <img src="<%= thumb %>" alt="<%= title || name %>" class="creator-thumb-img" loading="lazy">
+              <% } else { %>
+                <div class="creator-thumb-placeholder"></div>
+              <% } %>
+              <% if (isLive) { %>
+                <span class="live-badge">LIVE</span>
+              <% } else { %>
+                <span class="live-badge" style="background:rgba(128,128,128,0.85);animation:none;">OFFLINE</span>
+              <% } %>
+              <% if (plat) { %>
+                <span class="platform-badge platform-<%= plat %>">
+                  <% if (plat === 'youtube') { %>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                  <% } else if (plat === 'kick') { %>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M1.2 0h7.06v7.06H1.2zM1.2 16.94h7.06V24H1.2zM1.2 8.47h7.06v7.06H1.2zM8.26 8.47h3.53v3.53H8.26zM15.33 8.47h3.53v3.53h-3.53zM11.79 4.94h3.53v3.53h-3.53zM11.79 12h3.53v3.53h-3.53zM15.33 0h7.06v4.94h-7.06zM15.33 19.06h7.06V24h-7.06z"/></svg>
+                  <% } else if (plat === 'twitch') { %>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg>
+                  <% } else { %>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                  <% } %>
+                </span>
+              <% } %>
+              <% if (isLive && vc > 0) { %>
+              <span class="viewer-count">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <%= vc >= 1000 ? ((vc / 1000).toFixed(1) + 'k') : vc %>
+              </span>
+              <% } %>
+            </div>
+            <div class="creator-card-info">
+              <div class="creator-card-avatar">
+                <% if (avatar) { %>
+                  <img src="<%= avatar %>" alt="" class="creator-avatar-img">
+                <% } else { %>
+                  <div class="creator-avatar-placeholder"><%= name[0].toUpperCase() %></div>
+                <% } %>
+                <% if (isLive) { %><span class="avatar-live-dot"></span><% } %>
+              </div>
+              <div class="creator-card-meta">
+                <span class="creator-card-name"><%= name %></span>
+                <span class="creator-card-category"><%= title %></span>
+              </div>
+            </div>
+          </a>
+        <% }); %>
+      </div>
+    <% } else { %>
+      <div class="live-creators-empty">
+        <div class="live-creators-empty-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <path d="M8 21h8M12 17v4"/>
+            <circle cx="12" cy="10" r="2" fill="currentColor" stroke="none" opacity="0.3"/>
+          </svg>
+        </div>
+        <p class="live-creators-empty-text">No creators streaming yet</p>
+        <p class="live-creators-empty-sub">Connect your YouTube, Kick, or Twitch in <a href="/settings">Settings</a> to appear here</p>
+      </div>
+    <% } %>
+  </div>
+</section>
+
+<script>
+function scrollCarousel(dir) {
+  var el = document.getElementById('creatorCarousel');
+  if (!el) return;
+  var cardWidth = el.querySelector('.creator-card')?.offsetWidth || 280;
+  el.scrollBy({ left: dir * (cardWidth + 16), behavior: 'smooth' });
+}
+</script>

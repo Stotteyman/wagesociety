@@ -2,8 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <%- include('../partials/head-pwa') %>
   <title>Onboarding — W.A.G.E. Society</title>
+  <meta name="description" content="Set up your W.A.G.E. Society creator profile. Choose a username, add a bio, and start building your presence.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Onboarding — W.A.G.E. Society">
+  <meta property="og:description" content="Set up your W.A.G.E. Society creator profile. Choose a username, add a bio, and start building.">
+  <meta property="og:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
+  <meta property="og:url" content="https://wagesociety.com/onboarding">
+  <meta property="og:site_name" content="WAGE Society">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Onboarding — W.A.G.E. Society">
+  <meta name="twitter:description" content="Set up your W.A.G.E. Society creator profile. Choose a username, add a bio, and start building.">
+  <meta name="twitter:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -18,6 +29,14 @@
     <div class="section-label">Welcome to W.A.G.E.</div>
     <h1 class="auth-title" style="margin-bottom:0.5rem;">Set up your account</h1>
     <p class="auth-sub">Your account starts on FREE. Finish setup now, then upgrade if you want more.</p>
+
+    <% if (joinServer && discordServerInvite) { %>
+    <div style="background:rgba(88,101,242,0.12);border:1px solid rgba(88,101,242,0.35);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem;font-size:0.875rem;color:#c7d2fe;line-height:1.6;">
+      <strong style="color:#818cf8;">🎉 You're in — one more step:</strong> Join the
+      <a href="<%= discordServerInvite %>" target="_blank" style="color:#a5b4fc;font-weight:700;">W.A.G.E. Society Discord server</a>
+      to unlock your creator role and access member perks.
+    </div>
+    <% } %>
 
     <div class="auth-form" style="margin-top:1.5rem;">
       <div>

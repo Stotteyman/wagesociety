@@ -5,58 +5,831 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin: Members — W.A.G.E. Society</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/theme.css">
   <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    :root { --admin-sidebar-w: 220px; }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    .admin-nav { background: var(--bg); border-bottom: 1px solid var(--border); padding: 0.85rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+    .admin-nav-logo { font-weight: 800; font-size: 1rem; color: var(--fg); text-decoration: none; }
+    .admin-nav-logo span { color: var(--accent); }
+    .admin-nav-divider { width: 1px; height: 20px; background: var(--border); }
+    .admin-nav-right { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+    .admin-nav-link { font-size: 0.8rem; color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 0.3rem; }
+    .admin-nav-link:hover { color: var(--fg); }
+    .admin-body { display: flex; flex: 1; max-width: 1300px; margin: 0 auto; width: 100%; padding: 2rem 1.5rem; gap: 2rem; }
+    .admin-sidebar { position: sticky; top: 1.5rem; width: var(--admin-sidebar-w); flex-shrink: 0; }
+    .admin-sidebar-section { margin-bottom: 1.5rem; }
+    .admin-sidebar-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 0.4rem; padding: 0 0.5rem; }
+    .admin-sidebar-link { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: 0.82rem; font-weight: 500; transition: background 0.1s, color 0.1s; }
+    .admin-sidebar-link:hover { background: var(--surface); color: var(--fg); }
+    .admin-sidebar-link.active { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+    .admin-sidebar-link .link-icon { font-size: 0.9rem; width: 18px; text-align: center; }
+    .admin-sidebar-link .link-badge { margin-left: auto; font-size: 0.6rem; font-weight: 700; background: rgba(255,102,0,0.15); color: var(--accent); padding: 0.1rem 0.4rem; border-radius: 10px; }
+    .admin-main { flex: 1; min-width: 0; }
+    .admin-page-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); display: block; margin-bottom: 0.2rem; }
+    .admin-page-title { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; font-weight: 800; margin: 0; }
+    .admin-page-subtitle { color: var(--muted); font-size: 0.875rem; margin: 0.3rem 0 0; }
+    .admin-users-page { padding: 0; }
+    .admin-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+    .admin-tab { padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; color: var(--muted); cursor: pointer; border: none; background: none; font-family: inherit; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .admin-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .user-table { width: 100%; border-collapse: collapse; }
+    .user-table th { text-align: left; padding: 0.75rem 0.5rem; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .user-table td { padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .user-table tr:last-child td { border-bottom: none; }
+    .user-row:hover { background: rgba(255,255,255,0.02); }
+    .user-meta { display: flex; align-items: center; gap: 0.75rem; }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0; }
+    .user-name { font-weight: 600; font-size: 0.9rem; }
+    .user-email { font-size: 0.75rem; color: var(--muted); }
+    .role-badge { display: inline-block; font-size: 0.7rem; font-weight: 600; background: var(--surface); border: 1px solid var(--border); padding: 0.2rem 0.65rem; border-radius: 20px; white-space: nowrap; }
+    .role-badge.superadmin, .role-badge.super_admin { background: rgba(234,179,8,0.12); border-color: rgba(234,179,8,0.3); color: #eab308; }
+    .role-badge.admin { background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.3); color: #3b82f6; }
+    .role-badge.banned { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.3); color: #ef4444; }
+    .status-badge { display: inline-block; font-size: 0.65rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .status-badge.active { background: rgba(34,197,94,0.12); color: #22c55e; }
+    .status-badge.trialing { background: rgba(59,130,246,0.12); color: #3b82f6; }
+    .status-badge.past_due { background: rgba(234,179,8,0.12); color: #eab308; }
+    .status-badge.canceled { background: rgba(255,255,255,0.05); color: var(--muted); }
+    .status-badge.none { background: var(--surface); color: var(--muted); }
+    .status-badge.suspended { background: rgba(239,68,68,0.12); color: #ef4444; }
+    .tier-badge { font-size: 0.65rem; padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
+    .tier-badge.free { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+    .tier-badge.creator { background: rgba(255,102,0,0.12); color: #ff6600; border: 1px solid rgba(255,102,0,0.3); }
+    .tier-badge.pro { background: rgba(234,179,8,0.12); color: #eab308; border: 1px solid rgba(234,179,8,0.3); }
+    .tier-badge.elite { background: rgba(168,85,247,0.15); color: #c084fc; border: 1px solid rgba(168,85,247,0.35); text-shadow: 0 0 6px rgba(168,85,247,0.3); }
+    .tier-badge.unlimited { background: rgba(234,179,8,0.15); color: #f59e0b; border: 1px solid rgba(234,179,8,0.35); text-shadow: 0 0 6px rgba(234,179,8,0.3); font-weight: 900; }
+    .user-actions { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
+    .btn-sm { font-size: 0.7rem; padding: 0.25rem 0.65rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; font-family: inherit; font-weight: 500; transition: all 0.15s; white-space: nowrap; }
+    .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm.danger { border-color: #fca5a5; color: #dc2626; }
+    .btn-sm.danger:hover { background: rgba(239,68,68,0.1); }
+    .btn-sm.success { border-color: rgba(34,197,94,0.3); color: #22c55e; }
+    .btn-sm.success:hover { background: rgba(34,197,94,0.1); }
+    .btn-sm.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn-sm.primary:hover { opacity: 0.85; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 1rem; }
+    .modal-overlay.hidden { display: none; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; width: 100%; max-width: 480px; }
+    .modal h2 { font-size: 1.25rem; font-weight: 700; margin: 0 0 0.25rem; }
+    .modal p { font-size: 0.875rem; color: var(--muted); margin: 0 0 1.5rem; }
+    .modal-form { display: flex; flex-direction: column; gap: 0.75rem; }
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1rem; }
+    .form-input { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 0.65rem 0.875rem; font-size: 0.875rem; color: var(--text); font-family: inherit; width: 100%; }
+    .form-input:focus { outline: none; border-color: var(--accent); }
+    .form-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text); }
+    .modal-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; border-radius: 8px; padding: 0.75rem; font-size: 0.875rem; display: none; }
+    .modal-success { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: #22c55e; border-radius: 8px; padding: 0.75rem; font-size: 0.875rem; display: none; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; }
+    .info-item { display: flex; flex-direction: column; gap: 0.15rem; }
+    .info-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+    .info-value { font-size: 0.875rem; font-weight: 600; }
+    .flex-row { display: flex; flex-wrap: wrap; }
+    .stripe-id { font-size: 0.7rem; color: var(--muted); font-family: monospace; }
+    .sub-expires { font-size: 0.7rem; color: var(--muted); }
+    @media (max-width: 768px) {
+      .admin-sidebar { display: none; }
+      .admin-body { padding: 1rem; }
+      .user-table thead { display: none; }
+      .user-table tr { display: block; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.75rem; padding: 0.75rem; }
+      .user-table td { display: block; padding: 0.2rem 0; border: none; }
+    }
+  </style>
 </head>
 <body>
-<%- include('../partials/nav') %>
 
-<section class="dashboard-page">
-  <div class="dashboard-inner">
-    <div style="margin-bottom:2rem;">
-      <a href="/dashboard" style="color:var(--muted);text-decoration:none;font-size:0.875rem;">← Back to Dashboard</a>
+<!-- Admin nav -->
+<nav class="admin-nav">
+  <a href="/dashboard" class="admin-nav-logo">W.A.G.E. <span>Admin</span></a>
+  <div class="admin-nav-divider"></div>
+  <span style="font-size:0.75rem;color:var(--muted);">Members</span>
+  <div class="admin-nav-right">
+    <a href="/admin" class="admin-nav-link">← Overview</a>
+    <a href="/dashboard" class="admin-nav-link">Dashboard</a>
+    <a href="/logout" class="admin-nav-link">Logout</a>
+  </div>
+</nav>
+
+<!-- Body -->
+<div class="admin-body">
+  <!-- Sidebar -->
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Management</div>
+      <a href="/admin" class="admin-sidebar-link"><span class="link-icon">🏠</span> Overview</a>
+      <a href="/admin/users" class="admin-sidebar-link active"><span class="link-icon">👥</span> Members</a>
+      <a href="/admin/roles" class="admin-sidebar-link"><span class="link-icon">🔑</span> Roles &amp; Permissions</a>
+      <a href="/admin/referrals" class="admin-sidebar-link"><span class="link-icon">🔗</span> Referrals</a>
     </div>
-    <div class="page-header">
-      <span class="section-label" style="color:var(--accent);">Admin</span>
-      <h1 class="section-title">Manage Members</h1>
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Platform</div>
+      <a href="/admin/discord" class="admin-sidebar-link"><span class="link-icon">🤖</span> Discord Bot</a>
+      <a href="/admin/tiers" class="admin-sidebar-link"><span class="link-icon">⭐</span> Membership Tiers</a>
+      <a href="/admin/point-shop" class="admin-sidebar-link"><span class="link-icon">🏪</span> Point Shop</a>
+    </div>
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Tools</div>
+      <a href="/admin/diagnostics" class="admin-sidebar-link"><span class="link-icon">🔧</span> Diagnostics</a>
+      <a href="/admin/shop" class="admin-sidebar-link"><span class="link-icon">🛒</span> Merch Shop</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="admin-main">
+    <div class="admin-page-header" style="margin-bottom:1.5rem;">
+      <span class="admin-page-label">Admin</span>
+      <h1 class="admin-page-title" style="font-size:1.5rem;font-weight:700;margin:0;">Manage Members</h1>
+    </div>
+    <div class="admin-tabs">
+      <button class="admin-tab active" data-tab="users">Members</button>
+      <button class="admin-tab" data-tab="blog">Blog Cleanup</button>
     </div>
 
-    <div id="membersList" class="dash-card">
-      <p style="color:var(--muted);">Loading members...</p>
+    <!-- Members tab -->
+    <div id="tab-users">
+      <div class="dash-card" style="padding:0;overflow:hidden;">
+        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.75rem;">
+          <span style="font-size:0.8rem;color:var(--muted);" id="userCount">Loading...</span>
+          <input type="text" id="adminSearchInput" placeholder="Search by name or email..." style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:0.4rem 0.75rem;font-size:0.8rem;color:var(--text);font-family:inherit;width:220px;" />
+        </div>
+        <!-- Bulk action bar -->
+        <div id="bulkActionBar" style="display:none;padding:0.6rem 1.25rem;background:rgba(255,102,0,0.06);border-bottom:1px solid var(--border);align-items:center;gap:0.75rem;" class="flex-row">
+          <span id="bulkCountLabel" style="font-size:0.8rem;font-weight:600;color:var(--accent);"></span>
+          <button class="btn-sm" onclick="openBulkTierModal()">Change Tier</button>
+          <button class="btn-sm danger" onclick="clearBulkSelection()">Clear</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="user-table">
+            <thead>
+              <tr>
+                <th style="padding:0.75rem 0.5rem;width:32px;">
+                  <input type="checkbox" id="bulkSelectAll" onclick="toggleBulkSelect()" title="Select all" />
+                </th>
+                <th style="padding:0.75rem 1.25rem;">Member</th>
+                <th style="padding:0.75rem 0.5rem;">Role</th>
+                <th style="padding:0.75rem 0.5rem;">Tier</th>
+                <th style="padding:0.75rem 0.5rem;">Sub Status</th>
+                <th style="padding:0.75rem 0.5rem;">Points</th>
+                <th style="padding:0.75rem 1.25rem;text-align:right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="userTableBody">
+              <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--muted);">Loading members...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Blog cleanup tab -->
+    <div id="tab-blog" style="display:none;">
+      <div class="dash-card">
+        <h2 style="font-size:1.1rem;font-weight:700;margin:0 0 0.5rem;">Blog Content Cleanup</h2>
+        <p style="font-size:0.875rem;color:var(--muted);margin:0 0 1.5rem;">Delete all existing blog posts. This action cannot be undone.</p>
+        <button class="btn-sm danger" onclick="deleteAllPosts()" id="deletePostsBtn">Delete All Blog Posts</button>
+        <div id="blogCleanupMsg" style="margin-top:1rem;font-size:0.875rem;display:none;"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Tier change modal -->
+<div id="tierModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2 id="tierModalTitle">Change Tier</h2>
+    <p id="tierModalDesc">Select the new subscription tier for this member.</p>
+    <div id="tierModalError" class="modal-error"></div>
+    <div id="tierModalSuccess" class="modal-success"></div>
+    <div class="modal-form">
+      <div>
+        <label class="form-label">New Tier</label>
+        <select id="tierSelect" class="form-input">
+          <option value="free">Free (No subscription)</option>
+          <option value="creator">Creator</option>
+          <option value="pro">Pro</option>
+          <option value="elite">ELITE</option>
+          <option value="unlimited">UNLIMITED</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-sm" onclick="closeModal('tierModal')">Cancel</button>
+      <button class="btn-sm primary" onclick="submitTierChange()" id="tierSubmitBtn">Update Tier</button>
     </div>
   </div>
-</section>
+</div>
+
+<!-- Bulk tier change modal -->
+<div id="bulkTierModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>Bulk Tier Change</h2>
+    <p>Change tier for <span id="bulkTierCount" style="font-weight:700;color:var(--accent);">0</span> selected members.</p>
+    <div id="bulkTierModalError" class="modal-error"></div>
+    <div id="bulkTierModalSuccess" class="modal-success"></div>
+    <div class="modal-form">
+      <div>
+        <label class="form-label">New Tier</label>
+        <select id="bulkTierSelect" class="form-input">
+          <option value="free">Free (No subscription)</option>
+          <option value="creator">Creator</option>
+          <option value="pro">Pro</option>
+          <option value="elite">ELITE</option>
+          <option value="unlimited">UNLIMITED</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-sm" onclick="closeModal('bulkTierModal')">Cancel</button>
+      <button class="btn-sm primary" onclick="submitBulkTierChange()" id="bulkTierSubmitBtn">Apply to All</button>
+    </div>
+  </div>
+</div>
+
+<!-- Role change modal -->
+<div id="roleModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>Change Role</h2>
+    <p>Select a new role for this member.</p>
+    <div id="roleModalError" class="modal-error"></div>
+    <div id="roleModalSuccess" class="modal-success"></div>
+    <div class="modal-form">
+      <div>
+        <label class="form-label">New Role</label>
+        <select id="roleSelect" class="form-input">
+          <option value="MEMBER">Member (Default)</option>
+          <option value="HELPER">Helper</option>
+          <option value="MODERATOR">Moderator</option>
+          <option value="ADMIN">Admin</option>
+          <option value="SUPER_ADMIN">Super Admin</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-sm" onclick="closeModal('roleModal')">Cancel</button>
+      <button class="btn-sm primary" onclick="submitRoleChange()" id="roleSubmitBtn">Save Role</button>
+    </div>
+  </div>
+</div>
+
+<!-- Password reset modal -->
+<div id="passwordModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>Reset Password</h2>
+    <p>Choose how to reset this user's password.</p>
+    <div id="passwordModalError" class="modal-error"></div>
+    <div id="passwordModalSuccess" class="modal-success"></div>
+    <div class="modal-form">
+      <div>
+        <label class="form-label">Method</label>
+        <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem;">
+          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.875rem;">
+            <input type="radio" name="pwMethod" value="link" checked onclick="togglePwFields(false)" />
+            Send reset link (email)
+          </label>
+          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.875rem;">
+            <input type="radio" name="pwMethod" value="direct" onclick="togglePwFields(true)" />
+            Set password directly
+          </label>
+        </div>
+      </div>
+      <div id="directPwFields" style="display:none;">
+        <label class="form-label">New Password</label>
+        <input type="password" id="newPasswordInput" class="form-input" placeholder="Min 8 characters" minlength="8" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-sm" onclick="closeModal('passwordModal')">Cancel</button>
+      <button class="btn-sm primary" onclick="submitPasswordReset()" id="pwSubmitBtn">Send Reset Link</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ban modal -->
+<div id="banModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>Ban Member</h2>
+    <p>This will revoke their access immediately.</p>
+    <div id="banModalError" class="modal-error"></div>
+    <div class="modal-form">
+      <div>
+        <label class="form-label">Reason (optional)</label>
+        <input type="text" id="banReasonInput" class="form-input" placeholder="Policy violation" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-sm" onclick="closeModal('banModal')">Cancel</button>
+      <button class="btn-sm danger" onclick="submitBan()" id="banSubmitBtn">Ban Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- Suspend modal -->
+<div id="suspendModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2 id="suspendTitle">Suspend Account</h2>
+    <p id="suspendDesc">This will block login access immediately.</p>
+    <div id="suspendModalError" class="modal-error"></div>
+    <div class="modal-actions">
+      <button class="btn-sm" onclick="closeModal('suspendModal')">Cancel</button>
+      <button class="btn-sm danger" onclick="submitSuspend()" id="suspendSubmitBtn">Suspend</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete modal -->
+<div id="deleteModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>Delete Member</h2>
+    <p id="deleteModalDesc">This will permanently delete the account. This action <strong>cannot be undone</strong>.</p>
+    <div id="deleteModalError" class="modal-error"></div>
+    <div class="modal-form">
+      <p style="font-size:0.875rem;color:var(--muted);">The following will also be removed:</p>
+      <ul style="font-size:0.8rem;color:var(--muted);padding-left:1.25rem;margin:0.5rem 0;">
+        <li>All point balances and transactions</li>
+        <li>Referral relationships</li>
+        <li>Connected OAuth accounts</li>
+        <li>All blog posts and comments</li>
+        <li>Point shop purchases</li>
+        <li>Membership and subscription records</li>
+      </ul>
+      <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.875rem;margin-top:0.5rem;">
+        <input type="checkbox" id="deleteConfirmCheck" />
+        I understand this is permanent and irreversible
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-sm" onclick="closeModal('deleteModal')">Cancel</button>
+      <button class="btn-sm danger" onclick="submitDelete()" id="deleteSubmitBtn" disabled>Delete Member</button>
+    </div>
+  </div>
+</div>
+
+<!-- View Details modal -->
+<div id="viewModal" class="modal-overlay hidden">
+  <div class="modal" style="max-width:540px;">
+    <h2 id="viewModalTitle">Member Details</h2>
+    <div id="viewModalError" class="modal-error"></div>
+    <div id="viewModalContent" style="margin-bottom:1rem;"></div>
+    <div class="modal-actions">
+      <button class="btn-sm" onclick="closeModal('viewModal')">Close</button>
+    </div>
+  </div>
+</div>
 
 <script>
-fetch('/api/auth/me').then(r=>r.json()).then(data => {
-  if (!data.user || !['superadmin','admin'].includes(data.access?.role)) {
-    document.getElementById('membersList').innerHTML = '<p style="color:#dc2626;">Access denied. Admin only.</p>';
-    return;
-  }
-  fetch('/api/public-directory').then(r=>r.json()).then(dir => {
-    const entries = dir.entries || [];
-    if (!entries.length) { document.getElementById('membersList').innerHTML='<p style="color:var(--muted);">No members found.</p>'; return; }
-    document.getElementById('membersList').innerHTML = `
-      <table style="width:100%;border-collapse:collapse;">
-        <thead><tr style="text-align:left;border-bottom:1px solid var(--border);">
-          <th style="padding:0.75rem 0;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);">Member</th>
-          <th style="padding:0.75rem 0;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);">Username</th>
-          <th style="padding:0.75rem 0;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);">Role</th>
-        </tr></thead>
-        <tbody>${entries.map(e=>`<tr style="border-bottom:1px solid var(--border);">
-          <td style="padding:0.875rem 0;display:flex;align-items:center;gap:0.75rem;">
-            <div style="width:36px;height:36px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:0.9rem;">${(e.display_name||'?')[0].toUpperCase()}</div>
-            <span>${e.display_name || '—'}</span>
-          </td>
-          <td style="padding:0.875rem 0;color:var(--accent);font-weight:600;">@${e.username}</td>
-          <td style="padding:0.875rem 0;"><span style="font-size:0.8rem;background:var(--surface);border:1px solid var(--border);padding:0.2rem 0.75rem;border-radius:20px;">${e.role || 'user'}</span></td>
-        </tr>`).join('')}</tbody>
-      </table>`;
+var currentEmail = null;
+var allUsers = [];
+
+document.querySelectorAll('.admin-tab').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-users').style.display = tab.dataset.tab === 'users' ? '' : 'none';
+    document.getElementById('tab-blog').style.display = tab.dataset.tab === 'blog' ? '' : 'none';
   });
 });
+
+document.getElementById('adminSearchInput').addEventListener('input', function() {
+  var q = this.value.toLowerCase();
+  var filtered = allUsers.filter(function(u) {
+    return (u.display_name || '').toLowerCase().includes(q) ||
+           (u.email || '').toLowerCase().includes(q) ||
+           (u.username || '').toLowerCase().includes(q);
+  });
+  renderUsers(filtered);
+});
+
+fetch('/api/auth/me').then(function(r) { return r.json(); }).then(function(data) {
+  if (!data.user || (!data.access?.permissions?.includes('users.manage') && !data.access?.isSuperadmin)) {
+    document.getElementById('userTableBody').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:#dc2626;">Access denied — users.manage permission required.</td></tr>';
+    return;
+  }
+  loadUsers();
+}).catch(function(err) {
+  console.error('[admin auth check]', err);
+  document.getElementById('userTableBody').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:#dc2626;">Failed to check permissions. Try refreshing.</td></tr>';
+});
+
+function loadUsers() {
+  fetch('/api/admin/users').then(function(r) {
+    return r.json().then(function(data) {
+      return { ok: r.ok, status: r.status, data: data };
+    });
+  }).then(function(result) {
+    if (!result.ok) {
+      var msg = (result.data && result.data.error) ? result.data.error : ('HTTP ' + result.status);
+      document.getElementById('userTableBody').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:#dc2626;">Failed to load members: ' + msg + '</td></tr>';
+      document.getElementById('userCount').textContent = 'Error';
+      return;
+    }
+    allUsers = result.data.users || [];
+    document.getElementById('userCount').textContent = allUsers.length + ' members';
+    renderUsers(allUsers);
+  }).catch(function(err) {
+    document.getElementById('userTableBody').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:#dc2626;">Failed to load members. Check console for details.</td></tr>';
+    document.getElementById('userCount').textContent = 'Error';
+    console.error('[loadUsers]', err);
+  });
+}
+
+function renderUsers(users) {
+  if (!users.length) {
+    document.getElementById('userTableBody').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--muted);">No members found.</td></tr>';
+    return;
+  }
+  var html = '';
+  users.forEach(function(u) {
+    var avatar = (u.display_name || u.email || '?')[0].toUpperCase();
+    var roleClass = (u.effective_role || 'user').toLowerCase();
+    var subStatus = u.membership_status ? u.membership_status.charAt(0).toUpperCase() + u.membership_status.slice(1) : 'None';
+    var subStatusClass = subStatusClassMap(u.membership_status);
+    var points = u.referral_points || 0;
+    var stripeDisplay = u.stripe_customer_id ? ('<div class="stripe-id">' + escHtml(u.stripe_customer_id.slice(0, 12)) + '…</div>') : '';
+    var expires = u.current_period_end ? '<div class="sub-expires">Until ' + new Date(u.current_period_end).toLocaleDateString() + '</div>' : '';
+    html += '<tr class="user-row" data-email="' + escHtml(u.email) + '">' +
+      '<td style="padding:0.75rem 0.5rem;"><input type="checkbox" class="bulk-check" value="' + escHtml(u.email) + '" onclick="updateBulkBar()" /></td>' +
+      '<td style="padding:0.75rem 1.25rem;">' +
+        '<div class="user-meta">' +
+          '<div class="user-avatar">' + avatar + '</div>' +
+          '<div>' +
+            '<div class="user-name">' + escHtml(u.display_name || u.email.split('@')[0]) + '</div>' +
+            '<div class="user-email">' + escHtml(u.email) + '</div>' +
+          '</div>' +
+        '</div>' +
+      '</td>' +
+      '<td style="padding:0.75rem 0.5rem;"><span class="role-badge ' + roleClass + '">' + (u.effective_role || 'member') + '</span></td>' +
+      '<td style="padding:0.75rem 0.5rem;"><span class="tier-badge ' + (u.display_tier || 'free') + '">' + tierLabel(u.display_tier) + '</span></td>' +
+      '<td style="padding:0.75rem 0.5rem;">' +
+        '<span class="status-badge ' + subStatusClass + '">' + subStatus + '</span>' +
+        stripeDisplay +
+        expires +
+      '</td>' +
+      '<td style="padding:0.75rem 0.5rem;"><span style="color:var(--accent);font-weight:700;font-size:0.8rem;">' + points + '</span></td>' +
+      '<td style="padding:0.75rem 1.25rem;text-align:right;">' +
+        '<div class="user-actions">' +
+          '<button class="btn-sm" onclick="openViewDetails(\u0027' + escHtml(u.email) + '\u0027)">View</button>' +
+          '<button class="btn-sm" onclick="openTierModal(\u0027' + escHtml(u.email) + '\u0027,\u0027' + escHtml(u.display_tier || 'free') + '\u0027)">Tier</button>' +
+          '<button class="btn-sm" onclick="openRoleModal(\u0027' + escHtml(u.email) + '\u0027,\u0027' + escHtml(u.effective_role || "MEMBER") + '\u0027)">Role</button>' +
+          (u.is_suspended ? '<button class="btn-sm success" onclick="unsuspend(\u0027' + escHtml(u.email) + '\u0027)">Restore</button>' : '<button class="btn-sm danger" onclick="openSuspendModal(\u0027' + escHtml(u.email) + '\u0027,true)">Suspend</button>') +
+          (u.ban_reason ? '<button class="btn-sm success" onclick="unban(\u0027' + escHtml(u.email) + '\u0027)">Unban</button>' : '<button class="btn-sm danger" onclick="openBanModal(\u0027' + escHtml(u.email) + '\u0027)">Ban</button>') +
+          '<button class="btn-sm danger" onclick="openDeleteModal(\u0027' + escHtml(u.email) + '\u0027)">Delete</button>' +
+        '</div>' +
+      '</td>' +
+    '</tr>';
+  });
+  document.getElementById('userTableBody').innerHTML = html;
+}
+
+function subStatusBadge(u) {
+  if (!u.membership_status || u.membership_status === 'canceled') return '';
+  var cls = u.membership_status === 'active' ? 'active' : u.membership_status === 'trialing' ? 'trialing' : u.membership_status === 'past_due' ? 'past_due' : 'canceled';
+  return '<span class="status-badge ' + cls + '" style="margin-right:0.35rem;">' + u.membership_status + '</span>';
+}
+
+function statusClass(u) {
+  if (u.is_suspended) return '<span class="status-badge suspended">suspended</span>';
+  if (u.ban_reason) return '<span class="status-badge suspended">banned</span>';
+  return '';
+}
+
+function tierLabel(slug) {
+  if (slug === 'creator') return 'Creator';
+  if (slug === 'pro') return 'Pro';
+  if (slug === 'elite') return 'ELITE';
+  if (slug === 'unlimited') return 'UNLIMITED';
+  return 'Free';
+}
+
+function subStatusClassMap(status) {
+  if (!status) return 'none';
+  if (status === 'active') return 'active';
+  if (status === 'trialing') return 'trialing';
+  if (status === 'past_due') return 'past_due';
+  if (status === 'canceled') return 'canceled';
+  return 'none';
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Tier modal ─────────────────────────────────────────────────────────────────
+function openTierModal(email, currentTier) {
+  currentEmail = email;
+  var normalized = (currentTier || 'free').toLowerCase();
+  var sel = document.getElementById('tierSelect');
+  sel.value = normalized;
+  document.getElementById('tierModalError').style.display = 'none';
+  document.getElementById('tierModalSuccess').style.display = 'none';
+  document.getElementById('tierModalTitle').textContent = 'Change Tier for ' + email.split('@')[0];
+  document.getElementById('tierModal').classList.remove('hidden');
+}
+
+function submitTierChange() {
+  var btn = document.getElementById('tierSubmitBtn');
+  var errEl = document.getElementById('tierModalError');
+  var okEl = document.getElementById('tierModalSuccess');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Saving...';
+  var newTier = document.getElementById('tierSelect').value;
+  fetch('/api/admin/users/' + encodeURIComponent(currentEmail) + '/tier', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tier: newTier }),
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.error) { errEl.textContent = data.error; errEl.style.display = ''; btn.disabled = false; btn.textContent = 'Update Tier'; }
+    else {
+      okEl.textContent = 'Tier updated from ' + (data.previousTier || 'free') + ' → ' + data.newTier + '.'; okEl.style.display = '';
+      setTimeout(function() { closeModal('tierModal'); loadUsers(); }, 1500);
+    }
+  }).catch(function() {
+    errEl.textContent = 'Request failed.'; errEl.style.display = ''; btn.disabled = false; btn.textContent = 'Update Tier';
+  });
+}
+
+// ── Bulk tier change ─────────────────────────────────────────────────────────────
+function toggleBulkSelect() {
+  var checked = document.getElementById('bulkSelectAll').checked;
+  document.querySelectorAll('.bulk-check').forEach(function(cb) { cb.checked = checked; });
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  var selected = Array.from(document.querySelectorAll('.bulk-check:checked')).map(function(cb) { return cb.value; });
+  var bar = document.getElementById('bulkActionBar');
+  var label = document.getElementById('bulkCountLabel');
+  if (selected.length > 0) {
+    bar.style.display = 'flex';
+    label.textContent = selected.length + ' selected';
+    document.getElementById('bulkTierCount').textContent = selected.length;
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function clearBulkSelection() {
+  document.querySelectorAll('.bulk-check').forEach(function(cb) { cb.checked = false; });
+  document.getElementById('bulkSelectAll').checked = false;
+  updateBulkBar();
+}
+
+function openBulkTierModal() {
+  var selected = Array.from(document.querySelectorAll('.bulk-check:checked')).map(function(cb) { return cb.value; });
+  if (!selected.length) return;
+  document.getElementById('bulkTierCount').textContent = selected.length;
+  document.getElementById('bulkTierModalError').style.display = 'none';
+  document.getElementById('bulkTierModalSuccess').style.display = 'none';
+  document.getElementById('bulkTierModal').classList.remove('hidden');
+}
+
+function submitBulkTierChange() {
+  var selected = Array.from(document.querySelectorAll('.bulk-check:checked')).map(function(cb) { return cb.value; });
+  if (!selected.length) { closeModal('bulkTierModal'); return; }
+  var btn = document.getElementById('bulkTierSubmitBtn');
+  var errEl = document.getElementById('bulkTierModalError');
+  var okEl = document.getElementById('bulkTierModalSuccess');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Updating...';
+  var newTier = document.getElementById('bulkTierSelect').value;
+  fetch('/api/admin/users/bulk-tier-change', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ emails: selected, tier: newTier }),
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.error) { errEl.textContent = data.error; errEl.style.display = ''; btn.disabled = false; btn.textContent = 'Apply to All'; }
+    else {
+      okEl.textContent = 'Updated tier for ' + data.updated + ' members to ' + data.newTier + '.'; okEl.style.display = '';
+      setTimeout(function() { closeModal('bulkTierModal'); clearBulkSelection(); loadUsers(); }, 1500);
+    }
+  }).catch(function() {
+    errEl.textContent = 'Request failed.'; errEl.style.display = ''; btn.disabled = false; btn.textContent = 'Apply to All';
+  });
+}
+
+// Role modal — send role NAME (uppercase) to API
+function openRoleModal(email, currentRole) {
+  currentEmail = email;
+  // Normalize current role for the dropdown
+  var normalized = (currentRole || 'user').toUpperCase();
+  var sel = document.getElementById('roleSelect');
+  sel.value = normalized;
+  document.getElementById('roleModalError').style.display = 'none';
+  document.getElementById('roleModalSuccess').style.display = 'none';
+  document.getElementById('roleModal').classList.remove('hidden');
+}
+function submitRoleChange() {
+  var btn = document.getElementById('roleSubmitBtn');
+  var errEl = document.getElementById('roleModalError');
+  var okEl = document.getElementById('roleModalSuccess');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Saving...';
+  var newRole = document.getElementById('roleSelect').value;
+  fetch('/api/admin/users/' + encodeURIComponent(currentEmail) + '/role', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role: newRole }),
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.error) { errEl.textContent = data.error; errEl.style.display = ''; btn.disabled = false; btn.textContent = 'Save Role'; }
+    else {
+      okEl.textContent = 'Role updated to ' + data.role + '.'; okEl.style.display = '';
+      setTimeout(function() { closeModal('roleModal'); loadUsers(); }, 1200);
+    }
+  }).catch(function() {
+    errEl.textContent = 'Request failed.'; errEl.style.display = ''; btn.disabled = false; btn.textContent = 'Save Role';
+  });
+}
+
+// Password modal
+function openPasswordModal(email) {
+  currentEmail = email;
+  document.querySelectorAll('input[name=pwMethod]')[0].checked = true;
+  document.getElementById('newPasswordInput').value = '';
+  togglePwFields(false);
+  document.getElementById('passwordModalError').style.display = 'none';
+  document.getElementById('passwordModalSuccess').style.display = 'none';
+  document.getElementById('passwordModal').classList.remove('hidden');
+}
+function togglePwFields(show) {
+  document.getElementById('directPwFields').style.display = show ? '' : 'none';
+  document.getElementById('pwSubmitBtn').textContent = show ? 'Set Password' : 'Send Reset Link';
+}
+function submitPasswordReset() {
+  var btn = document.getElementById('pwSubmitBtn');
+  var errEl = document.getElementById('passwordModalError');
+  var okEl = document.getElementById('passwordModalSuccess');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Working...';
+
+  var method = document.querySelector('input[name=pwMethod]:checked').value;
+  var body = {};
+  var endpoint = '/api/admin/users/' + encodeURIComponent(currentEmail) + '/send-reset-link';
+
+  if (method === 'direct') {
+    var pw = document.getElementById('newPasswordInput').value;
+    if (pw.length < 8) {
+      errEl.textContent = 'Password must be at least 8 characters.'; errEl.style.display = ''; btn.disabled = false; btn.textContent = 'Set Password'; return;
+    }
+    endpoint = '/api/admin/users/' + encodeURIComponent(currentEmail) + '/set-password';
+    body = { password: pw };
+  }
+
+  fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.error) { errEl.textContent = data.error; errEl.style.display = ''; btn.disabled = false; btn.textContent = method === 'direct' ? 'Set Password' : 'Send Reset Link'; }
+    else {
+      okEl.textContent = method === 'direct' ? 'Password updated.' : 'Reset link sent to ' + currentEmail + '.'; okEl.style.display = '';
+      setTimeout(function() { closeModal('passwordModal'); }, 1500);
+    }
+  }).catch(function() {
+    errEl.textContent = 'Request failed.'; errEl.style.display = ''; btn.disabled = false; btn.textContent = method === 'direct' ? 'Set Password' : 'Send Reset Link';
+  });
+}
+
+// Ban
+function openBanModal(email) {
+  currentEmail = email;
+  document.getElementById('banReasonInput').value = '';
+  document.getElementById('banModalError').style.display = 'none';
+  document.getElementById('banModal').classList.remove('hidden');
+}
+function submitBan() {
+  var btn = document.getElementById('banSubmitBtn');
+  var errEl = document.getElementById('banModalError');
+  errEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Banning...';
+  fetch('/api/admin/users/' + encodeURIComponent(currentEmail) + '/ban', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason: document.getElementById('banReasonInput').value }),
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.error) { errEl.textContent = data.error; errEl.style.display = ''; btn.disabled = false; btn.textContent = 'Ban Member'; }
+    else { closeModal('banModal'); loadUsers(); }
+  }).catch(function() { errEl.textContent = 'Request failed.'; errEl.style.display = ''; btn.disabled = false; btn.textContent = 'Ban Member'; });
+}
+function unban(email) {
+  fetch('/api/admin/users/' + encodeURIComponent(email) + '/unban', { method: 'POST' }).then(function(r) { return r.json(); }).then(function() { loadUsers(); });
+}
+
+// Suspend
+function openSuspendModal(email, suspend) {
+  currentEmail = email;
+  document.getElementById('suspendTitle').textContent = suspend ? 'Suspend Account' : 'Restore Account';
+  document.getElementById('suspendDesc').textContent = suspend ? 'Login access will be blocked immediately.' : 'Login access will be restored.';
+  document.getElementById('suspendSubmitBtn').textContent = suspend ? 'Suspend' : 'Restore';
+  document.getElementById('suspendSubmitBtn').className = suspend ? 'btn-sm danger' : 'btn-sm success';
+  document.getElementById('suspendModalError').style.display = 'none';
+  document.getElementById('suspendModal').classList.remove('hidden');
+}
+function submitSuspend() {
+  var btn = document.getElementById('suspendSubmitBtn');
+  var errEl = document.getElementById('suspendModalError');
+  errEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Working...';
+  var action = btn.textContent === 'Restore' ? 'unsuspend' : 'suspend';
+  fetch('/api/admin/users/' + encodeURIComponent(currentEmail) + '/' + action, { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) { errEl.textContent = data.error; errEl.style.display = ''; btn.disabled = false; }
+      else { closeModal('suspendModal'); loadUsers(); }
+    }).catch(function() { errEl.textContent = 'Request failed.'; errEl.style.display = ''; btn.disabled = false; });
+}
+function unsuspend(email) { fetch('/api/admin/users/' + encodeURIComponent(email) + '/unsuspend', { method: 'POST' }).then(function() { loadUsers(); }); }
+
+// Delete — confirmation required
+document.getElementById('deleteConfirmCheck').addEventListener('change', function() {
+  document.getElementById('deleteSubmitBtn').disabled = !this.checked;
+});
+function openDeleteModal(email) {
+  currentEmail = email;
+  document.getElementById('deleteConfirmCheck').checked = false;
+  document.getElementById('deleteSubmitBtn').disabled = true;
+  document.getElementById('deleteModalError').style.display = 'none';
+  document.getElementById('deleteModal').classList.remove('hidden');
+}
+function submitDelete() {
+  var btn = document.getElementById('deleteSubmitBtn');
+  var errEl = document.getElementById('deleteModalError');
+  errEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Deleting...';
+  fetch('/api/admin/users/' + encodeURIComponent(currentEmail), { method: 'DELETE' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) { errEl.textContent = data.error; errEl.style.display = ''; btn.disabled = false; btn.textContent = 'Delete Member'; }
+      else { closeModal('deleteModal'); loadUsers(); }
+    }).catch(function() { errEl.textContent = 'Request failed.'; errEl.style.display = ''; btn.disabled = false; btn.textContent = 'Delete Member'; });
+}
+
+// View Details
+function openViewDetails(email) {
+  var u = allUsers.find(function(x) { return x.email === email; });
+  if (!u) return;
+  var sub = u.membership_status ? u.membership_status.charAt(0).toUpperCase() + u.membership_status.slice(1) : 'None';
+  var exp = u.current_period_end ? new Date(u.current_period_end).toLocaleDateString() : '—';
+  var created = new Date(u.created_at).toLocaleDateString();
+  var status = u.is_suspended ? '<span style="color:#ef4444;">Suspended</span>' : u.ban_reason ? '<span style="color:#ef4444;">Banned: ' + escHtml(u.ban_reason) + '</span>' : '<span style="color:#22c55e;">Active</span>';
+  var stripeId = u.stripe_customer_id ? '<span class="stripe-id">' + escHtml(u.stripe_customer_id) + '</span>' : '—';
+  var trialStart = u.trial_started_at ? new Date(u.trial_started_at).toLocaleDateString() : '—';
+  var trialEnd = u.trial_ends_at ? new Date(u.trial_ends_at).toLocaleDateString() : '—';
+  document.getElementById('viewModalTitle').textContent = escHtml(u.display_name || u.email.split('@')[0]);
+  document.getElementById('viewModalContent').innerHTML =
+    '<div class="info-grid">' +
+      '<div class="info-item"><div class="info-label">Email</div><div class="info-value" style="font-size:0.8rem;word-break:break-all;">' + escHtml(u.email) + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Username</div><div class="info-value">' + escHtml(u.username || '—') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Role</div><div class="info-value">' + (u.effective_role || 'member') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Tier</div><div class="info-value"><span class="tier-badge ' + (u.display_tier || 'free') + '">' + tierLabel(u.display_tier) + '</span></div></div>' +
+      '<div class="info-item"><div class="info-label">Points</div><div class="info-value" style="color:var(--accent);font-weight:700;">' + (u.referral_points || 0) + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Referral Tier</div><div class="info-value">' + (u.referral_tier || 'none') + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Sub Status</div><div class="info-value"><span class="status-badge ' + subStatusClassMap(u.membership_status) + '">' + sub + '</span></div></div>' +
+      '<div class="info-item"><div class="info-label">Sub Expires</div><div class="info-value">' + exp + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Trial Start</div><div class="info-value">' + trialStart + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Trial End</div><div class="info-value">' + trialEnd + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Stripe Customer</div><div class="info-value" style="font-size:0.75rem;word-break:break-all;">' + stripeId + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Joined</div><div class="info-value">' + created + '</div></div>' +
+      '<div class="info-item"><div class="info-label">Status</div><div class="info-value">' + status + '</div></div>' +
+    '</div>';
+  document.getElementById('viewModalError').style.display = 'none';
+  document.getElementById('viewModal').classList.remove('hidden');
+}
+
+// Blog cleanup
+function deleteAllPosts() {
+  if (!confirm('Delete ALL blog posts? This cannot be undone.')) return;
+  var btn = document.getElementById('deletePostsBtn');
+  var msg = document.getElementById('blogCleanupMsg');
+  btn.disabled = true; btn.textContent = 'Deleting...';
+  msg.style.display = 'none';
+  fetch('/api/news/delete-all', { method: 'POST' }).then(function(r) { return r.json(); }).then(function(data) {
+    btn.disabled = false; btn.textContent = 'Delete All Blog Posts';
+    if (data.error) { msg.style.color = '#dc2626'; msg.textContent = data.error; msg.style.display = ''; }
+    else { msg.style.color = '#16a34a'; msg.textContent = 'All posts deleted.'; msg.style.display = ''; }
+  }).catch(function() { btn.disabled = false; btn.textContent = 'Delete All Blog Posts'; msg.style.color = '#dc2626'; msg.textContent = 'Request failed.'; msg.style.display = ''; });
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.add('hidden');
+}
+document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModal(overlay.id); });
+});
 </script>
-<%- include('../partials/footer') %>
+
+<!-- Sidebar active highlight -->
+<script>
+(function() {
+  var path = window.location.pathname;
+  document.querySelectorAll('.admin-sidebar-link').forEach(function(link) {
+    var href = link.getAttribute('href');
+    if (href && path.startsWith(href) && href !== '/admin') link.classList.add('active');
+    if (href === '/admin/users' && path === '/admin/users') link.classList.add('active');
+  });
+})();
+</script>
+
 </body>
 </html>

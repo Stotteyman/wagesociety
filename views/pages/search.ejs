@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  
+
+<%- include('../partials/head-pwa') %>
+  <title>Search — W.A.G.E. Society</title>
+  <meta name="description" content="Search W.A.G.E. Society members and content. Find creators, browse profiles, and discover blog posts.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Search — W.A.G.E. Society">
+  <meta property="og:description" content="Search W.A.G.E. Society members and content. Find creators, browse profiles, and discover blog posts.">
+  <meta property="og:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
+  <meta property="og:url" content="https://wagesociety.com/search">
+  <meta property="og:site_name" content="WAGE Society">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Search — W.A.G.E. Society">
+  <meta name="twitter:description" content="Search W.A.G.E. Society members and content. Find creators, browse profiles, and discover blog posts.">
+  <meta name="twitter:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+  <%- include('../partials/nav') %>
+
+  <section class="search-page">
+    <div class="search-inner">
+      <div class="search-header">
+        <span class="section-label">Search</span>
+        <h1 class="section-title">Find Creators & Content</h1>
+      </div>
+
+      <form class="search-form" onsubmit="return false;">
+        <div class="search-bar-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="searchInput" placeholder="Search members, pages, content…" autocomplete="off" value="<%= q %>" />
+        </div>
+        <button type="button" id="searchBtn" class="btn-primary">Search</button>
+      </form>
+
+      <div id="searchResults" class="search-results"></div>
+    </div>
+  </section>
+
+  <script>
+    const input = document.getElementById('searchInput');
+    const btn = document.getElementById('searchBtn');
+    const results = document.getElementById('searchResults');
+    let debounceTimer;
+
+    async function doSearch(q) {
+      if (!q || q.length < 2) { results.innerHTML = ''; return; }
+      results.innerHTML = '<p class="search-loading">Searching…</p>';
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        renderResults(data);
+      } catch (e) {
+        results.innerHTML = '<p class="search-error">Search failed. Try again.</p>';
+      }
+    }
+
+    function renderResults(data) {
+      const { members = [], pages = [], content = [] } = data;
+      if (!members.length && !pages.length && !content.length) {
+        results.innerHTML = '<p class="search-empty">No results found. Try different keywords.</p>';
+        return;
+      }
+      let html = '';
+      if (members.length) {
+        html += `<h3 class="result-section-title">Creators</h3><div class="result-cards">`;
+        members.forEach(m => {
+          html += `<a href="/creators/${m.username}" class="result-card">
+            <div class="result-card-avatar">${m.avatar_url ? `<img src="${m.avatar_url}" alt="${m.display_name || m.username}" />` : `<span>${(m.display_name || m.username)[0].toUpperCase()}</span>`}</div>
+            <div class="result-card-info">
+              <strong>${m.display_name || m.username}</strong>
+              <span>@${m.username}</span>
+              ${m.bio ? `<p>${m.bio}</p>` : ''}
+            </div>
+          </a>`;
+        });
+        html += `</div>`;
+      }
+      if (pages.length) {
+        html += `<h3 class="result-section-title">Pages</h3><div class="result-links">`;
+        pages.forEach(p => html += `<a href="${p.url}" class="result-link"><span>${p.name}</span><span class="result-link-url">${p.url}</span></a>`);
+        html += `</div>`;
+      }
+      if (content.length) {
+        html += `<h3 class="result-section-title">Content</h3><div class="result-links">`;
+        content.forEach(c => {
+          const label = c.type === 'post' ? c.title : c.name;
+          html += `<a href="${c.url}" class="result-link"><span>${label}</span><span class="result-link-url">${c.url}</span></a>`;
+        });
+        html += `</div>`;
+      }
+      results.innerHTML = html;
+    }
+
+    input.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => doSearch(input.value.trim()), 300);
+    });
+    btn.addEventListener('click', () => doSearch(input.value.trim()));
+    if (input.value.trim()) doSearch(input.value.trim());
+  </script>
+
+  <style>
+    .search-page { padding: 80px 20px; }
+    .search-inner { max-width: 720px; margin: 0 auto; }
+    .search-header { margin-bottom: 32px; }
+    .search-form { display: flex; gap: 12px; margin-bottom: 32px; }
+    .search-bar-wrap { flex: 1; display: flex; align-items: center; gap: 12px;
+      background: var(--card-bg); border: 1px solid var(--border-color);
+      border-radius: 8px; padding: 0 16px; }
+    .search-bar-wrap input { flex: 1; border: none; background: transparent; color: var(--text-primary);
+      font-family: inherit; font-size: 16px; padding: 12px 0; outline: none; }
+    .result-section-title { font-size: 13px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-secondary); margin: 24px 0 12px; }
+    .result-cards { display: flex; flex-direction: column; gap: 12px; }
+    .result-card { display: flex; gap: 16px; align-items: center; padding: 16px;
+      background: var(--card-bg); border: 1px solid var(--border-color);
+      border-radius: 8px; text-decoration: none; transition: border-color 0.15s; }
+    .result-card:hover { border-color: var(--accent); }
+    .result-card-avatar { width: 48px; height: 48px; border-radius: 50%; overflow: hidden;
+      background: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .result-card-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .result-card-avatar span { font-size: 18px; font-weight: 600; color: #fff; }
+    .result-card-info { flex: 1; min-width: 0; }
+    .result-card-info strong { display: block; color: var(--text-primary); font-size: 15px; }
+    .result-card-info span { display: block; color: var(--text-secondary); font-size: 13px; }
+    .result-card-info p { color: var(--text-secondary); font-size: 13px; margin: 4px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .result-links { display: flex; flex-direction: column; gap: 8px; }
+    .result-link { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px;
+      background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px;
+      text-decoration: none; transition: border-color 0.15s; }
+    .result-link:hover { border-color: var(--accent); }
+    .result-link span:first-child { color: var(--text-primary); font-weight: 500; }
+    .result-link-url { font-size: 12px; color: var(--text-secondary); }
+    .search-loading, .search-empty, .search-error { color: var(--text-secondary);
+      font-size: 14px; padding: 24px 0; text-align: center; }
+  </style>
+</body>
+</html>

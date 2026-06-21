@@ -2,8 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+
+<%- include('../partials/head-pwa') %>
   <title>Settings — W.A.G.E. Society</title>
+  <meta name="description" content="Manage your W.A.G.E. Society account settings, connected platforms, and notification preferences.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Settings — W.A.G.E. Society">
+  <meta property="og:description" content="Manage your W.A.G.E. Society account settings, connected platforms, and notification preferences.">
+  <meta property="og:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
+  <meta property="og:url" content="https://wagesociety.com/settings">
+  <meta property="og:site_name" content="WAGE Society">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Settings — W.A.G.E. Society">
+  <meta name="twitter:description" content="Manage your W.A.G.E. Society account settings, connected platforms, and notification preferences.">
+  <meta name="twitter:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -13,71 +26,498 @@
 <body>
 <%- include('../partials/nav') %>
 
-<section class="dashboard-page">
-  <div class="dashboard-inner" style="max-width:700px;">
-    <div class="page-header">
-      <span class="section-label">Account</span>
-      <h1 class="section-title">Settings</h1>
-    </div>
+<section class="dashboard-page settings-page">
+  <div class="settings-container">
+    <!-- Sidebar navigation + content layout -->
+    <div class="settings-layout">
+      <!-- Nav sidebar -->
+      <nav class="settings-nav" aria-label="Settings navigation">
+        <a href="#profile" class="settings-nav-link active">Profile</a>
+        <a href="#accounts" class="settings-nav-link">Accounts</a>
+        <a href="#platform" class="settings-nav-link">Platform</a>
+        <a href="#alerts" class="settings-nav-link">Alerts</a>
+        <a href="/settings/security" class="settings-nav-link">Security</a>
+        <a href="/terms" class="settings-nav-link">Legal</a>
+        <a href="#danger" class="settings-nav-link" style="color:#fca5a5;">Danger</a>
+      </nav>
 
-    <div class="dash-card" style="margin-bottom:2rem;">
-      <h3 class="dash-card-title">Profile</h3>
-      <div id="settings-error" class="error-msg" style="display:none;margin-bottom:1rem;"></div>
-      <div style="display:flex;flex-direction:column;gap:1rem;">
-        <div>
-          <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.4rem;">Display Name</label>
-          <input type="text" id="settingsDisplayName" class="auth-input" placeholder="Display name" style="width:100%;">
-        </div>
-        <div>
-          <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.4rem;">Bio</label>
-          <textarea id="settingsBio" class="form-textarea" placeholder="Tell the community about yourself..." style="min-height:80px;width:100%;"></textarea>
-        </div>
-        <div>
-          <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.4rem;">Avatar URL</label>
-          <input type="text" id="settingsAvatar" class="auth-input" placeholder="https://..." style="width:100%;">
-        </div>
-        <button class="btn-primary" id="settingsSaveBtn" onclick="saveSettings()">Save Profile</button>
-      </div>
-    </div>
+      <!-- Main content -->
+      <div class="settings-main">
 
-    <div class="dash-card" style="margin-bottom:2rem;">
-      <h3 class="dash-card-title">Email Alerts</h3>
-      <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1rem;">Manage what you receive.</p>
-      <div style="display:flex;flex-direction:column;gap:0.75rem;">
-        <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;">
-          <input type="checkbox" id="alertLive"> Live stream alerts
-        </label>
-        <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;">
-          <input type="checkbox" id="alertNewsletter"> Newsletter
-        </label>
-        <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;">
-          <input type="checkbox" id="alertProduct"> Product updates
-        </label>
-        <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;">
-          <input type="checkbox" id="alertCommunity"> Community updates
-        </label>
-      </div>
-      <button class="btn-primary" style="margin-top:1rem;" onclick="saveAlerts()">Save Preferences</button>
-    </div>
+        <% if (showCanceledAlert) { %>
+        <div class="alert-banner alert-warn" style="margin-bottom:1.5rem;">
+          <strong>Trial canceled.</strong> You're on the Free plan. No charge was made. <a href="/memberships" style="color:inherit;text-decoration:underline;">Upgrade anytime →</a>
+        </div>
+        <% } %>
 
-    <div class="dash-card">
-      <h3 class="dash-card-title">Legal</h3>
-      <div style="display:flex;flex-direction:column;gap:0.75rem;">
-        <a href="/terms" class="dash-link">📄 Terms of Service</a>
-        <a href="/privacy" class="dash-link">🔒 Privacy Policy</a>
-      </div>
-    </div>
+        <!-- Profile Section -->
+        <section id="profile" class="settings-section">
+          <h3>Profile</h3>
+          <div id="settings-error" class="error-msg" style="display:none;margin-bottom:1rem;"></div>
+          <div style="display:flex;flex-direction:column;gap:1rem;">
+            <div class="settings-row">
+              <label class="settings-label" style="flex-shrink:0;">Display Name</label>
+              <input type="text" id="settingsDisplayName" class="auth-input settings-input" placeholder="Display name">
+            </div>
+            <div class="settings-row">
+              <label class="settings-label" style="flex-shrink:0;">Bio</label>
+              <textarea id="settingsBio" class="form-textarea settings-textarea" placeholder="Tell the community about yourself..." style="min-height:80px;"></textarea>
+            </div>
+            <!-- Avatar upload -->
+            <div class="settings-row avatar-upload">
+              <label class="settings-label" style="flex-shrink:0;">Profile Photo</label>
+              <div style="flex:1;">
+                <div id="avatar-preview-wrap" style="display:flex;align-items:center;gap:1rem;margin-bottom:0.75rem;">
+                  <div id="avatar-preview-circle" style="width:72px;height:72px;border-radius:50%;overflow:hidden;background:var(--surface);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;" onclick="document.getElementById('avatarFileInput').click()">
+                    <span id="avatar-preview-placeholder" style="font-size:1.75rem;font-weight:700;color:var(--accent);"></span>
+                    <img id="avatar-preview-img" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;" />
+                  </div>
+                  <div style="flex:1;">
+                    <input type="file" id="avatarFileInput" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none;" onchange="handleAvatarFileSelect(this)" />
+                    <button type="button" class="btn-primary" style="font-size:0.8rem;padding:0.5rem 1rem;" onclick="document.getElementById('avatarFileInput').click()">
+                      <span id="avatar-upload-btn-text">Upload Photo</span>
+                    </button>
+                    <div id="avatar-upload-status" style="font-size:0.78rem;color:var(--muted);margin-top:0.3rem;"></div>
+                  </div>
+                </div>
+                <input type="hidden" id="settingsAvatar" value="" />
+              </div>
+            </div>
+            <button class="btn-primary" id="settingsSaveBtn" onclick="saveSettings()">Save Profile</button>
+          </div>
+        </section>
+
+        <% if (!membership && !canceledMembership) { %>
+        <div class="settings-section" style="background:rgba(255,255,255,0.03);border:1px dashed var(--border);">
+          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
+            <span style="font-size:1.4rem;">🎯</span>
+            <h3 style="margin:0;">Membership</h3>
+          </div>
+          <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1rem;">You're on the <strong>Free</strong> plan. Upgrade to unlock creator tools, collaboration access, and revenue features.</p>
+          <a href="/memberships" class="btn-primary" style="display:inline-block;text-decoration:none;">View Plans →</a>
+        </div>
+        <% } %>
+
+        <!-- Connected Accounts Section -->
+        <section id="accounts" class="settings-section">
+          <h3>Connected Accounts</h3>
+          <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1.25rem;">
+            Link your streaming and social accounts to enable profile features and role sync.
+          </p>
+          <div id="connections-list">
+            <div style="color:var(--muted);font-size:0.9rem;">Loading...</div>
+          </div>
+        </section>
+
+        <!-- Discord Servers section -->
+        <div id="discord-servers-card" class="settings-section" style="display:none;">
+          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;">
+            <span style="font-size:1.4rem;">💬</span>
+            <h3 style="margin:0;">Discord Server</h3>
+          </div>
+          <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1.25rem;">
+            Add the W.A.G.E. Society bot to your Discord server to enable membership sync and auto-roles.
+          </p>
+          <div id="discord-selected-server" style="margin-bottom:1rem;">
+            <div style="font-size:0.85rem;font-weight:600;color:var(--muted);margin-bottom:0.5rem;">Selected server</div>
+            <div id="selected-server-info" style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;">
+              <div style="color:var(--muted);font-size:0.9rem;">No server selected</div>
+            </div>
+          </div>
+          <button id="select-server-btn" class="btn-primary" style="margin-bottom:1.5rem;" onclick="showServerPicker()">Choose Server</button>
+          <div id="server-picker" style="display:none;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:1rem;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;background:var(--surface);border-bottom:1px solid var(--border);">
+              <span style="font-weight:600;font-size:0.9rem;">Your servers (Admin only)</span>
+              <button onclick="hideServerPicker()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:0;">✕</button>
+            </div>
+            <div id="server-picker-loading" style="padding:1.5rem;text-align:center;color:var(--muted);font-size:0.9rem;">Loading your Discord servers...</div>
+            <div id="server-picker-list" style="max-height:300px;overflow-y:auto;"></div>
+            <div id="server-picker-error" style="padding:1rem;color:#fca5a5;font-size:0.85rem;display:none;"></div>
+          </div>
+          <div id="bot-install-section" style="display:none;margin-top:1rem;">
+            <p style="font-size:0.85rem;color:var(--muted);margin-bottom:0.75rem;" id="install-note"></p>
+            <a href="#" id="bot-install-link" target="_blank" class="btn-primary" style="display:inline-flex;align-items:center;gap:0.5rem;text-decoration:none;">Add Bot to Server →</a>
+          </div>
+        </div>
+
+        <!-- Platform Section -->
+        <section id="platform" class="settings-section">
+          <h3>Primary Stream Platform</h3>
+          <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1rem;">Choose which platform to feature on your public profile and directory listing.</p>
+          <div id="platforms-error" class="error-msg" style="display:none;margin-bottom:1rem;"></div>
+          <div id="connected-platforms" style="color:var(--muted);font-size:0.9rem;margin-bottom:1rem;">Loading connected accounts...</div>
+          <div id="platform-selector" style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:1rem;">
+            <label class="settings-platform-option">
+              <input type="radio" name="primaryPlatform" value=""> None
+            </label>
+            <label id="yt-option" class="settings-platform-option" style="display:none;">
+              <input type="radio" name="primaryPlatform" value="youtube"> YouTube
+            </label>
+            <label id="kick-option" class="settings-platform-option" style="display:none;">
+              <input type="radio" name="primaryPlatform" value="kick"> Kick
+            </label>
+            <label id="twitch-option" class="settings-platform-option" style="display:none;">
+              <input type="radio" name="primaryPlatform" value="twitch"> Twitch
+            </label>
+          </div>
+          <button class="btn-primary" onclick="savePrimaryPlatform()">Save Primary Platform</button>
+        </section>
+
+        <% if (membership && membership.status === 'trialing') { %>
+        <div class="settings-section" style="background:linear-gradient(135deg, rgba(249,115,22,0.08), rgba(234,88,12,0.04));border-color:rgba(249,115,22,0.4);">
+          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;">
+            <span style="font-size:1.4rem;">⏳</span>
+            <h3 style="margin:0;">7-Day Trial Active</h3>
+          </div>
+          <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1rem;">
+            You're on a <strong style="color:var(--accent);"><%= membership.name %></strong> trial.
+            <% if (trialDaysRemaining !== null) { %>
+              <strong style="color:#facc15;"><%= trialDaysRemaining %></strong> day<%= trialDaysRemaining === 1 ? '' : 's' %> remaining.
+            <% } %>
+            No charge until Day 8.
+          </p>
+          <div id="trial-cancel-section">
+            <button onclick="cancelTrial()" id="cancel-trial-btn" class="btn-trial-cancel">Cancel Trial</button>
+          </div>
+          <div id="trial-cancel-success" style="display:none;color:#4ade80;font-size:0.9rem;margin-top:0.75rem;">Trial canceled. You'll remain on Free plan.</div>
+          <div id="trial-cancel-error" style="display:none;color:#fca5a5;font-size:0.9rem;margin-top:0.75rem;"></div>
+        </div>
+        <% } %>
+
+        <% if (membership && membership.status === 'active') { %>
+        <div class="settings-section" style="background:rgba(34,197,94,0.06);border-color:rgba(34,197,94,0.3);">
+          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;">
+            <span style="font-size:1.4rem;">✅</span>
+            <h3 style="margin:0;"><%= membership.name %> — Active</h3>
+          </div>
+          <p style="color:var(--muted);font-size:0.85rem;">
+            <%= membership.billing_cycle === 'annual' ? 'Annual' : 'Monthly' %> billing.
+            <% if (membership.current_period_end) { %>
+              Next renewal: <%= new Date(membership.current_period_end).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %>
+            <% } %>
+          </p>
+          <a href="/memberships" style="display:inline-block;margin-top:0.75rem;font-size:0.85rem;color:var(--accent);">Manage subscription →</a>
+        </div>
+        <% } %>
+
+        <!-- YouTube Channel Section -->
+        <div id="yt-channel-section" class="settings-section" style="display:none;">
+          <h3>Featured YouTube Channel</h3>
+          <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1rem;">
+            Select the YouTube channel to use for livestream integration. Your Streams page will pull live data from this channel.
+          </p>
+          <div id="yt-channels-loading" style="color:var(--muted);font-size:0.9rem;">Loading your YouTube channels...</div>
+          <div id="yt-channel-selector-wrap" style="display:none;margin-bottom:1rem;">
+            <select id="ytChannelSelect" class="auth-input settings-input" style="width:100%;max-width:400px;">
+              <option value="">— No channel selected —</option>
+            </select>
+          </div>
+          <div id="yt-channel-status" class="success-msg" style="display:none;margin-bottom:1rem;"></div>
+          <div id="yt-channel-error" class="error-msg" style="display:none;margin-bottom:1rem;"></div>
+          <button class="btn-primary" id="ytSaveBtn" onclick="saveYouTubeChannel()">Save YouTube Channel</button>
+        </div>
+
+        <!-- Alerts Section -->
+        <section id="alerts" class="settings-section">
+          <h3>Email Alerts</h3>
+          <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1rem;">Manage what you receive.</p>
+          <div style="display:flex;flex-direction:column;gap:0.75rem;">
+            <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;">
+              <input type="checkbox" id="alertLive"> Live stream alerts
+            </label>
+            <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;">
+              <input type="checkbox" id="alertNewsletter"> Newsletter
+            </label>
+            <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;">
+              <input type="checkbox" id="alertProduct"> Product updates
+            </label>
+            <label style="display:flex;align-items:center;gap:0.75rem;cursor:pointer;">
+              <input type="checkbox" id="alertCommunity"> Community updates
+            </label>
+          </div>
+          <button class="btn-primary" style="margin-top:1rem;" onclick="saveAlerts()">Save Preferences</button>
+        </section>
+
+        <!-- Legal Section -->
+        <section id="legal" class="settings-section">
+          <h3>Legal</h3>
+          <div style="display:flex;flex-direction:column;gap:0.75rem;">
+            <a href="/terms" class="dash-link">📄 Terms of Service</a>
+            <a href="/privacy" class="dash-link">🔒 Privacy Policy</a>
+          </div>
+        </section>
+
+        <!-- Danger Zone -->
+        <section id="danger" class="settings-section danger-zone">
+          <h3 style="color:#fca5a5;">Danger Zone</h3>
+          <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1rem;">
+            Permanently delete your account and all associated data. <strong style="color:#fca5a5;">This cannot be undone.</strong>
+          </p>
+          <button id="delete-account-btn" class="btn-danger" onclick="showDeleteModal()">Delete My Account</button>
+        </section>
+
+      </div><!-- /.settings-main -->
+    </div><!-- /.settings-layout -->
   </div>
 </section>
 
+<!-- Delete Account Confirmation Modal -->
+<div id="delete-modal" class="delete-modal-overlay">
+  <div class="delete-modal-box">
+    <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.25rem;">
+      <span style="font-size:1.5rem;">⚠️</span>
+      <h2 style="font-size:1.25rem;font-weight:700;color:#fca5a5;margin:0;">Delete Your Account</h2>
+    </div>
+    <p style="color:#fca5a5;font-size:0.9rem;margin-bottom:0.5rem;"><strong>This will permanently delete your account and ALL associated data.</strong></p>
+    <ul style="color:var(--muted);font-size:0.85rem;margin:0 0 1.25rem 1.25rem;line-height:1.7;">
+      <li>Your points balance (<span id="modal-points">loading...</span>) will be forfeited</li>
+      <li>Your referral history will be removed</li>
+      <li>Your creator profile and directory listing will be deleted</li>
+      <li>Any active subscriptions will be cancelled</li>
+      <li><strong>This action cannot be undone</strong></li>
+    </ul>
+    <div style="margin-bottom:1rem;">
+      <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.4rem;color:var(--text);">
+        To confirm, type your username <span id="modal-username-display" style="color:var(--accent);font-family:monospace;"></span> or "DELETE":
+      </label>
+      <input type="text" id="delete-confirm-input" class="auth-input" placeholder='Type "DELETE" to confirm' style="width:100%;" autocomplete="off" oninput="checkDeleteInput()">
+    </div>
+    <div id="delete-modal-error" class="error-msg" style="display:none;margin-bottom:1rem;"></div>
+    <div style="display:flex;gap:0.75rem;justify-content:flex-end;flex-wrap:wrap;">
+      <button onclick="hideDeleteModal()" class="btn-cancel-modal">Cancel</button>
+      <button id="delete-confirm-btn" onclick="confirmAccountDelete()" disabled class="btn-confirm-delete">Delete My Account</button>
+    </div>
+  </div>
+</div>
+
 <script>
+window.__DISCORD_CLIENT_ID__ = '<%= discordClientId || "" %>';
+
+async function cancelTrial() {
+  if (!confirm('Cancel your trial? You will not be charged, but you will lose access to paid features at the end of the trial period.')) return;
+  const btn = document.getElementById('cancel-trial-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Redirecting…'; }
+  try {
+    const res = await fetch('/api/trial/cancel', { method: 'POST' });
+    const data = await res.json();
+    if (data.ok && data.redirectUrl) {
+      window.location.href = data.redirectUrl;
+    } else {
+      throw new Error(data.error || 'Cancel failed');
+    }
+  } catch (e) {
+    const errEl = document.getElementById('trial-cancel-error');
+    if (errEl) { errEl.textContent = 'Cancel failed: ' + e.message; errEl.style.display = 'block'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Cancel Trial'; }
+  }
+}
+
 function loadProfile() {
   fetch('/api/auth/me').then(r=>r.json()).then(data => {
     if (!data.user) { window.location.href='/login'; return; }
     document.getElementById('settingsDisplayName').value = data.user.display_name || '';
     document.getElementById('settingsBio').value = data.user.bio || '';
-    document.getElementById('settingsAvatar').value = data.user.avatar_url || '';
+    // Load avatar preview (authUsers.avatar_url is set from member_profiles on session login)
+    const avatarUrl = data.user.avatar_url || '';
+    document.getElementById('settingsAvatar').value = avatarUrl;
+    renderAvatarPreview(avatarUrl, data.user.display_name || data.user.email || 'U');
+
+    // Load connected platforms and set primary platform selection
+    const platforms = data.connectedPlatforms || [];
+    const primary = data.user.primary_platform || '';
+
+    // Google connection implies YouTube streaming capability
+    const hasYouTube = platforms.includes('youtube') || platforms.includes('google');
+    const hasKick = platforms.includes('kick');
+    const hasTwitch = platforms.includes('twitch');
+
+    // Show streaming platform status
+    const streamingNames = [];
+    if (hasYouTube) streamingNames.push('YouTube');
+    if (hasKick) streamingNames.push('Kick');
+    if (hasTwitch) streamingNames.push('Twitch');
+
+    const platformsEl = document.getElementById('connected-platforms');
+    if (streamingNames.length === 0) {
+      platformsEl.textContent = 'No streaming platforms connected yet.';
+      document.getElementById('platform-selector').style.display = 'none';
+    } else {
+      platformsEl.textContent = 'Connected: ' + streamingNames.join(', ');
+      document.getElementById('platform-selector').style.display = 'flex';
+    }
+
+    // Show platform radio options for connected streaming platforms
+    if (hasYouTube) document.getElementById('yt-option').style.display = 'flex';
+    if (hasKick) document.getElementById('kick-option').style.display = 'flex';
+    if (hasTwitch) document.getElementById('twitch-option').style.display = 'flex';
+
+    // Select current primary platform
+    if (primary) {
+      const radios = document.querySelectorAll('input[name="primaryPlatform"]');
+      radios.forEach(r => { if (r.value === primary) r.checked = true; });
+    } else {
+      const noneRadio = document.querySelector('input[name="primaryPlatform"][value=""]');
+      if (noneRadio) noneRadio.checked = true;
+    }
+
+    // Store channel ID for loadConnections fallback; load YouTube channels if connected
+    window._currentChannelId = data.user.featured_youtube_channel_id || null;
+    if (platforms.includes('google') || platforms.includes('youtube')) {
+      window._ytChannelsLoaded = true;
+      loadYouTubeChannels(data.user.featured_youtube_channel_id);
+    }
   }).catch(()=>{});
+}
+// ── Avatar Upload ────────────────────────────────────────────────────────────
+function renderAvatarPreview(url, name) {
+  const placeholder = document.getElementById('avatar-preview-placeholder');
+  const img = document.getElementById('avatar-preview-img');
+  if (url && !url.startsWith('data:')) {
+    img.src = url;
+    img.style.display = 'block';
+    placeholder.style.display = 'none';
+  } else if (url && url.startsWith('data:')) {
+    img.src = url;
+    img.style.display = 'block';
+    placeholder.style.display = 'none';
+  } else {
+    img.style.display = 'none';
+    placeholder.style.display = 'flex';
+    placeholder.textContent = (name || 'U').charAt(0).toUpperCase();
+  }
+}
+
+function handleAvatarFileSelect(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const maxBytes = 5 * 1024 * 1024;
+  if (file.size > maxBytes) {
+    const status = document.getElementById('avatar-upload-status');
+    status.textContent = 'File too large — max 5MB';
+    status.style.color = '#fca5a5';
+    input.value = '';
+    return;
+  }
+  const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  if (!allowed.includes(file.type)) {
+    const status = document.getElementById('avatar-upload-status');
+    status.textContent = 'Only JPG, PNG, GIF, or WebP images accepted';
+    status.style.color = '#fca5a5';
+    input.value = '';
+    return;
+  }
+
+  // Show local preview immediately while uploading
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    renderAvatarPreview(e.target.result, document.getElementById('settingsDisplayName')?.value || 'U');
+  };
+  reader.readAsDataURL(file);
+
+  // Upload
+  const formData = new FormData();
+  formData.append('avatar', file);
+  const status = document.getElementById('avatar-upload-status');
+  const btnText = document.getElementById('avatar-upload-btn-text');
+  btnText.textContent = 'Uploading…';
+  status.textContent = '';
+  status.style.color = '';
+
+  fetch('/api/me/avatar', { method: 'POST', body: formData })
+    .then(r => r.json())
+    .then(data => {
+      btnText.textContent = 'Upload Photo';
+      if (data.error) {
+        status.textContent = data.error;
+        status.style.color = '#fca5a5';
+      } else {
+        document.getElementById('settingsAvatar').value = data.avatar_url;
+        renderAvatarPreview(data.avatar_url, document.getElementById('settingsDisplayName')?.value || 'U');
+        status.textContent = 'Photo saved!';
+        status.style.color = '#4ade80';
+        setTimeout(() => { status.textContent = ''; }, 3000);
+      }
+    })
+    .catch(() => {
+      btnText.textContent = 'Upload Photo';
+      status.textContent = 'Upload failed — try again';
+      status.style.color = '#fca5a5';
+    });
+}
+
+function loadYouTubeChannels(currentChannelId) {
+  document.getElementById('yt-channel-section').style.display = 'block';
+  fetch('/api/me/youtube-channels').then(r=>r.json()).then(data => {
+    document.getElementById('yt-channels-loading').style.display = 'none';
+    if (data.error) {
+      const el = document.getElementById('yt-channel-error');
+      el.textContent = data.error;
+      // Use softer info styling for config messages (not user-fixable)
+      if (data.error.includes('not yet enabled') || data.error.includes('configuration issue') || data.error.includes('being fixed') || data.error.includes('available soon') || data.error.includes('once activated')) {
+        el.style.color = '#f59e0b';
+        el.style.borderColor = 'rgba(245,158,11,0.3)';
+        el.style.background = 'rgba(245,158,11,0.08)';
+      }
+      el.style.display = 'block';
+      // Hide the Save button when there's nothing to save
+      document.getElementById('ytSaveBtn').style.display = 'none';
+      return;
+    }
+    const channels = data.channels || [];
+    if (channels.length === 0) {
+      document.getElementById('yt-channel-selector-wrap').style.display = 'none';
+      const el = document.getElementById('yt-channel-error');
+      el.textContent = 'No YouTube channels found on your Google account.';
+      el.style.display = 'block';
+      return;
+    }
+    const select = document.getElementById('ytChannelSelect');
+    channels.forEach(ch => {
+      const opt = document.createElement('option');
+      opt.value = ch.channelId;
+      opt.textContent = ch.title;
+      if (ch.thumbnail) opt.dataset.avatar = ch.thumbnail;
+      select.appendChild(opt);
+    });
+    if (currentChannelId) select.value = currentChannelId;
+    document.getElementById('yt-channel-selector-wrap').style.display = 'block';
+  }).catch(()=>{
+    document.getElementById('yt-channels-loading').textContent = 'Failed to load channels.';
+  });
+}
+function saveYouTubeChannel() {
+  const btn = document.getElementById('ytSaveBtn');
+  const select = document.getElementById('ytChannelSelect');
+  const errEl = document.getElementById('yt-channel-error');
+  const statusEl = document.getElementById('yt-channel-status');
+  errEl.style.display = 'none';
+  statusEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Saving...';
+  const channelId = select.value || null;
+  // Send channel name + avatar along with ID so the server can cache them (privacy: replaces Google real name)
+  const selectedOption = select.options[select.selectedIndex];
+  // Never save dropdown placeholder text as channel name
+  const rawName = selectedOption ? selectedOption.textContent : null;
+  const channelName = (channelId && rawName && !rawName.startsWith('—')) ? rawName : null;
+  const channelAvatar = (channelId && selectedOption) ? (selectedOption.dataset.avatar || null) : null;
+  fetch('/api/me/youtube-channel', {
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ channelId, channelName, channelAvatar }),
+  }).then(r=>r.json()).then(data => {
+    btn.disabled = false; btn.textContent = 'Save YouTube Channel';
+    if (data.error) { errEl.textContent = data.error; errEl.style.display = 'block'; }
+    else {
+      statusEl.textContent = 'YouTube channel saved!';
+      statusEl.style.display = 'block';
+      // Refresh connections list to show YouTube name instead of Google name
+      loadConnections();
+      setTimeout(()=>{ statusEl.style.display = 'none'; }, 3000);
+    }
+  }).catch(()=>{
+    btn.disabled = false; btn.textContent = 'Save YouTube Channel';
+    errEl.textContent = 'Failed to save. Try again.'; errEl.style.display = 'block';
+  });
 }
 function saveSettings() {
   const btn = document.getElementById('settingsSaveBtn');
@@ -88,15 +528,34 @@ function saveSettings() {
     body: JSON.stringify({
       display_name: document.getElementById('settingsDisplayName').value,
       bio: document.getElementById('settingsBio').value,
-      avatar_url: document.getElementById('settingsAvatar').value,
+      // avatar_url is handled separately via /api/me/avatar POST — do not include here
     })
   }).then(r=>r.json()).then(data => {
     if (data.error) { const e=document.getElementById('settings-error'); e.textContent=data.error; e.style.display='block'; }
     else { btn.textContent='Saved!'; setTimeout(()=>{ btn.textContent='Save Profile'; btn.disabled=false; }, 1500); }
   }).catch(()=>{ btn.textContent='Save Profile'; btn.disabled=false; });
 }
+function savePrimaryPlatform() {
+  const errEl = document.getElementById('platforms-error');
+  errEl.style.display = 'none';
+  const btn = document.querySelector('[onclick*="savePrimaryPlatform"]');
+  const selected = document.querySelector('input[name="primaryPlatform"]:checked');
+  const value = selected ? selected.value : '';
+  const payload = value === '' ? null : value;
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  fetch('/api/me/primary-platform', {
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ primary_platform: payload }),
+  }).then(r=>r.json()).then(data => {
+    if (data.error) { errEl.textContent = data.error; errEl.style.display = 'block'; if (btn) { btn.disabled = false; btn.textContent = 'Save Primary Platform'; } }
+    else {
+      if (btn) { btn.textContent = 'Saved!'; setTimeout(()=>{ btn.textContent = 'Save Primary Platform'; btn.disabled = false; }, 1500); }
+    }
+  }).catch(()=>{ errEl.textContent = 'Failed to save. Try again.'; errEl.style.display = 'block'; if (btn) { btn.disabled = false; btn.textContent = 'Save Primary Platform'; } });
+}
 function saveAlerts() {
-  fetch('/api/marketing-proof', {
+  fetch('/api/marketing', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({
@@ -108,7 +567,351 @@ function saveAlerts() {
     })
   }).then(r=>r.json()).then(()=>{ alert('Preferences saved!'); }).catch(()=>{});
 }
+loadConnections();
 loadProfile();
+loadDiscordStatus();
+
+// ── Discord Server selection ──────────────────────────────────────────────────
+
+function loadDiscordStatus() {
+  fetch('/api/me/discord/status').then(r => r.json()).then(data => {
+    const card = document.getElementById('discord-servers-card');
+    if (!data.linked) {
+      card.style.display = 'none';
+      return;
+    }
+    card.style.display = 'block';
+    updateSelectedServerDisplay(data.selectedGuildId, data.selectedGuildName);
+  }).catch(() => {});
+}
+
+function showServerPicker() {
+  const picker = document.getElementById('server-picker');
+  picker.style.display = 'block';
+  document.getElementById('server-picker-loading').style.display = 'block';
+  document.getElementById('server-picker-list').innerHTML = '';
+  document.getElementById('server-picker-error').style.display = 'none';
+
+  fetch('/api/me/discord/guilds').then(r => r.json()).then(data => {
+    document.getElementById('server-picker-loading').style.display = 'none';
+    if (data.needsRelink) {
+      // Token is dead even after refresh attempt — show reconnect button
+      const el = document.getElementById('server-picker-error');
+      el.innerHTML = '<div style="text-align:center;padding:0.5rem 0;">' +
+        '<div style="color:#fca5a5;margin-bottom:0.75rem;">Discord token expired — please reconnect your Discord account</div>' +
+        '<a href="/auth/discord/link?return_url=/settings" style="display:inline-block;padding:0.5rem 1.25rem;background:#5865F2;color:#fff;border-radius:6px;font-size:0.8rem;font-weight:600;text-decoration:none;">Reconnect Discord</a>' +
+        '</div>';
+      el.style.display = 'block';
+      return;
+    }
+    if (data.error) {
+      const el = document.getElementById('server-picker-error');
+      el.textContent = data.error;
+      el.style.display = 'block';
+      return;
+    }
+    const guilds = data.guilds || [];
+    if (guilds.length === 0) {
+      document.getElementById('server-picker-list').innerHTML =
+        '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:0.9rem;">You don\u2019t have any servers where you have admin access.</div>';
+      return;
+    }
+    const currentGuildId = document.getElementById('selected-guild-id')?.value || null;
+    const html = guilds.map(g => {
+      const icon = g.icon
+        ? `<img src="${g.icon}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" onerror="this.style.display=\\'none\\'">`
+        : `<div style="width:36px;height:36px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:1rem;">🤖</div>`;
+      const selected = g.id === currentGuildId;
+      return `<div onclick="selectServer('${g.id}', '${escapeHtml(g.name)}')" style="display:flex;align-items:center;gap:0.75rem;padding:0.875rem 1rem;cursor:pointer;border-bottom:1px solid var(--border);${selected ? 'background:rgba(255,102,0,0.1);' : ''}">
+        ${icon}
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:0.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(g.name)}</div>
+          <div style="font-size:0.75rem;color:var(--muted);">${selected ? '✓ Selected' : 'Admin access'}</div>
+        </div>
+        ${selected ? '<span style="color:var(--accent);font-size:0.8rem;font-weight:600;">✓</span>' : ''}
+      </div>`;
+    }).join('');
+    document.getElementById('server-picker-list').innerHTML = html;
+  }).catch(err => {
+    document.getElementById('server-picker-loading').style.display = 'none';
+    const el = document.getElementById('server-picker-error');
+    el.textContent = 'Failed to load servers.';
+    el.style.display = 'block';
+  });
+}
+
+function hideServerPicker() {
+  document.getElementById('server-picker').style.display = 'none';
+}
+
+function selectServer(guildId, guildName) {
+  fetch('/api/me/discord/select-guild', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ guildId, guildName }),
+  }).then(r => r.json()).then(data => {
+    if (data.error) {
+      alert('Error: ' + data.error);
+      return;
+    }
+    updateSelectedServerDisplay(guildId, guildName);
+    showBotInstall(guildId, guildName);
+    hideServerPicker();
+  }).catch(() => alert('Failed to save server selection.'));
+}
+
+function updateSelectedServerDisplay(guildId, guildName) {
+  const info = document.getElementById('selected-server-info');
+  if (guildId && guildName) {
+    info.innerHTML = `<div style="display:flex;align-items:center;gap:0.5rem;">
+      <span style="font-size:0.9rem;">🤖</span>
+      <span style="font-weight:600;font-size:0.95rem;">${escapeHtml(guildName)}</span>
+    </div>`;
+    showBotInstall(guildId, guildName);
+  } else {
+    info.innerHTML = '<div style="color:var(--muted);font-size:0.9rem;">No server selected — click "Choose Server" to add the bot</div>';
+    document.getElementById('bot-install-section').style.display = 'none';
+  }
+}
+
+function showBotInstall(guildId, guildName) {
+  const section = document.getElementById('bot-install-section');
+  const note = document.getElementById('install-note');
+  const link = document.getElementById('bot-install-link');
+  section.style.display = 'block';
+  note.textContent = 'Click below to authorize the W.A.G.E. Society bot to join ' + guildName + '.';
+  // Generate install URL client-side (same formula as server API)
+  const clientId = window.__DISCORD_CLIENT_ID__ || document.querySelector('[data-discord-client-id]')?.dataset?.discordClientId || '';
+  const installUrl = 'https://discord.com/oauth2/authorize?client_id=' + encodeURIComponent(clientId) + '&permissions=8&guild_id=' + encodeURIComponent(guildId) + '&scope=bot%20applications.commands';
+  link.href = installUrl;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Show flash banners for OAuth actions
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;top:1rem;right:1rem;z-index:9999;max-width:380px;';
+  let shown = false;
+
+  if (params.get('google') === 'linked') {
+    el.innerHTML = '<div class="success-msg" style="padding:0.75rem 1rem;border-radius:8px;">YouTube account connected!</div>';
+    shown = true;
+  } else if (params.get('google') === 'unlinked') {
+    el.innerHTML = '<div class="flash-banner" style="padding:0.75rem 1rem;border-radius:8px;background:rgba(255,102,0,0.15);border:1px solid var(--accent);">YouTube account disconnected.</div>';
+    shown = true;
+  } else if (params.get('kick') === 'linked') {
+    el.innerHTML = '<div class="success-msg" style="padding:0.75rem 1rem;border-radius:8px;">Kick account connected!</div>';
+    shown = true;
+  } else if (params.get('kick') === 'unlinked') {
+    el.innerHTML = '<div class="flash-banner" style="padding:0.75rem 1rem;border-radius:8px;background:rgba(255,102,0,0.15);border:1px solid var(--accent);">Kick account disconnected.</div>';
+    shown = true;
+  } else if (params.get('discord') === 'linked') {
+    el.innerHTML = '<div class="success-msg" style="padding:0.75rem 1rem;border-radius:8px;">Discord account connected!</div>';
+    shown = true;
+  } else if (params.get('discord') === 'unlinked') {
+    el.innerHTML = '<div class="flash-banner" style="padding:0.75rem 1rem;border-radius:8px;background:rgba(255,102,0,0.15);border:1px solid var(--accent);">Discord account disconnected.</div>';
+    shown = true;
+  } else if (params.get('error')) {
+    const errCode = params.get('error');
+    const detail = params.get('detail') || '';
+    let msg = 'OAuth error: ' + errCode;
+    if (errCode === 'kick_token_failed' && detail === 'invalid_client') {
+      msg = 'Kick connection failed — credentials need to be updated. We\'re working on it.';
+    } else if (errCode === 'kick_token_failed') {
+      msg = 'Kick connection failed — please try again. If this persists, contact support.';
+    } else if (errCode === 'kick_session_expired') {
+      msg = 'Session expired during Kick authorization — please try again.';
+    }
+    el.innerHTML = '<div class="error-msg" style="padding:0.75rem 1rem;border-radius:8px;">' + msg + '</div>';
+    shown = true;
+  }
+  if (shown) {
+    document.body.appendChild(el);
+    setTimeout(() => { el.remove(); window.history.replaceState({}, '', window.location.pathname); }, 4000);
+  }
+})();
+
+function loadConnections() {
+  fetch('/api/me/connections').then(r=>r.json()).then(data => {
+    if (data.error) return;
+    const conns = data.connections || [];
+    renderConnections(conns);
+    // Update streaming platform options based on actual connections
+    const hasGoogleConn = conns.some(c => c.provider === 'google');
+    const hasKickConn = conns.some(c => c.provider === 'kick');
+    if (hasGoogleConn) {
+      document.getElementById('yt-option').style.display = 'flex';
+      document.getElementById('yt-channel-section').style.display = 'block';
+      // Load YouTube channels if not already loading
+      if (!window._ytChannelsLoaded) {
+        window._ytChannelsLoaded = true;
+        loadYouTubeChannels(window._currentChannelId || null);
+      }
+    }
+    if (hasKickConn) document.getElementById('kick-option').style.display = 'flex';
+    // Update platform status text (Google = YouTube streaming)
+    const connStreamNames = [];
+    if (hasGoogleConn) connStreamNames.push('YouTube');
+    if (hasKickConn) connStreamNames.push('Kick');
+    const connPlatformsEl = document.getElementById('connected-platforms');
+    if (connStreamNames.length > 0) {
+      connPlatformsEl.textContent = 'Connected: ' + connStreamNames.join(', ');
+      document.getElementById('platform-selector').style.display = 'flex';
+    }
+  }).catch(()=>{});
+}
+function renderConnections(conns) {
+  const list = document.getElementById('connections-list');
+  if (!list) return;
+
+  const PROVIDER_META = {
+    google: { label: 'YouTube', icon: '<svg viewBox="0 0 24 24" width="22" height="22" fill="#ff0000"><path d="M23.5 6.2a3 3 0 00-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 00.5 6.2C0 8.1 0 12 0 12s0 3.9.5 5.8a3 3 0 002.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 002.1-2.1c.5-1.9.5-5.8.5-5.8s0-3.9-.5-5.8zM9.5 15.6V8.4l6.3 3.6-6.3 3.6z"/></svg>', connectUrl: '/auth/google?return=/settings', color: '#ff0000' },
+    kick:  { label: 'Kick', icon: '<svg viewBox="0 0 24 24" width="22" height="22" fill="#53fc18"><circle cx="12" cy="12" r="10"/><path d="M8 7h2.5v3.5L13 7h3l-3.5 5L16 17h-3l-2.5-4.5V17H8V7z" fill="#000"/></svg>', connectUrl: '/auth/kick?return=/settings', color: '#53fc18' },
+    discord: { label: 'Discord', icon: '<svg viewBox="0 0 24 24" width="22" height="22" fill="#5865F2"><path d="M20.3 4.2A18.6 18.6 0 0015.5 3a12 12 0 00-.6 1.2 17.4 17.4 0 00-5.1 0A12 12 0 009.2 3a18.6 18.6 0 00-4.8 1.2 20 20 0 00-3.4 14 18.8 18.8 0 005.7 2.9 13.7 13.7 0 001.2-2 12 12 0 01-1.9-.9l.5-.4a13.3 13.3 0 0011.4 0l.5.4a12 12 0 01-1.9.9 13.7 13.7 0 001.2 2 18.8 18.8 0 005.7-2.9A20 20 0 0020.3 4.2zM8.3 15.2c-1.1 0-2-.9-2-2.1s.9-2.1 2-2.1 2 1 2 2.1-.9 2.1-2 2.1zm7.4 0c-1.1 0-2-.9-2-2.1s.9-2.1 2-2.1 2 1 2 2.1-.9 2.1-2 2.1z"/></svg>', connectUrl: '/auth/discord/link?return_url=/settings', color: '#5865F2' },
+  };
+
+  const html = Object.entries(PROVIDER_META).map(([provider, meta]) => {
+    const conn = conns.find(c => c.provider === provider);
+    const connected = !!conn;
+    // Privacy: server already swaps Google real name for YouTube channel name or email prefix
+    const identifier = conn ? (conn.display_name || 'Connected') : null;
+    const dateStr = conn && conn.linked_at ? ' since ' + new Date(conn.linked_at).toLocaleDateString() : '';
+    const borderColor = connected ? meta.color : 'var(--border)';
+    // For Google/YouTube: prompt channel selection if no channel selected yet
+    const needsChannelSelect = provider === 'google' && connected && conn.youtube_channel_selected === false;
+    let subLabel;
+    if (needsChannelSelect) {
+      subLabel = '<div style="font-size:0.8rem;color:var(--accent);">Select a YouTube channel below ↓</div>';
+    } else if (connected && identifier) {
+      subLabel = '<div style="font-size:0.8rem;color:var(--muted);">' + escapeHtml(identifier) + dateStr + '</div>';
+    } else if (!connected) {
+      subLabel = '<div style="font-size:0.8rem;color:var(--muted);">Not connected</div>';
+    } else {
+      subLabel = '';
+    }
+    // Avatar for connected providers (Discord avatar, YouTube thumbnail)
+    const avatarHtml = connected && conn.avatar_url
+      ? '<img src="' + escapeHtml(conn.avatar_url) + '" style="width:28px;height:28px;border-radius:50%;object-fit:cover;" onerror="this.style.display=\'none\'">'
+      : '<span style="font-size:1.2rem;display:flex;align-items:center;">' + meta.icon + '</span>';
+    const statusBadge = connected
+      ? '<span style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.75rem;font-weight:600;color:#22c55e;background:rgba(34,197,94,0.1);padding:0.2rem 0.6rem;border-radius:12px;">● Connected</span>'
+      : '';
+    return '<div style="border:1px solid ' + borderColor + ';border-radius:10px;padding:1rem;margin-bottom:0.75rem;background:rgba(255,255,255,0.03);">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;">' +
+        '<div style="display:flex;align-items:center;gap:0.6rem;">' +
+          avatarHtml +
+          '<div>' +
+            '<div style="font-weight:600;font-size:0.95rem;">' + meta.label + '</div>' +
+            subLabel +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:0.5rem;">' +
+          statusBadge +
+          (connected
+            ? '<button onclick="unlinkAccount(\'' + provider + '\', \'' + meta.label + '\')" style="font-size:0.8rem;padding:0.35rem 0.85rem;cursor:pointer;background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;">Unlink</button>'
+            : '<a href="' + meta.connectUrl + '" class="btn-primary" style="font-size:0.8rem;padding:0.35rem 0.85rem;display:inline-block;text-decoration:none;cursor:pointer;">Connect</a>'
+          ) +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  list.innerHTML = html;
+}
+function unlinkAccount(provider, label) {
+  if (!confirm('Disconnect your ' + label + ' account? This won\u2019t affect your W.A.G.E. Society login.')) return;
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = 'Removing...';
+  fetch('/api/me/connections/' + provider + '/unlink', { method:'POST' }).then(r=>r.json()).then(data => {
+    if (data.error) { alert('Error: ' + data.error); btn.disabled = false; btn.textContent = 'Disconnect'; }
+    else { loadConnections(); }
+  }).catch(()=>{ btn.disabled = false; btn.textContent = 'Disconnect'; });
+}
+function connectAccount(url) {
+  window.location.href = url;
+}
+
+// ── Account Deletion ────────────────────────────────────────────────────────
+let _deleteUsername = '';
+let _userEmail = '';
+
+async function loadUserForDelete() {
+  try {
+    const res = await fetch('/api/auth/me');
+    const data = await res.json();
+    if (!data.user) return;
+    // username from profile, email from session
+    _deleteUsername = data.user.username || data.user.email.split('@')[0] || '';
+    _userEmail = data.user.email;
+    document.getElementById('modal-username-display').textContent = _deleteUsername;
+    // Load point balance
+    const ptsRes = await fetch('/api/account/points');
+    const ptsData = await ptsRes.json();
+    const pts = ptsData.points || 0;
+    document.getElementById('modal-points').textContent = pts.toLocaleString() + ' point' + (pts !== 1 ? 's' : '');
+  } catch (_) {
+    document.getElementById('modal-points').textContent = '(could not load)';
+  }
+}
+
+function showDeleteModal() {
+  document.getElementById('delete-confirm-input').value = '';
+  document.getElementById('delete-modal-error').style.display = 'none';
+  document.getElementById('delete-confirm-btn').disabled = true;
+  document.getElementById('delete-confirm-btn').style.cursor = 'not-allowed';
+  document.getElementById('delete-confirm-btn').style.opacity = '0.5';
+  loadUserForDelete();
+  document.getElementById('delete-modal').style.display = 'flex';
+}
+
+function hideDeleteModal() {
+  document.getElementById('delete-modal').style.display = 'none';
+}
+
+function checkDeleteInput() {
+  const val = document.getElementById('delete-confirm-input').value.trim();
+  const btn = document.getElementById('delete-confirm-btn');
+  const canDelete = val === 'DELETE' || val === _deleteUsername;
+  btn.disabled = !canDelete;
+  btn.style.cursor = canDelete ? 'pointer' : 'not-allowed';
+  btn.style.opacity = canDelete ? '1' : '0.5';
+}
+
+async function confirmAccountDelete() {
+  const btn = document.getElementById('delete-confirm-btn');
+  const errEl = document.getElementById('delete-modal-error');
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Deleting...';
+  try {
+    const res = await fetch('/api/account/delete', { method: 'POST' });
+    const data = await res.json();
+    if (data.error) {
+      errEl.textContent = data.error;
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Delete My Account';
+      return;
+    }
+    // Success — redirect to homepage with flash
+    window.location.href = '/?deleted=1';
+  } catch (_) {
+    errEl.textContent = 'Something went wrong. Please try again.';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Delete My Account';
+  }
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') hideDeleteModal();
+});
 </script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 // db/diagnostic.js — Queries for the Supabase diagnostic endpoint.
 // Owns: direct Postgres counts for member_profiles, user_memberships; diagnostic_log write/delete.
-// Does NOT own: Supabase client calls (those live in routes/api/test-supabase.js).
+// Does NOT own: Supabase (removed — auth is now custom bcrypt).
 const { pool } = require('./index');
 
 async function countMemberProfiles() {
@@ -17,7 +17,7 @@ async function countUserMemberships() {
 // Returns the inserted id to prove the round-trip.
 async function writeAndRollbackDiagnosticLog() {
   const { rows } = await pool.query(
-    `INSERT INTO diagnostic_log (ran_at, note) VALUES (now(), 'test-supabase diagnostic') RETURNING id`
+    `INSERT INTO diagnostic_log (ran_at, note) VALUES (now(), 'db health check') RETURNING id`
   );
   const insertedId = rows[0].id;
   await pool.query('DELETE FROM diagnostic_log WHERE id = $1', [insertedId]);

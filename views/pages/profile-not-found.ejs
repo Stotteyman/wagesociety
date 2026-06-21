@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+
+<%- include('../partials/head-pwa') %>
   <title>Profile Not Found — W.A.G.E. Society</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,10 +13,10 @@
   <style>
     body { background: linear-gradient(170deg, #06080f 0%, #0f111f 48%, #141726 100%); color: #f4f4f5; min-height: 100vh; }
     .not-found { max-width: 520px; margin: 0 auto; padding: 6rem 1.5rem; text-align: center; }
-    .not-found h1 { font-family: 'Playfair Display', serif; font-size: 3rem; font-weight: 900; margin-bottom: 1rem; }
-    .not-found p { font-family: 'DM Sans', sans-serif; font-size: 1rem; color: #71717a; margin-bottom: 2rem; }
+    .not-found h1 { font-family: 'Space Grotesk', sans-serif; font-size: 3rem; font-weight: 900; margin-bottom: 1rem; }
+    .not-found p { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; color: #71717a; margin-bottom: 2rem; }
     .not-found-links { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
-    .not-found-links a { font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 500; padding: 0.6rem 1.5rem; border-radius: 999px; text-decoration: none; background: rgba(255,255,255,0.06); color: #a1a1aa; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; }
+    .not-found-links a { font-family: 'Space Grotesk', sans-serif; font-size: 0.85rem; font-weight: 500; padding: 0.6rem 1.5rem; border-radius: 999px; text-decoration: none; background: rgba(255,255,255,0.06); color: #a1a1aa; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; }
     .not-found-links a:hover { background: rgba(251,146,60,0.15); border-color: rgba(251,146,60,0.4); color: #fb923c; }
     .not-found-links a.primary { background: rgba(251,146,60,0.15); border-color: rgba(251,146,60,0.4); color: #fb923c; }
   </style>
@@ -26,7 +28,7 @@
     <p>Creator profile "<%= typeof username !== 'undefined' ? username : '' %>" not found or has been removed.</p>
     <div class="not-found-links">
       <a href="/" class="primary">Home</a>
-      <a href="/directory">Browse Directory</a>
+      <a href="/creators">Browse Directory</a>
       <a href="/join">Join W.A.G.E.</a>
     </div>
   </main>

@@ -1,0 +1,15 @@
+[project]
+name = "wageos"
+description = "WAGE Society Creator OS — Express + Postgres"
+
+[[crons]]
+name = "discord-guild-sync"
+schedule = "*/30 * * * *"
+command = "node bot/periodic-sync-trigger.js"
+enabled = true
+
+[[crons]]
+name = "discord-role-sync"
+schedule = "*/15 * * * *"
+command = "node jobs/discord-role-sync.js"
+enabled = true

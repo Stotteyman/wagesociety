@@ -2,142 +2,771 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+
+<%- include('../partials/head-pwa') %>
   <title><%= profile.display_name || profile.username %> — W.A.G.E. Society</title>
   <meta name="description" content="<%= profile.bio ? profile.bio.substring(0, 160) : 'Creator profile on W.A.G.E. Society' %>">
   <meta property="og:title" content="<%= profile.display_name || profile.username %> — W.A.G.E. Society">
   <meta property="og:description" content="<%= profile.bio ? profile.bio.substring(0, 200) : 'Creator on W.A.G.E. Society' %>">
   <meta property="og:type" content="profile">
-  <meta property="og:image" content="<%= profile.avatar_url || 'https://ai.wagesociety.com/favicon.png' %>">
+  <meta property="og:image" content="<%= profile.avatar_url || 'https://wagesociety.com/favicon.png' %>">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="<%= profile.display_name || profile.username %> — W.A.G.E. Society">
   <meta name="twitter:description" content="<%= profile.bio ? profile.bio.substring(0, 200) : 'Creator on W.A.G.E. Society' %>">
   <meta name="twitter:image" content="<%= profile.avatar_url || '' %>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/theme.css">
   <link rel="stylesheet" href="/css/pages.css">
   <style>
-    .profile-page { max-width: 680px; margin: 0 auto; padding: 3rem 1.5rem; }
-    .profile-header { display: flex; align-items: flex-start; gap: 2rem; margin-bottom: 2.5rem; }
+    /* ─── Profile Page ────────────────────────────────────────────────────── */
+    .profile-page {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 6rem;
+    }
+
+    /* Glassmorphism header */
+    .profile-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 1.25rem;
+      padding: 2.5rem 1.75rem;
+      background: var(--wage-glass-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--wage-border);
+      border-radius: var(--wage-radius-card);
+      box-shadow: var(--wage-glass-shadow);
+      margin-bottom: 2.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .profile-header::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(245,158,11,0.3), transparent);
+    }
+    @media (min-width: 768px) {
+      .profile-header {
+        flex-direction: row;
+        text-align: left;
+        align-items: flex-start;
+        padding: 2.5rem 2rem;
+        gap: 1.75rem;
+      }
+    }
+
+    /* Avatar — 160px desktop, gold ring for Elite/Unlimited */
+    .profile-avatar-wrap {
+      position: relative;
+      flex-shrink: 0;
+    }
     .profile-avatar {
-      width: 96px; height: 96px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
-      background: var(--surface); border: 2px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      overflow: hidden;
+      flex-shrink: 0;
+      background: var(--wage-bg-card);
+      border: 3px solid var(--wage-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    /* Gold ring for elite/unlimited tiers */
+    .profile-avatar.elite-ring, .profile-avatar.unlimited-ring {
+      border-color: var(--wage-gold);
+      box-shadow: 0 0 20px rgba(245,158,11,0.25), 0 0 40px rgba(245,158,11,0.1);
+    }
+    @media (min-width: 768px) {
+      .profile-avatar { width: 140px; height: 140px; }
     }
     .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .profile-avatar-placeholder { font-size: 2.5rem; font-weight: 700; color: var(--accent); }
-    .profile-info { flex: 1; }
-    .profile-top-line { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem; flex-wrap: wrap; }
-    .profile-username { font-family: 'DM Sans', sans-serif; font-size: 0.85rem; color: var(--muted); }
-    .tier-badge { display: inline-block; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.2rem 0.6rem; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
-    .tier-badge.creator { background: rgba(251,146,60,0.1); border-color: rgba(251,146,60,0.3); color: #c2410c; }
-    .tier-badge.pro { background: rgba(234,179,8,0.1); border-color: rgba(234,179,8,0.4); color: #b45309; }
-    .profile-name { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 900; color: var(--fg); margin-bottom: 0.5rem; line-height: 1.1; }
-    .profile-bio { font-family: 'DM Sans', sans-serif; font-size: 0.95rem; color: var(--muted); line-height: 1.6; margin-bottom: 1.5rem; }
-    .profile-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .profile-avatar-placeholder {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 4rem;
+      font-weight: 900;
+      color: var(--wage-gold);
+      line-height: 1;
+    }
+
+    /* Live indicator on avatar */
+    .avatar-live-badge {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #dc2626;
+      border: 3px solid var(--wage-bg-primary);
+      animation: pulse-dot 1.5s infinite;
+    }
+
+    /* Floating badge animation */
+    .float-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      animation: float-bob 3s ease-in-out infinite;
+    }
+    .float-badge:nth-child(2) { animation-delay: -0.6s; }
+    .float-badge:nth-child(3) { animation-delay: -1.2s; }
+    @keyframes float-bob {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-5px); }
+    }
+
+    .profile-info { flex: 1; min-width: 0; }
+    .profile-top-line {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.35rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    @media (min-width: 768px) { .profile-top-line { justify-content: flex-start; } }
+
+    .profile-username {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.82rem;
+      color: var(--wage-text-muted);
+      font-weight: 500;
+    }
+    .profile-name {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: clamp(1.75rem, 4vw, 2.25rem);
+      font-weight: 900;
+      color: var(--wage-text-primary);
+      margin-bottom: 0.5rem;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+    .profile-bio {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: max(14px, 0.95rem);
+      color: var(--wage-text-secondary);
+      line-height: 1.65;
+      margin-bottom: 1rem;
+    }
+
+    /* Wage badge (membership tier) — WAGE design system */
+    .wage-tier-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.3rem 0.75rem;
+      border-radius: var(--wage-radius-badge);
+      border: 1px solid rgba(245,158,11,0.25);
+      background: rgba(245,158,11,0.1);
+      color: var(--wage-gold);
+      margin-bottom: 0.25rem;
+    }
+    .wage-tier-badge.creator { background: rgba(6,182,212,0.1); border-color: rgba(6,182,212,0.3); color: var(--wage-cyan); }
+    .wage-tier-badge.pro { background: rgba(139,92,246,0.1); border-color: rgba(139,92,246,0.3); color: var(--wage-purple); }
+    .wage-tier-badge.elite { background: rgba(245,158,11,0.15); border-color: rgba(245,158,11,0.45); color: var(--wage-gold-light); box-shadow: 0 0 12px rgba(245,158,11,0.15); }
+    .wage-tier-badge.unlimited { background: rgba(245,158,11,0.2); border-color: rgba(245,158,11,0.5); color: var(--wage-gold-light); box-shadow: 0 0 16px rgba(245,158,11,0.2); animation: elite-pulse 2.5s ease-in-out infinite; }
+    @keyframes elite-pulse { 0%, 100% { box-shadow: 0 0 10px rgba(245,158,11,0.2); } 50% { box-shadow: 0 0 20px rgba(245,158,11,0.4); } }
+    .wage-tier-badge.free { background: transparent; border-color: var(--wage-border); color: var(--wage-text-muted); }
+
+    /* Platform badge */
+    .platform-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.25rem 0.6rem;
+      border-radius: var(--wage-radius-badge);
+    }
+    .platform-badge.youtube { background: rgba(255,0,0,0.1); border: 1px solid rgba(255,0,0,0.25); color: #ff4444; }
+    .platform-badge.kick   { background: rgba(53,231,82,0.1); border: 1px solid rgba(53,231,82,0.25); color: #35e752; }
+    .platform-badge.twitch { background: rgba(145,70,255,0.1); border: 1px solid rgba(145,70,255,0.25); color: #9146ff; }
+
+    /* Referral tier badge */
+    .referral-badge {
+      display: inline-block;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.2rem 0.55rem;
+      border-radius: var(--wage-radius-badge);
+    }
+    .referral-badge.bronze { background: rgba(205,127,50,0.1); border: 1px solid rgba(205,127,50,0.3); color: #cd7f32; }
+    .referral-badge.silver { background: rgba(192,192,192,0.1); border: 1px solid rgba(192,192,192,0.3); color: #c0c0c0; }
+    .referral-badge.gold { background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3); color: #ffd700; }
+    .referral-badge.diamond { background: rgba(185,242,255,0.08); border: 1px solid rgba(185,242,255,0.3); color: #b9f2ff; animation: diamond-pulse 2s ease-in-out infinite; }
+    @keyframes diamond-pulse { 0%, 100% { text-shadow: 0 0 4px rgba(185,242,255,0.4); } 50% { text-shadow: 0 0 10px rgba(185,242,255,0.7); } }
+
+    /* Profile actions */
+    .profile-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; margin-top: 0.5rem; }
+    @media (min-width: 768px) { .profile-actions { justify-content: flex-start; } }
     .profile-actions a, .profile-actions button {
-      font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 500;
-      padding: 0.5rem 1.25rem; border-radius: 999px; text-decoration: none;
-      background: var(--surface); color: var(--fg); border: 1px solid var(--border);
-      transition: all 0.2s; cursor: pointer; display: inline-block;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0.5rem 1.25rem;
+      border-radius: var(--wage-radius-badge);
+      text-decoration: none;
+      background: var(--wage-glass-bg);
+      backdrop-filter: blur(8px);
+      color: var(--wage-text-primary);
+      border: 1px solid var(--wage-border);
+      transition: all 0.2s;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
     }
-    .profile-actions a:hover, .profile-actions button:hover { background: var(--border); }
-    .profile-actions a.primary, .profile-actions button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-    .profile-actions a.primary:hover, .profile-actions button.primary:hover { opacity: 0.85; }
+    .profile-actions a:hover, .profile-actions button:hover {
+      border-color: var(--wage-border-hover);
+      background: rgba(245,158,11,0.06);
+    }
+    .profile-actions a.primary {
+      background: linear-gradient(135deg, var(--wage-gold), var(--wage-gold-dark));
+      color: #000;
+      border-color: var(--wage-gold);
+      font-weight: 700;
+    }
+    .profile-actions a.primary:hover { opacity: 0.85; }
+
+    /* Skills */
+    .profile-skills { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+    .skill-tag {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.75rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: var(--wage-radius-badge);
+      background: var(--wage-bg-card);
+      border: 1px solid var(--wage-border);
+      color: var(--wage-text-muted);
+    }
+
+    /* Content tabs */
+    .profile-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--wage-border);
+      margin-bottom: 1.75rem;
+    }
+    .profile-tab {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--wage-text-muted);
+      padding: 0.75rem 1.25rem;
+      border: none;
+      background: none;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
+      margin-bottom: -1px;
+    }
+    .profile-tab:hover { color: var(--wage-text-primary); }
+    .profile-tab.active { color: var(--wage-gold); border-bottom-color: var(--wage-gold); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Sections */
     .profile-section { margin-bottom: 2rem; }
-    .profile-section-title { font-family: 'Playfair Display', serif; font-size: 1.1rem; font-weight: 700; color: var(--fg); margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
-    .profile-accounts { display: flex; flex-direction: column; gap: 0.75rem; }
-    .profile-account { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; background: var(--surface); border-radius: 0.75rem; border: 1px solid var(--border); }
-    .account-platform { font-family: 'DM Sans', sans-serif; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); min-width: 48px; }
-    .account-info { flex: 1; }
-    .account-handle { font-family: 'DM Sans', sans-serif; font-size: 0.85rem; color: var(--fg); font-weight: 500; }
-    .account-url { font-size: 0.75rem; color: var(--muted); }
-    .account-url a { color: var(--accent); text-decoration: none; }
-    .account-url a:hover { text-decoration: underline; }
-    .profile-no-accounts { font-family: 'DM Sans', sans-serif; font-size: 0.85rem; color: var(--muted); font-style: italic; }
-    .profile-skills { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
-    .skill-tag { font-size: 0.75rem; padding: 0.3rem 0.75rem; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); font-family: 'DM Sans', sans-serif; }
-    @media (max-width: 600px) {
-      .profile-header { flex-direction: column; }
-      .profile-name { font-size: 1.5rem; }
+    .profile-section-title {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--wage-text-primary);
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--wage-border);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
+    .profile-section-title svg { color: var(--wage-gold); flex-shrink: 0; }
+
+    /* Connected accounts grid */
+    .profile-accounts {
+      display: grid;
+      gap: 0.75rem;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 480px) { .profile-accounts { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 768px) { .profile-accounts { grid-template-columns: repeat(3, 1fr); } }
+    .profile-account {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.875rem 1rem;
+      background: var(--wage-glass-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--wage-border);
+      border-radius: var(--wage-radius-btn);
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .profile-account:hover { border-color: var(--wage-border-hover); transform: translateY(-2px); }
+    .account-platform {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--wage-gold);
+      min-width: 44px;
+    }
+    .account-info { flex: 1; min-width: 0; }
+    .account-handle {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.82rem;
+      color: var(--wage-text-primary);
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .account-primary-label {
+      font-size: 0.6rem;
+      font-weight: 700;
+      background: var(--wage-gold);
+      color: #000;
+      padding: 0.1rem 0.4rem;
+      border-radius: var(--wage-radius-badge);
+      flex-shrink: 0;
+    }
+    .profile-no-accounts {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.875rem;
+      color: var(--wage-text-muted);
+      font-style: italic;
+      padding: 1.5rem;
+      text-align: center;
+      background: var(--wage-glass-bg);
+      border: 1px dashed var(--wage-border);
+      border-radius: var(--wage-radius-btn);
+    }
+
+    /* Content cards grid */
+    .content-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+    .content-card {
+      background: var(--wage-glass-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--wage-border);
+      border-radius: var(--wage-radius-btn);
+      padding: 1rem;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .content-card:hover { border-color: var(--wage-border-hover); transform: translateY(-2px); }
+    .content-card-thumb {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: var(--wage-bg-card);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 0.75rem;
+    }
+    .content-card-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .content-card-title {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--wage-text-primary);
+      line-height: 1.3;
+      margin-bottom: 0.25rem;
+    }
+    .content-card-meta {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.72rem;
+      color: var(--wage-text-muted);
+    }
+    .content-empty {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.875rem;
+      color: var(--wage-text-muted);
+      text-align: center;
+      padding: 3rem 1rem;
+      background: var(--wage-glass-bg);
+      border: 1px dashed var(--wage-border);
+      border-radius: var(--wage-radius-btn);
+    }
+
+    /* Join Discord CTA */
+    .discord-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      background: rgba(88,101,242,0.15);
+      border: 1px solid rgba(88,101,242,0.4);
+      border-radius: var(--wage-radius-btn);
+      color: #7289da;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.875rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .discord-cta:hover { background: rgba(88,101,242,0.25); border-color: #7289da; transform: translateY(-1px); }
+
+    /* Stream section */
+    .profile-stream-section { margin-top: 2rem; }
+    .profile-stream-embed {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border-radius: var(--wage-radius-btn);
+      overflow: hidden;
+      margin-bottom: 0.875rem;
+    }
+    .profile-stream-embed iframe,
+    .profile-stream-embed video {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;
+    }
+    .profile-stream-noembed {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      color: rgba(255,255,255,0.4);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.85rem;
+      background: var(--wage-bg-card);
+    }
+    .profile-stream-title {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--wage-text-primary);
+      margin-bottom: 0.5rem;
+    }
+    .profile-stream-meta { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .profile-stream-status {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.65rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0.25rem 0.6rem; border-radius: 4px;
+    }
+    .profile-stream-status.live { background: #dc2626; color: #fff; }
+    .profile-stream-status.offline { background: var(--wage-bg-card); color: var(--wage-text-muted); border: 1px solid var(--wage-border); }
+    .profile-stream-cta {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.4rem 1rem;
+      background: linear-gradient(135deg, var(--wage-gold), var(--wage-gold-dark));
+      color: #000;
+      border-radius: var(--wage-radius-badge);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.8rem; font-weight: 700;
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .profile-stream-cta:hover { opacity: 0.85; }
   </style>
 </head>
 <body>
-  <%- include('../partials/nav') %>
+  <a href="#" class="skip-link">Skip to main content</a>
+  <nav aria-label="Site navigation"><%- include('../partials/nav') %></nav>
 
-  <main class="profile-page">
-    <div class="profile-header">
-      <div class="profile-avatar">
-        <% if (profile.avatar_url) { %>
+  <main class="profile-page" id="main-content" role="main" aria-label="<%= profile.display_name || profile.username %>'s public profile">
+
+    <!-- Profile header — glassmorphism card -->
+    <div class="profile-header scroll-reveal">
+      <% const mTier = profile.membership_tier || 'free'; %>
+      <% const isElite = mTier === 'elite' || mTier === 'unlimited'; %>
+      <% const hasLive = creatorStreams && creatorStreams.some(function(s) { return s.status === 'live'; }); %>
+      <div class="profile-avatar-wrap">
+        <div class="profile-avatar<%= isElite ? ' elite-ring' : '' %>">
+          <% if (profile.avatar_url) { %>
           <img src="<%= profile.avatar_url %>" alt="<%= profile.display_name || profile.username %>">
-        <% } else { %>
+          <% } else { %>
           <span class="profile-avatar-placeholder"><%= (profile.display_name || profile.username || '?').charAt(0).toUpperCase() %></span>
-        <% } %>
-      </div>
-      <div class="profile-info">
-        <div class="profile-top-line">
-          <span class="profile-username">@<%= profile.username %></span>
-          <% const tier = profile.membership_tier || 'free'; %>
-          <% if (tier === 'pro') { %>
-            <span class="tier-badge pro">★ Pro Member</span>
-          <% } else if (tier === 'creator') { %>
-            <span class="tier-badge creator">Creator</span>
           <% } %>
         </div>
+        <% if (hasLive) { %>
+        <span class="avatar-live-badge" title="Currently live"></span>
+        <% } %>
+      </div>
+
+      <div class="profile-info">
+        <!-- Badges: tier + platform + referral tier — all floating -->
+        <div class="profile-top-line">
+          <span class="profile-username">@<%= profile.username %></span>
+          <% const tierBadgeClass = ['elite','unlimited'].includes(mTier) ? mTier : mTier; %>
+          <span class="float-badge">
+            <span class="wage-tier-badge <%= mTier %>">
+              <% if (mTier === 'pro') { %>★ <% } %><%= mTier.charAt(0).toUpperCase() + mTier.slice(1) %>
+            </span>
+          </span>
+          <% if (profile.primary_platform) { %>
+          <span class="float-badge">
+            <span class="platform-badge <%= profile.primary_platform %>">
+              <%= profile.primary_platform.charAt(0).toUpperCase() + profile.primary_platform.slice(1) %>
+            </span>
+          </span>
+          <% } %>
+          <% if (referralTier && referralTier !== 'bronze') { %>
+          <span class="float-badge">
+            <span class="referral-badge <%= referralTier %>"><%= referralTier %></span>
+          </span>
+          <% } %>
+        </div>
+
         <h1 class="profile-name"><%= profile.display_name || profile.username %></h1>
         <% if (profile.bio) { %>
-          <p class="profile-bio"><%= profile.bio %></p>
+        <p class="profile-bio"><%= profile.bio %></p>
         <% } %>
 
         <% if (profile.skills) { %>
         <div class="profile-skills">
           <% var skillsList = typeof profile.skills === 'string' ? profile.skills.split(',') : (Array.isArray(profile.skills) ? profile.skills : []); %>
           <% skillsList.forEach(function(skill) { %>
-            <span class="skill-tag"><%= typeof skill === 'string' ? skill.trim() : '' %></span>
+          <% if (typeof skill === 'string' && skill.trim()) { %>
+          <span class="skill-tag"><%= skill.trim() %></span>
+          <% } %>
           <% }); %>
         </div>
         <% } %>
 
         <div class="profile-actions">
-          <a href="/creators" class="">← Directory</a>
+          <a href="/creators">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+            Directory
+          </a>
           <% if (userEmail && profile.email === userEmail) { %>
-            <a href="/creators/edit" class="primary">Edit Profile</a>
+          <a href="/settings" class="primary">Edit Profile</a>
           <% } %>
         </div>
       </div>
     </div>
 
-    <div class="profile-section">
-      <h2 class="profile-section-title">Connected Accounts</h2>
-      <% const accounts = profile.connectedAccounts || []; %>
-      <% if (accounts.length > 0) { %>
-        <div class="profile-accounts">
-          <% accounts.forEach(function(account) { %>
-            <div class="profile-account">
-              <span class="account-platform"><%= account.platform %></span>
-              <div class="account-info">
-                <% if (account.display_name) { %>
-                  <p class="account-handle"><%= account.display_name %></p>
-                <% } %>
-                <% if (account.stream_url) { %>
-                  <p class="account-url"><a href="<%= account.stream_url %>" target="_blank" rel="noopener">Open <%= account.platform %> →</a></p>
-                <% } %>
-              </div>
-              <% if (account.status === 'live') { %>
-                <span style="font-size:0.7rem;background:#16a34a;color:#fff;padding:0.2rem 0.6rem;border-radius:999px;font-weight:600;">LIVE</span>
-              <% } %>
-            </div>
-          <% }); %>
-        </div>
-      <% } else { %>
-        <p class="profile-no-accounts">No connected accounts yet.</p>
+    <!-- Content tabs -->
+    <div class="profile-tabs" role="tablist" aria-label="Profile content">
+      <button class="profile-tab active" role="tab" aria-selected="true" aria-controls="tab-posts" onclick="switchTab('posts')">Posts</button>
+      <button class="profile-tab" role="tab" aria-selected="false" aria-controls="tab-streams" onclick="switchTab('streams')">Streams</button>
+      <button class="profile-tab" role="tab" aria-selected="false" aria-controls="tab-accounts" onclick="switchTab('accounts')">Accounts</button>
+      <% const hasMerch = (profile.merchItems && profile.merchItems.length > 0); %>
+      <% if (hasMerch) { %>
+      <button class="profile-tab" role="tab" aria-selected="false" aria-controls="tab-merch" onclick="switchTab('merch')">Products</button>
       <% } %>
     </div>
+
+    <!-- Posts tab -->
+    <div class="tab-content active" id="tab-posts" role="tabpanel">
+      <% const posts = profile.blogPosts || []; %>
+      <% if (posts.length > 0) { %>
+      <div class="content-grid">
+        <% posts.forEach(function(post, i) { %>
+        <article class="content-card scroll-reveal" style="transition-delay: <%= i * 50 %>ms;">
+          <% if (post.image_url) { %>
+          <div class="content-card-thumb">
+            <img src="<%= post.image_url %>" alt="<%= post.title %>">
+          </div>
+          <% } %>
+          <div class="content-card-title"><%= post.title %></div>
+          <div class="content-card-meta"><%= post.published_at ? new Date(post.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '' %></div>
+        </article>
+        <% }); %>
+      </div>
+      <% } else { %>
+      <div class="content-empty">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 0.75rem;display:block;color:var(--wage-text-muted);opacity:0.5;" aria-hidden="true"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        No posts yet.
+      </div>
+      <% } %>
+    </div>
+
+    <!-- Streams tab -->
+    <div class="tab-content" id="tab-streams" role="tabpanel">
+      <% const streams = (typeof creatorStreams !== 'undefined') ? creatorStreams : []; %>
+      <% if (streams.length > 0) { %>
+      <div class="content-grid">
+        <% streams.forEach(function(stream, i) { %>
+        <a href="/streams/<%= stream.id %>" class="content-card scroll-reveal" style="transition-delay: <%= i * 50 %>ms; text-decoration:none; display:block;">
+          <div class="content-card-thumb" style="position:relative;">
+            <% if (stream.thumbnail_url) { %>
+            <img src="<%= stream.thumbnail_url %>" alt="<%= stream.stream_title || stream.channel_name %>">
+            <% } else { %>
+            <div style="width:100%;height:100%;background:var(--wage-bg-card);display:flex;align-items:center;justify-content:center;">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--wage-text-muted);" aria-hidden="true"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            </div>
+            <% } %>
+            <% if (stream.status === 'live') { %>
+            <span style="position:absolute;top:8px;left:8px;background:#dc2626;color:#fff;font-size:0.6rem;font-weight:800;padding:0.2rem 0.5rem;border-radius:4px;letter-spacing:0.08em;">LIVE</span>
+            <% } %>
+          </div>
+          <div class="content-card-title"><%= stream.stream_title || stream.channel_name || 'Live Stream' %></div>
+          <div class="content-card-meta"><%= stream.platform ? stream.platform.charAt(0).toUpperCase() + stream.platform.slice(1) : '' %><%= stream.viewer_count ? ' · ' + stream.viewer_count + ' viewers' : '' %></div>
+        </a>
+        <% }); %>
+      </div>
+      <% } else { %>
+      <div class="content-empty">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 0.75rem;display:block;color:var(--wage-text-muted);opacity:0.5;" aria-hidden="true"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        No streams yet.
+      </div>
+      <% } %>
+    </div>
+
+    <!-- Accounts tab -->
+    <div class="tab-content" id="tab-accounts" role="tabpanel">
+      <div class="profile-section">
+        <h2 class="profile-section-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          Connected Accounts
+        </h2>
+        <% const accounts = profile.connectedAccounts || []; %>
+        <% if (accounts.length > 0) { %>
+        <div class="profile-accounts">
+          <% accounts.forEach(function(account) { %>
+          <div class="profile-account">
+            <span class="account-platform"><%= account.platform.toUpperCase() %></span>
+            <div class="account-info">
+              <span class="account-handle">
+                <% if (account.display_name) { %><%= account.display_name %><% } else { %><%= account.platform %><% } %>
+                <% if (profile.primary_platform === account.platform) { %>
+                <span class="account-primary-label">Primary</span>
+                <% } %>
+              </span>
+            </div>
+          </div>
+          <% }); %>
+        </div>
+        <% } else { %>
+        <p class="profile-no-accounts">No connected accounts yet.</p>
+        <% } %>
+
+        <% if (profile.discord_link) { %>
+        <div style="margin-top: 1.25rem;">
+          <a href="<%= profile.discord_link %>" target="_blank" rel="noopener" class="discord-cta">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z"/></svg>
+            Join My Discord
+          </a>
+        </div>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Merch tab (only if creator has merch) -->
+    <% if (hasMerch) { %>
+    <div class="tab-content" id="tab-merch" role="tabpanel">
+      <div class="content-grid">
+        <% profile.merchItems.forEach(function(item, i) { %>
+        <div class="content-card scroll-reveal" style="transition-delay: <%= i * 50 %>ms;">
+          <% if (item.image_url) { %>
+          <div class="content-card-thumb">
+            <img src="<%= item.image_url %>" alt="<%= item.name %>">
+          </div>
+          <% } %>
+          <div class="content-card-title"><%= item.name %></div>
+          <div class="content-card-meta"><%= item.price ? '$' + (item.price / 100).toFixed(2) : '' %></div>
+        </div>
+        <% }); %>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Stream embed (always visible at bottom if has a primary stream) -->
+    <% const primaryStream = (typeof creatorStreams !== 'undefined') ? creatorStreams.find(function(s) { return s.is_primary; }) || creatorStreams[0] : null; %>
+    <% if (primaryStream) { %>
+    <div class="profile-stream-section scroll-reveal">
+      <h2 class="profile-section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        Live Stream
+      </h2>
+      <div class="profile-stream-embed">
+        <% if (primaryStream.platform === 'youtube' && primaryStream.platform_channel_id) { %>
+        <iframe src="https://www.youtube.com/embed/<%= primaryStream.platform_channel_id %>" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        <% } else if (primaryStream.stream_url) { %>
+        <iframe src="<%= primaryStream.stream_url %>" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        <% } else { %>
+        <div class="profile-stream-noembed">No embed available</div>
+        <% } %>
+      </div>
+      <div class="profile-stream-title"><%= primaryStream.stream_title || primaryStream.channel_name || 'Live Stream' %></div>
+      <div class="profile-stream-meta">
+        <span class="profile-stream-status <%= primaryStream.status === 'live' ? 'live' : 'offline' %>">
+          <% if (primaryStream.status === 'live') { %><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#fff;animation:pulse-dot 1.5s infinite;margin-right:0.2rem;"></span><% } %>
+          <%= primaryStream.status === 'live' ? 'LIVE' : 'OFFLINE' %>
+        </span>
+        <span style="font-family:'Inter',system-ui,sans-serif;font-size:0.8rem;color:var(--wage-text-muted);text-transform:capitalize;"><%= primaryStream.platform %></span>
+        <% if (primaryStream.viewer_count) { %>
+        <span style="font-family:'Inter',system-ui,sans-serif;font-size:0.8rem;color:var(--wage-text-muted);"><%= primaryStream.viewer_count %> viewers</span>
+        <% } %>
+        <% if (primaryStream.stream_url) { %>
+        <a href="<%= primaryStream.stream_url %>" target="_blank" rel="noopener" class="profile-stream-cta">
+          Watch on <%= (primaryStream.platform || '').charAt(0).toUpperCase() + (primaryStream.platform || '').slice(1) %>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </a>
+        <% } %>
+      </div>
+    </div>
+    <% } %>
+
   </main>
 
-  <%- include('../partials/footer') %>
+  <footer role="contentinfo"><%- include('../partials/footer') %></footer>
+<script>
+    // Tab switching
+    function switchTab(tabId) {
+      document.querySelectorAll('.profile-tab').forEach(function(t) {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      document.querySelectorAll('.tab-content').forEach(function(c) {
+        c.classList.remove('active');
+      });
+      var tab = document.getElementById('tab-' + tabId);
+      var btn = document.querySelector('[aria-controls="tab-' + tabId + '"]');
+      if (tab) tab.classList.add('active');
+      if (btn) {
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+      }
+    }
+
+    // Scroll reveal
+    (function() {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.querySelectorAll('.scroll-reveal').forEach(function(el) {
+          el.classList.add('revealed');
+        });
+        return;
+      }
+      var obs = new IntersectionObserver(function(entries) {
+        entries.forEach(function(e) {
+          if (e.isIntersecting) {
+            e.target.classList.add('revealed');
+            obs.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.05, rootMargin: '0px 0px -30px 0px' });
+      document.querySelectorAll('.scroll-reveal').forEach(function(el) {
+        obs.observe(el);
+      });
+    })();
+  </script>
 </body>
 </html>

@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  
+
+<%- include('../partials/head-pwa') %>
+  <title>Admin: Roles &amp; Permissions — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    :root { --admin-sidebar-w: 220px; }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    .admin-nav { background: var(--bg); border-bottom: 1px solid var(--border); padding: 0.85rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+    .admin-nav-logo { font-weight: 800; font-size: 1rem; color: var(--fg); text-decoration: none; }
+    .admin-nav-logo span { color: var(--accent); }
+    .admin-nav-divider { width: 1px; height: 20px; background: var(--border); }
+    .admin-nav-right { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+    .admin-nav-link { font-size: 0.8rem; color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 0.3rem; }
+    .admin-nav-link:hover { color: var(--fg); }
+    .admin-body { display: flex; flex: 1; max-width: 1300px; margin: 0 auto; width: 100%; padding: 2rem 1.5rem; gap: 2rem; }
+    .admin-sidebar { position: sticky; top: 1.5rem; width: var(--admin-sidebar-w); flex-shrink: 0; }
+    .admin-sidebar-section { margin-bottom: 1.5rem; }
+    .admin-sidebar-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 0.4rem; padding: 0 0.5rem; }
+    .admin-sidebar-link { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: 0.82rem; font-weight: 500; transition: background 0.1s, color 0.1s; }
+    .admin-sidebar-link:hover { background: var(--surface); color: var(--fg); }
+    .admin-sidebar-link.active { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+    .admin-sidebar-link .link-icon { font-size: 0.9rem; width: 18px; text-align: center; }
+    .admin-sidebar-link .link-badge { margin-left: auto; font-size: 0.6rem; font-weight: 700; background: rgba(255,102,0,0.15); color: var(--accent); padding: 0.1rem 0.4rem; border-radius: 10px; }
+    .admin-main { flex: 1; min-width: 0; }
+    .admin-page-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); display: block; margin-bottom: 0.2rem; }
+    .admin-page-title { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; font-weight: 800; margin: 0; }
+    .admin-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+    .admin-tab { padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; color: var(--muted); cursor: pointer; border: none; background: none; font-family: inherit; border-bottom: 2px solid transparent; margin-bottom: -1px; text-decoration: none; }
+    .admin-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-panels { display: flex; flex-direction: column; gap: 2rem; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .roles-table { width: 100%; border-collapse: collapse; }
+    .roles-table th { text-align: left; padding: 0.75rem; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .roles-table td { padding: 0.75rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .role-name { font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem; }
+    .role-desc { font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
+    .role-priority { font-size: 0.65rem; color: var(--muted); font-family: monospace; }
+    .system-badge { font-size: 0.6rem; font-weight: 700; background: rgba(234,179,8,0.12); color: #eab308; padding: 0.1rem 0.4rem; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .perm-tag { display: inline-block; font-size: 0.65rem; font-weight: 600; background: var(--surface); border: 1px solid var(--border); padding: 0.15rem 0.5rem; border-radius: 4px; margin: 0.1rem; color: var(--muted); }
+    .perm-grid { overflow-x: auto; }
+    .perm-grid-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .perm-grid-table th { text-align: left; padding: 0.5rem 0.75rem; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; vertical-align: bottom; }
+    .perm-grid-table td { padding: 0.4rem 0.75rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .perm-grid-table td.center { text-align: center; }
+    .perm-grid-table tr:hover { background: rgba(255,255,255,0.02); }
+    .perm-key-cell { font-size: 0.8rem; font-weight: 600; }
+    .perm-check { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent); }
+    .role-col-header { min-width: 120px; }
+    .role-col-actions { text-align: center; min-width: 160px; }
+    .grant-revoke-btns { display: flex; gap: 0.3rem; justify-content: center; }
+    .users-table { width: 100%; border-collapse: collapse; }
+    .users-table th { text-align: left; padding: 0.75rem; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); border-bottom: 1px solid var(--border); }
+    .users-table td { padding: 0.75rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .user-row:hover { background: rgba(255,255,255,0.02); }
+    .user-meta { display: flex; align-items: center; gap: 0.75rem; }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0; }
+    .user-name { font-weight: 600; font-size: 0.9rem; }
+    .user-email { font-size: 0.75rem; color: var(--muted); }
+    .user-roles { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+    .role-badge { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.7rem; font-weight: 600; background: var(--surface); border: 1px solid var(--border); padding: 0.2rem 0.65rem; border-radius: 20px; white-space: nowrap; }
+    .role-badge.super_admin { background: rgba(234,179,8,0.12); border-color: rgba(234,179,8,0.3); color: #eab308; }
+    .role-badge.admin { background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.3); color: #3b82f6; }
+    .role-badge.moderator { background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.3); color: #22c55e; }
+    .role-badge.helper { background: rgba(168,85,247,0.12); border-color: rgba(168,85,247,0.3); color: #a855f7; }
+    .role-badge.member { background: rgba(244,63,94,0.12); border-color: rgba(244,63,94,0.3); color: #f43f5e; }
+    .role-badge.default { background: rgba(255,255,255,0.05); border-color: var(--border); color: var(--muted); }
+    .revoke-btn { background: none; border: none; cursor: pointer; font-size: 0.9rem; color: inherit; opacity: 0.4; padding: 0 2px; line-height: 1; }
+    .revoke-btn:hover { opacity: 1; color: #dc2626; }
+    .btn-sm { font-size: 0.7rem; padding: 0.25rem 0.65rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; font-family: inherit; font-weight: 500; transition: all 0.15s; white-space: nowrap; }
+    .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm.danger { border-color: #fca5a5; color: #dc2626; }
+    .btn-sm.danger:hover { background: rgba(239,68,68,0.1); border-color: #dc2626; }
+    .btn-sm.success { border-color: rgba(34,197,94,0.3); color: #22c55e; }
+    .btn-sm.success:hover { background: rgba(34,197,94,0.1); border-color: #22c55e; }
+    .btn-sm.warn { border-color: rgba(234,179,8,0.3); color: #eab308; }
+    .btn-sm.warn:hover { background: rgba(234,179,8,0.1); }
+    .btn-sm.info { border-color: rgba(59,130,246,0.3); color: #3b82f6; }
+    .btn-sm.info:hover { background: rgba(59,130,246,0.1); }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 1rem; }
+    .modal-overlay.hidden { display: none; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; width: 100%; max-width: 480px; }
+    .modal h2 { font-size: 1.25rem; font-weight: 700; margin: 0 0 0.25rem; }
+    .modal p { font-size: 0.875rem; color: var(--muted); margin: 0 0 1.25rem; }
+    .modal-form { display: flex; flex-direction: column; gap: 0.75rem; }
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1rem; }
+    .form-row { display: flex; gap: 0.75rem; }
+    .form-input, .form-select { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 0.65rem 0.875rem; font-size: 0.875rem; color: var(--text); font-family: inherit; width: 100%; }
+    .form-input:focus, .form-select:focus { outline: none; border-color: var(--accent); }
+    .form-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text); display: block; margin-bottom: 0.3rem; }
+    .btn { font-size: 0.875rem; padding: 0.6rem 1.25rem; border-radius: 8px; border: none; cursor: pointer; font-family: inherit; font-weight: 600; transition: opacity 0.15s; }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-ghost { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+    .btn-danger { background: #dc2626; color: #fff; }
+    .suspended-badge { font-size: 0.65rem; font-weight: 700; background: rgba(239,68,68,0.12); color: #ef4444; padding: 0.1rem 0.5rem; border-radius: 20px; margin-left: 0.4rem; }
+    .error-msg { font-size: 0.8rem; color: #dc2626; margin-top: 0.25rem; }
+    .success-msg { font-size: 0.8rem; color: #16a34a; margin-top: 0.25rem; }
+    .empty-state { text-align: center; padding: 3rem; color: var(--muted); font-size: 0.875rem; }
+    .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1.25rem; font-size: 0.875rem; font-weight: 500; z-index: 200; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+    .toast.hidden { display: none; }
+    .toast.success { border-color: #86efac; color: #16a34a; }
+    .toast.error { border-color: #fca5a5; color: #dc2626; }
+    @media (max-width: 768px) { .admin-sidebar { display: none; } .admin-body { padding: 1rem; } }
+  </style>
+</head>
+<body>
+
+<!-- Admin nav -->
+<nav class="admin-nav">
+  <a href="/dashboard" class="admin-nav-logo">W.A.G.E. <span>Admin</span></a>
+  <div class="admin-nav-divider"></div>
+  <span style="font-size:0.75rem;color:var(--muted);">Roles &amp; Permissions</span>
+  <div class="admin-nav-right">
+    <a href="/admin" class="admin-nav-link">← Overview</a>
+    <a href="/dashboard" class="admin-nav-link">Dashboard</a>
+    <a href="/logout" class="admin-nav-link">Logout</a>
+  </div>
+</nav>
+
+<!-- Body -->
+<div class="admin-body">
+  <!-- Sidebar -->
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Management</div>
+      <a href="/admin" class="admin-sidebar-link"><span class="link-icon">🏠</span> Overview</a>
+      <a href="/admin/users" class="admin-sidebar-link"><span class="link-icon">👥</span> Members</a>
+      <a href="/admin/roles" class="admin-sidebar-link active"><span class="link-icon">🔑</span> Roles &amp; Permissions</a>
+    </div>
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Platform</div>
+      <a href="/admin/discord" class="admin-sidebar-link"><span class="link-icon">🤖</span> Discord Bot</a>
+      <a href="/admin/tiers" class="admin-sidebar-link"><span class="link-icon">⭐</span> Membership Tiers</a>
+      <a href="/admin/point-shop" class="admin-sidebar-link"><span class="link-icon">🏪</span> Point Shop</a>
+    </div>
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Tools</div>
+      <a href="/admin/diagnostics" class="admin-sidebar-link"><span class="link-icon">🔧</span> Diagnostics</a>
+      <a href="/admin/shop" class="admin-sidebar-link"><span class="link-icon">🛒</span> Merch Shop</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="admin-main">
+    <div class="admin-page-header">
+      <span class="admin-page-label">Admin</span>
+      <h1 class="admin-page-title">Roles &amp; Permissions</h1>
+      <p class="admin-page-subtitle">Manage roles, permissions, and user assignments.</p>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">
+      <button class="btn-sm success" onclick="openCreateRoleModal()">+ New Role</button>
+    </div>
+
+    <nav class="admin-tabs">
+      <button class="admin-tab active" data-tab="permissions">Permissions Grid</button>
+      <button class="admin-tab" data-tab="roles">Roles</button>
+    </nav>
+
+    <div class="tab-panels">
+
+      <!-- ── Permissions Grid panel ───────────────────────────────────── -->
+      <div class="tab-panel active" id="panel-permissions">
+        <p style="font-size:0.875rem; color:var(--muted); margin-bottom:1rem;">
+          Toggle permissions per role. Super Admin always has all permissions.
+        </p>
+        <div class="perm-grid">
+          <table class="perm-grid-table" id="perm-grid">
+            <thead id="perm-grid-head"></thead>
+            <tbody id="perm-grid-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── Roles panel ─────────────────────────────────────────────── -->
+      <div class="tab-panel" id="panel-roles">
+        <table class="roles-table">
+          <thead>
+            <tr>
+              <th>Role</th>
+              <th>Description</th>
+              <th>Priority</th>
+              <th>Permissions</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="roles-tbody"></tbody>
+        </table>
+      </div>
+
+
+    </div>
+  </main>
+
+  <!-- Toast notification -->
+  <div class="toast hidden" id="toast"></div>
+
+  <!-- Create role modal -->
+  <div class="modal-overlay hidden" id="create-modal">
+    <div class="modal">
+      <h2>Create Role</h2>
+      <p>Add a new role. System roles cannot be deleted.</p>
+      <form class="modal-form" id="create-role-form">
+        <div class="form-row">
+          <div style="flex:1;">
+            <label class="form-label">Name (UPPER_SNAKE)</label>
+            <input class="form-input" id="create-name" placeholder="HELPER" maxlength="50" style="text-transform:uppercase;">
+          </div>
+          <div style="flex:1;">
+            <label class="form-label">Display Name</label>
+            <input class="form-input" id="create-display" placeholder="Helper">
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Description</label>
+          <input class="form-input" id="create-desc" placeholder="What this role does">
+        </div>
+        <div>
+          <label class="form-label">Priority (higher = more powerful)</label>
+          <input class="form-input" id="create-priority" type="number" placeholder="10" value="10">
+        </div>
+        <p id="create-error" class="error-msg" style="display:none;"></p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="closeCreateModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Role</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit role modal -->
+  <div class="modal-overlay hidden" id="edit-modal">
+    <div class="modal">
+      <h2>Edit Role</h2>
+      <p id="edit-role-name"></p>
+      <form class="modal-form" id="edit-role-form">
+        <div>
+          <label class="form-label">Display Name</label>
+          <input class="form-input" id="edit-display" placeholder="Display name">
+        </div>
+        <div>
+          <label class="form-label">Description</label>
+          <input class="form-input" id="edit-desc" placeholder="Description">
+        </div>
+        <div>
+          <label class="form-label">Priority</label>
+          <input class="form-input" id="edit-priority" type="number" placeholder="10">
+        </div>
+        <p id="edit-error" class="error-msg" style="display:none;"></p>
+        <input type="hidden" id="edit-role-id">
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="closeEditModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete role modal -->
+  <div class="modal-overlay hidden" id="delete-modal">
+    <div class="modal">
+      <h2>Delete Role</h2>
+      <p id="delete-role-name"></p>
+      <p id="delete-error" class="error-msg" style="display:none;"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" onclick="closeDeleteModal()">Cancel</button>
+        <button type="button" class="btn btn-danger" id="delete-confirm-btn" onclick="confirmDeleteRole()">Delete Role</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Assign role modal -->
+  <div class="modal-overlay hidden" id="assign-modal">
+    <div class="modal">
+      <h2>Assign Role</h2>
+      <p>Assign a role to <strong id="assign-user-name"></strong>.</p>
+      <form class="modal-form" id="assign-form">
+        <div>
+          <label class="form-label">Role</label>
+          <select class="form-select" id="assign-role-select"></select>
+        </div>
+        <p id="assign-error" class="error-msg" style="display:none;"></p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" onclick="closeAssignModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="assign-submit">Assign Role</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<script>
+const API = '/api/admin/roles';
+let allRoles = [];
+let allPermissions = [];
+let rolePermissions = []; // { roleId, permId }
+let usersData = [];
+let deleteRoleId = null;
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type;
+  t.classList.remove('hidden');
+  setTimeout(() => t.classList.add('hidden'), 3000);
+}
+
+// ── Tab switching ────────────────────────────────────────────────────────────
+document.querySelectorAll('.admin-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    if (tab.dataset.tab === 'roles') loadRoles();
+    if (tab.dataset.tab === 'users') loadUsers();
+    if (tab.dataset.tab === 'permissions') loadPermissions();
+  });
+});
+
+// ── Load all data ────────────────────────────────────────────────────────────
+async function loadPermissions() {
+  const [rolesRes, permsRes, rpRes] = await Promise.all([
+    fetch(API),
+    fetch(API + '/permissions'),
+    fetch(API).then(r => r.json()).catch(() => ({ roles: [] })),
+  ]);
+  const rolesData = await rolesRes.json();
+  const permsData = await permsRes.json();
+  allRoles = rolesData.roles || [];
+  allPermissions = permsData.permissions || [];
+  renderPermissionsGrid();
+}
+
+async function loadRoles() {
+  const data = await (await fetch(API)).json();
+  allRoles = data.roles || [];
+  renderRolesList();
+}
+
+async function loadUsers() {
+  const data = await (await fetch(API + '/users')).json();
+  usersData = data.users || [];
+  renderUsers();
+}
+
+// ── Render Permissions Grid ──────────────────────────────────────────────────
+function renderPermissionsGrid() {
+  const head = document.getElementById('perm-grid-head');
+  const body = document.getElementById('perm-grid-body');
+
+  // Build a map of roleId -> Set<permId>
+  const rolePermSet = {};
+  allRoles.forEach(r => { rolePermSet[r.id] = new Set((r.permissions || []).map(p => p)); });
+
+  // Group permissions by category
+  const byCategory = {};
+  allPermissions.forEach(p => {
+    const cat = p.category || 'general';
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(p);
+  });
+
+  // Build header row
+  const nonSystemRoles = allRoles.filter(r => !r.is_system);
+  head.innerHTML = `
+    <tr>
+      <th>Permission</th>
+      ${allRoles.map(r => `
+        <th class="role-col-header" style="text-align:center;">
+          ${escapeHtml(r.display_name || r.name)}
+          ${r.is_system ? '<br><span class="system-badge">System</span>' : ''}
+        </th>`).join('')}
+      <th class="role-col-actions">Actions</th>
+    </tr>`;
+
+  // Build body rows grouped by category
+  let rows = '';
+  const categoryOrder = ['blog','users','members','subscriptions','livestreams','settings','content','general'];
+  const sortedCats = Object.keys(byCategory).sort((a,b) => {
+    const ai = categoryOrder.indexOf(a);
+    const bi = categoryOrder.indexOf(b);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+
+  sortedCats.forEach(cat => {
+    rows += `<tr><td colspan="${allRoles.length + 2}" style="background:var(--surface);font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);padding:0.4rem 0.75rem;">${escapeHtml(cat)}</td></tr>`;
+    byCategory[cat].forEach(p => {
+      rows += `<tr>
+        <td class="perm-key-cell">
+          <div>${escapeHtml(p.key)}</div>
+          <div style="font-size:0.65rem;color:var(--muted);font-weight:400;">${escapeHtml(p.description || '')}</div>
+        </td>
+        ${allRoles.map(r => `
+          <td class="center">
+            <input type="checkbox" class="perm-check"
+              data-role-id="${r.id}"
+              data-perm-id="${p.id}"
+              ${rolePermSet[r.id].has(p.key) ? 'checked' : ''}
+              ${r.name === 'SUPER_ADMIN' ? 'disabled title="Super Admin always has all"' : ''}
+              onchange="togglePermission(${r.id}, ${p.id}, this.checked)">
+          </td>`).join('')}
+        <td class="center">
+          <div class="grant-revoke-btns">
+            ${allRoles.filter(r => r.name !== 'SUPER_ADMIN').map(r => `
+              <button class="btn-sm info" style="font-size:0.6rem;padding:0.15rem 0.4rem;"
+                onclick="grantAllForRole(${r.id})" title="Grant all to ${r.display_name || r.name}">
+                +${r.display_name || r.name}
+              </button>
+            `).join('')}
+          </div>
+        </td>
+      </tr>`;
+    });
+  });
+
+  body.innerHTML = rows || '<tr><td colspan="99" class="empty-state">No permissions found.</td></tr>';
+}
+
+// ── Toggle permission ─────────────────────────────────────────────────────────
+async function togglePermission(roleId, permId, granted) {
+  const url = `${API}/${roleId}/permissions/${permId}`;
+  const method = granted ? 'POST' : 'DELETE';
+  try {
+    const res = await fetch(url, { method });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    // Update local state
+    const role = allRoles.find(r => r.id === roleId);
+    if (role) {
+      const perm = allPermissions.find(p => p.id === permId);
+      if (perm) {
+        if (granted) {
+          if (!role.permissions.includes(perm.key)) role.permissions.push(perm.key);
+        } else {
+          role.permissions = role.permissions.filter(k => k !== perm.key);
+        }
+      }
+    }
+  } catch (err) {
+    showToast(err.message || 'Failed to update permission', 'error');
+    // Revert checkbox
+    loadPermissions();
+  }
+}
+
+// ── Grant all / revoke all for a role ────────────────────────────────────────
+async function grantAllForRole(roleId) {
+  if (!confirm('Grant ALL permissions to this role?')) return;
+  try {
+    const res = await fetch(`${API}/${roleId}/grant-all`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    showToast('All permissions granted');
+    loadPermissions();
+  } catch (err) {
+    showToast(err.message || 'Failed', 'error');
+  }
+}
+
+async function revokeAllForRole(roleId) {
+  if (!confirm('Revoke ALL permissions from this role?')) return;
+  try {
+    const res = await fetch(`${API}/${roleId}/revoke-all`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    showToast('All permissions revoked');
+    loadPermissions();
+  } catch (err) {
+    showToast(err.message || 'Failed', 'error');
+  }
+}
+
+// ── Render Roles list ─────────────────────────────────────────────────────────
+function renderRolesList() {
+  const tb = document.getElementById('roles-tbody');
+  if (!allRoles.length) { tb.innerHTML = '<tr><td colspan="5" class="empty-state">No roles found.</td></tr>'; return; }
+  tb.innerHTML = allRoles.map(r => `
+    <tr>
+      <td>
+        <div class="role-name">
+          ${escapeHtml(r.display_name || r.name)}
+          <span style="font-weight:400;font-size:0.7rem;color:var(--muted);">(${escapeHtml(r.name)})</span>
+          ${r.is_system ? '<span class="system-badge">System</span>' : ''}
+        </div>
+        <div class="role-desc">${escapeHtml(r.description || '—')}</div>
+      </td>
+      <td><div class="role-desc">${escapeHtml(r.description || '—')}</div></td>
+      <td><span class="role-priority">${r.priority}</span></td>
+      <td>
+        ${(r.permissions || []).slice(0, 8).map(p => `<span class="perm-tag">${escapeHtml(p)}</span>`).join('')}
+        ${(r.permissions || []).length > 8 ? `<span class="perm-tag" style="background:rgba(234,179,8,0.12);color:#eab308;">+${r.permissions.length - 8} more</span>` : ''}
+      </td>
+      <td>
+        <div style="display:flex;gap:0.3rem;flex-wrap:wrap;">
+          <button class="btn-sm" onclick="openEditModal(${r.id})">Edit</button>
+          ${r.name === 'SUPER_ADMIN' ? '' : `
+            <button class="btn-sm warn" onclick="grantAllForRoleFromList(${r.id})">Grant All</button>
+            <button class="btn-sm danger" onclick="openDeleteModal(${r.id}, '${escapeHtml(r.name)}')" ${r.is_system ? 'disabled style="opacity:0.4;cursor:not-allowed;"' : ''}>Delete</button>
+          `}
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function grantAllForRoleFromList(roleId) {
+  await grantAllForRole(roleId);
+  loadRoles();
+}
+
+// ── Create role ──────────────────────────────────────────────────────────────
+function openCreateRoleModal() {
+  document.getElementById('create-name').value = '';
+  document.getElementById('create-display').value = '';
+  document.getElementById('create-desc').value = '';
+  document.getElementById('create-priority').value = '10';
+  document.getElementById('create-error').style.display = 'none';
+  document.getElementById('create-modal').classList.remove('hidden');
+}
+function closeCreateModal() { document.getElementById('create-modal').classList.add('hidden'); }
+
+document.getElementById('create-role-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('create-name').value.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+  const display_name = document.getElementById('create-display').value.trim();
+  const description = document.getElementById('create-desc').value.trim();
+  const priority = parseInt(document.getElementById('create-priority').value, 10) || 10;
+
+  if (!name || !display_name) {
+    document.getElementById('create-error').textContent = 'Name and display name are required.';
+    document.getElementById('create-error').style.display = 'block';
+    return;
+  }
+
+  try {
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, display_name, description, priority }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to create role');
+    closeCreateModal();
+    showToast(`Role '${display_name}' created`);
+    loadRoles();
+    loadPermissions();
+  } catch (err) {
+    document.getElementById('create-error').textContent = err.message;
+    document.getElementById('create-error').style.display = 'block';
+  }
+});
+
+// ── Edit role ─────────────────────────────────────────────────────────────────
+function openEditModal(roleId) {
+  const role = allRoles.find(r => r.id === roleId);
+  if (!role) return;
+  document.getElementById('edit-role-id').value = roleId;
+  document.getElementById('edit-role-name').textContent = `Editing role: ${role.display_name || role.name}`;
+  document.getElementById('edit-display').value = role.display_name || '';
+  document.getElementById('edit-desc').value = role.description || '';
+  document.getElementById('edit-priority').value = role.priority || 0;
+  document.getElementById('edit-error').style.display = 'none';
+  document.getElementById('edit-modal').classList.remove('hidden');
+}
+function closeEditModal() { document.getElementById('edit-modal').classList.add('hidden'); }
+
+document.getElementById('edit-role-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const roleId = parseInt(document.getElementById('edit-role-id').value, 10);
+  const display_name = document.getElementById('edit-display').value.trim();
+  const description = document.getElementById('edit-desc').value.trim();
+  const priority = parseInt(document.getElementById('edit-priority').value, 10);
+
+  try {
+    const res = await fetch(`${API}/${roleId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ display_name, description, priority }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to update role');
+    closeEditModal();
+    showToast('Role updated');
+    loadRoles();
+    loadPermissions();
+  } catch (err) {
+    document.getElementById('edit-error').textContent = err.message;
+    document.getElementById('edit-error').style.display = 'block';
+  }
+});
+
+// ── Delete role ───────────────────────────────────────────────────────────────
+function openDeleteModal(roleId, roleName) {
+  deleteRoleId = roleId;
+  document.getElementById('delete-role-name').textContent = `Are you sure you want to delete the role "${roleName}"? Users with this role will lose those permissions.`;
+  document.getElementById('delete-error').style.display = 'none';
+  document.getElementById('delete-modal').classList.remove('hidden');
+}
+function closeDeleteModal() { document.getElementById('delete-modal').classList.add('hidden'); deleteRoleId = null; }
+
+async function confirmDeleteRole() {
+  if (!deleteRoleId) return;
+  try {
+    const res = await fetch(`${API}/${deleteRoleId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to delete role');
+    closeDeleteModal();
+    showToast('Role deleted');
+    loadRoles();
+    loadPermissions();
+  } catch (err) {
+    document.getElementById('delete-error').textContent = err.message;
+    document.getElementById('delete-error').style.display = 'block';
+  }
+}
+
+// ── Render Users ─────────────────────────────────────────────────────────────
+function renderUsers() {
+  const tb = document.getElementById('users-tbody');
+  if (!usersData.length) { tb.innerHTML = '<tr><td colspan="3" class="empty-state">No users found.</td></tr>'; return; }
+
+  tb.innerHTML = usersData.map(u => `
+    <tr class="user-row">
+      <td>
+        <div class="user-meta">
+          <div class="user-avatar">${(u.display_name || u.email || '?')[0].toUpperCase()}</div>
+          <div>
+            <div class="user-name">
+              ${escapeHtml(u.display_name || u.email.split('@')[0])}
+              ${u.is_suspended ? '<span class="suspended-badge">Suspended</span>' : ''}
+            </div>
+            <div class="user-email">${escapeHtml(u.email)}</div>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="user-roles">
+          ${(u.roles || []).map(r => `
+            <span class="role-badge ${roleToCssClass(r.name)}">
+              ${escapeHtml(r.display_name || r.name)}
+              ${r.name !== 'SUPER_ADMIN' || u.email.toLowerCase() !== 'stotteyman@gmail.com'
+                ? `<button class="revoke-btn" onclick="revokeRole(${u.id}, ${r.id}, '${escapeHtml(u.email)}')" title="Remove role">×</button>`
+                : ''}
+            </span>
+          `).join('')}
+          ${(u.roles || []).length === 0 ? '<span style="font-size:0.75rem;color:var(--muted)">No roles</span>' : ''}
+        </div>
+      </td>
+      <td>
+        <button class="btn-sm success" onclick="openAssignModal(${u.id}, '${escapeHtml(u.email)}', ${JSON.stringify(u.roles || []).replace(/"/g, '&quot;')})">
+          + Assign
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// ── Revoke role ──────────────────────────────────────────────────────────────
+async function revokeRole(userId, roleId, email) {
+  if (!confirm(`Remove role from ${email}?`)) return;
+  try {
+    const res = await fetch(`${API}/users/${userId}/revoke/${roleId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    loadUsers();
+  } catch (err) {
+    showToast(err.message || 'Failed', 'error');
+  }
+}
+
+// ── Assign role modal ─────────────────────────────────────────────────────────
+let assignUserId = null;
+
+function openAssignModal(userId, email, roles) {
+  assignUserId = userId;
+  document.getElementById('assign-user-name').textContent = email;
+  document.getElementById('assign-error').style.display = 'none';
+
+  const taken = new Set((roles || []).map(r => r.name));
+  const available = allRoles.filter(r => !taken.has(r.name));
+  const sel = document.getElementById('assign-role-select');
+  sel.innerHTML = available.map(r =>
+    `<option value="${r.id}">${escapeHtml(r.display_name || r.name)} (${escapeHtml(r.name)})</option>`
+  ).join('');
+
+  if (available.length === 0) {
+    sel.innerHTML = '<option value="">All roles already assigned</option>';
+  }
+
+  document.getElementById('assign-modal').classList.remove('hidden');
+}
+
+function closeAssignModal() {
+  document.getElementById('assign-modal').classList.add('hidden');
+  assignUserId = null;
+}
+
+document.getElementById('assign-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!assignUserId) return;
+  const roleId = document.getElementById('assign-role-select').value;
+  if (!roleId) return;
+
+  const btn = document.getElementById('assign-submit');
+  btn.disabled = true;
+  btn.textContent = 'Assigning…';
+
+  try {
+    const res = await fetch(`${API}/users/${assignUserId}/assign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roleId: parseInt(roleId, 10) }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    closeAssignModal();
+    loadUsers();
+  } catch (err) {
+    document.getElementById('assign-error').textContent = err.message;
+    document.getElementById('assign-error').style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Assign Role';
+  }
+});
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+function roleToCssClass(name) {
+  // Convert UPPER_SNAKE_CASE to kebab-case for CSS class matching
+  return name.replace(/_/g, '_').toLowerCase();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadPermissions();
+</script>
+</body>
+</html>

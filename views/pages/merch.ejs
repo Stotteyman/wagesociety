@@ -2,8 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Merch — W.A.G.E. Society</title>
+  
+
+<%- include('../partials/head-pwa') %>
+  <title>Creator Marketplace — W.A.G.E. Society</title>
+  <meta name="description" content="Browse and buy W.A.G.E. Society creator merch and products. Support your favorite creators directly — no platform middlemen.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Creator Marketplace — W.A.G.E. Society">
+  <meta property="og:description" content="Browse and buy W.A.G.E. Society creator merch and products. Support your favorite creators directly.">
+  <meta property="og:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
+  <meta property="og:url" content="https://wagesociety.com/merch">
+  <meta property="og:site_name" content="WAGE Society">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Creator Marketplace — W.A.G.E. Society">
+  <meta name="twitter:description" content="Browse and buy W.A.G.E. Society creator merch and products. Support your favorite creators directly.">
+  <meta name="twitter:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -16,40 +29,88 @@
   <section class="merch-page">
     <div class="merch-inner">
       <div class="page-header">
-        <span class="section-label">Shop</span>
-        <h1 class="section-title">WAGE Merch</h1>
-        <p class="section-sub">Official W.A.G.E. Society merch for creators, marketers, and entrepreneurs building in public.</p>
+        <span class="section-label">Marketplace</span>
+        <h1 class="section-title">Creator Marketplace</h1>
+        <p class="section-sub">Products, merch, and digital goods from WAGE Society creators.</p>
       </div>
 
-      <% if (items.length === 0) { %>
-        <div class="coming-soon">
-          <h2>Coming soon</h2>
-          <p>Merch drops are on the way. Check back soon.</p>
-        </div>
-      <% } else { %>
-        <div class="merch-grid">
-          <% items.forEach(function(item) { %>
-          <div class="merch-card">
-            <% if (item.image_url) { %>
-              <div class="merch-image-wrap">
-                <img src="<%= item.image_url %>" alt="<%= item.name %>" class="merch-image" />
-              </div>
-            <% } %>
-            <div class="merch-info">
-              <h3 class="merch-name"><%= item.name %></h3>
-              <p class="merch-desc"><%= item.description || '' %></p>
-              <div class="merch-footer">
-                <span class="merch-price"><%= item.price %></span>
-                <% if (item.external_link) { %>
-                  <a href="<%= item.external_link %>" target="_blank" rel="noopener" class="merch-badge" style="text-decoration:none; background: var(--accent); color: white;">Shop Now →</a>
+      <!-- Tab Navigation -->
+      <div style="display:flex;gap:0.5rem;margin-bottom:2rem;flex-wrap:wrap;">
+        <a href="/marketplace?tab=merch" style="padding:0.5rem 1.25rem;border-radius:8px;font-size:0.875rem;font-weight:700;text-decoration:none;transition:all 0.2s;background:<%= tab !== 'shop' ? 'var(--accent)' : 'var(--surface)' %>;color:<%= tab !== 'shop' ? '#fff' : 'var(--text)' %>;border:1px solid <%= tab !== 'shop' ? 'var(--accent)' : 'var(--border)' %>;">
+          Merch & Products
+        </a>
+        <a href="/marketplace?tab=shop" style="padding:0.5rem 1.25rem;border-radius:8px;font-size:0.875rem;font-weight:700;text-decoration:none;transition:all 0.2s;background:<%= tab === 'shop' ? 'var(--accent)' : 'var(--surface)' %>;color:<%= tab === 'shop' ? '#fff' : 'var(--text)' %>;border:1px solid <%= tab === 'shop' ? 'var(--accent)' : 'var(--border)' %>;">
+          Point Shop 🪙
+        </a>
+      </div>
+
+      <% if (tab === 'shop') { %>
+        <!-- Point Shop Tab -->
+        <% if (typeof shopItems !== 'undefined' && shopItems.length > 0) { %>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.25rem;">
+            <% shopItems.forEach(function(item) { %>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;display:flex;flex-direction:column;gap:0.875rem;">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <div style="font-size:1.1rem;font-weight:700;color:#fff;"><%= item.name %></div>
+                  <span style="background:rgba(255,102,0,0.15);border:1px solid rgba(255,102,0,0.3);color:var(--accent);padding:0.25rem 0.75rem;border-radius:20px;font-size:0.8rem;font-weight:700;"><%= item.point_cost %> pts</span>
+                </div>
+                <% if (item.description) { %>
+                  <p style="font-size:0.85rem;color:var(--muted);line-height:1.5;margin:0;"><%= item.description %></p>
+                <% } %>
+                <% if (typeof isLoggedIn !== 'undefined' && isLoggedIn) { %>
+                  <a href="/point-shop" style="display:block;text-align:center;background:var(--accent);color:#fff;padding:0.625rem;border-radius:8px;font-size:0.875rem;font-weight:700;text-decoration:none;transition:opacity 0.2s;">Redeem</a>
                 <% } else { %>
-                  <span class="merch-badge" style="background:rgba(34,197,94,0.15);border-color:rgba(34,197,94,0.3);color:#15803d;">Available</span>
+                  <a href="/login" style="display:block;text-align:center;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:0.625rem;border-radius:8px;font-size:0.875rem;font-weight:700;text-decoration:none;">Login to Redeem</a>
                 <% } %>
               </div>
-            </div>
+            <% }); %>
           </div>
-          <% }) %>
-        </div>
+        <% } else { %>
+          <div class="coming-soon">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin:0 auto 1.5rem;display:block;opacity:0.4">
+              <circle cx="24" cy="24" r="16" stroke="currentColor" stroke-width="2"/>
+              <path d="M24 16v8M24 28v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <h2>Point Shop coming soon</h2>
+            <p>Creators can list rewards redeemable with points from the dashboard.</p>
+          </div>
+        <% } %>
+      <% } else { %>
+        <!-- Merch Tab -->
+        <% if (items.length === 0) { %>
+          <div class="coming-soon">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin:0 auto 1.5rem;display:block;opacity:0.4">
+              <rect x="8" y="12" width="32" height="28" rx="4" stroke="currentColor" stroke-width="2"/>
+              <path d="M8 20h32M16 28h8M16 34h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <h2>No listings yet</h2>
+            <p>Creators can list products from their dashboard to populate this space.</p>
+          </div>
+        <% } else { %>
+          <div class="merch-grid">
+            <% items.forEach(function(item) { %>
+            <div class="merch-card">
+              <% if (item.image_url) { %>
+                <div class="merch-image-wrap">
+                  <img src="<%= item.image_url %>" alt="<%= item.name %>" class="merch-image" />
+                </div>
+              <% } %>
+              <div class="merch-info">
+                <h3 class="merch-name"><%= item.name %></h3>
+                <p class="merch-desc"><%= item.description || '' %></p>
+                <div class="merch-footer">
+                  <span class="merch-price"><%= item.price %></span>
+                  <% if (item.external_link) { %>
+                    <a href="<%= item.external_link %>" target="_blank" rel="noopener" class="merch-badge" style="text-decoration:none; background: var(--accent); color: white;">Shop Now →</a>
+                  <% } else { %>
+                    <span class="merch-badge" style="background:rgba(34,197,94,0.15);border-color:rgba(34,197,94,0.3);color:#15803d;">Available</span>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+            <% }) %>
+          </div>
+        <% } %>
       <% } %>
 
       <p class="merch-legal">Purchases are governed by our <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>. Questions? Email <a href="mailto:support@wagesociety.com">support@wagesociety.com</a></p>

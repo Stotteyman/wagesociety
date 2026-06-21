@@ -1,0 +1,193 @@
+<% const body = `
+<style>
+  body { background: var(--bg); }
+  .page-header { margin-bottom: 2rem; }
+  .dash-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; margin-bottom: 1.5rem; }
+  .dash-card-title { font-family: 'Space Grotesk', sans-serif; font-size: 1.1rem; font-weight: 700; color: var(--fg); margin-bottom: 1rem; }
+  .ps-item { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid var(--border); }
+  .ps-item:last-child { border-bottom: none; }
+  .ps-item-info .ps-name { font-weight: 700; color: var(--fg); margin-bottom: 0.2rem; }
+  .ps-item-info .ps-type { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .ps-item-info .ps-desc { font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; }
+  .ps-cost { font-family: 'Space Grotesk', sans-serif; font-weight: 800; color: var(--accent); font-size: 1rem; white-space: nowrap; }
+  .ps-cost span { font-weight: 400; font-size: 0.75rem; color: var(--muted); }
+  .ps-status-badge { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.25rem 0.65rem; border-radius: 20px; white-space: nowrap; }
+  .status-active   { background: rgba(0,200,83,0.12); color: #10b981; border: 1px solid rgba(0,200,83,0.25); }
+  .status-inactive { background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); }
+  .ps-actions { display: flex; gap: 0.5rem; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .form-full { grid-column: 1 / -1; }
+  .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+  .form-group label { font-size: 0.8rem; font-weight: 600; color: var(--fg); }
+  .form-group input, .form-group select, .form-group textarea { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--fg); padding: 0.6rem 0.85rem; font-size: 0.875rem; width: 100%; box-sizing: border-box; }
+  .form-group textarea { resize: vertical; min-height: 70px; }
+  .btn-primary { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 0.65rem 1.25rem; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: background 0.2s; }
+  .btn-primary:hover { background: #e65500; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 8px; padding: 0.4rem 0.85rem; font-size: 0.8rem; cursor: pointer; }
+  .btn-ghost:hover { color: var(--fg); border-color: var(--fg); }
+  .btn-sm { font-size: 0.75rem; padding: 0.4rem 0.8rem; }
+  .btn-danger { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+  .toggle-row { display: flex; align-items: center; gap: 0.75rem; }
+  .toggle { position: relative; width: 40px; height: 22px; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: var(--border); border-radius: 22px; transition: 0.3s; }
+  .toggle-slider:before { position: absolute; content: ''; height: 16px; width: 16px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.3s; }
+  .toggle input:checked + .toggle-slider { background: #10b981; }
+  .toggle input:checked + .toggle-slider:before { transform: translateX(18px); }
+  .toggle-label { font-size: 0.8rem; color: var(--muted); }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+  .modal-header h2 { font-family: 'Space Grotesk', sans-serif; font-size: 1.25rem; font-weight: 800; color: var(--fg); }
+  .modal-close { background: none; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; }
+  .modal-close:hover { color: var(--fg); }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; }
+</style>
+
+<div class="admin-page-header">
+  <span class="admin-page-label">Admin</span>
+  <h1 class="admin-page-title">Point Shop</h1>
+  <p class="admin-page-subtitle">Manage redeemable items and rewards. Users purchase with referral points.</p>
+</div>
+
+<div style="margin-bottom:1.5rem;">
+  <button class="btn-primary" onclick="openModal()">+ Add Item</button>
+</div>
+
+<div class="dash-card">
+  <div class="dash-card-title">All Items</div>
+  <div id="itemsList">
+    <div style="color:var(--muted);padding:2rem;text-align:center;">Loading…</div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="modalTitle">Add Item</h2>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <form id="modalForm" onsubmit="handleSubmit(event)">
+      <div class="form-group" style="margin-bottom:1rem;">
+        <label>Item Name *</label>
+        <input type="text" name="name" required placeholder="VIP Badge">
+      </div>
+      <div class="form-group" style="margin-bottom:1rem;">
+        <label>Description</label>
+        <textarea name="description" placeholder="Exclusive badge displayed on your public profile"></textarea>
+      </div>
+      <div class="form-grid" style="margin-bottom:1rem;">
+        <div class="form-group">
+          <label>Point Cost *</label>
+          <input type="number" name="point_cost" min="1" required placeholder="2000">
+        </div>
+        <div class="form-group">
+          <label>Item Type *</label>
+          <select name="item_type" required>
+            <option value="">Select type…</option>
+            <option value="badge">Badge</option>
+            <option value="role">Role</option>
+            <option value="membership_days">Membership Days</option>
+            <option value="profile_frame">Profile Frame</option>
+            <option value="username_color">Username Color</option>
+            <option value="marketplace_credit">Marketplace Credit</option>
+            <option value="vip_access">VIP Access</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid" style="margin-bottom:1rem;">
+        <div class="form-group">
+          <label>Sort Order</label>
+          <input type="number" name="sort_order" min="0" placeholder="1">
+        </div>
+        <div class="form-group toggle-row" style="justify-content:flex-start;margin-top:1.6rem;">
+          <label class="toggle">
+            <input type="checkbox" name="is_active" checked>
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label">Active / visible in shop</span>
+        </div>
+      </div>
+      <input type="hidden" name="id" id="editId">
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn-primary" id="submitBtn">Save Item</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+fetch('/api/auth/me').then(r=>r.json()).then(data => {
+  if (!data.user || !['superadmin','admin'].includes(data.access?.role)) {
+    document.querySelector('.admin-main').innerHTML = '<p style="color:#dc2626;padding:2rem;">Access denied. Admin only.</p>';
+  } else { loadItems(); }
+});
+async function loadItems() {
+  const res = await fetch('/api/points-shop/items');
+  const { items } = await res.json();
+  const el = document.getElementById('itemsList');
+  if (!items.length) { el.innerHTML = '<p style="color:var(--muted);padding:1rem 0;">No items yet. Add one above!</p>'; return; }
+  el.innerHTML = items.map(item => `
+    <div class="ps-item">
+      <div class="ps-item-info">
+        <div class="ps-name">${item.name}</div>
+        <div class="ps-type">${item.item_type}</div>
+        ${item.description ? '<div class="ps-desc">' + item.description + '</div>' : ''}
+      </div>
+      <div class="ps-cost">${item.point_cost.toLocaleString()} <span>pts</span></div>
+      <div><span class="ps-status-badge ${item.active ? 'status-active' : 'status-inactive'}">${item.active ? 'Active' : 'Inactive'}</span></div>
+      <div class="ps-actions">
+        <button class="btn-ghost btn-sm" onclick='editItem(${JSON.stringify(item)})'>Edit</button>
+        <button class="btn-ghost btn-sm btn-danger" onclick='deleteItem(${item.id})'>Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+let editing = false;
+function openModal() {
+  const modal = document.getElementById('modal');
+  const form  = document.getElementById('modalForm');
+  form.reset();
+  document.getElementById('editId').value = '';
+  document.getElementById('modalTitle').textContent = 'Add Item';
+  document.getElementById('submitBtn').textContent = 'Save Item';
+  editing = false;
+  modal.classList.add('open');
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+function editItem(item) {
+  const form = document.getElementById('modalForm');
+  form.name.value         = item.name;
+  form.description.value  = item.description || '';
+  form.point_cost.value   = item.point_cost;
+  form.item_type.value    = item.item_type;
+  form.sort_order.value   = item.sort_order || '';
+  form.is_active.checked  = item.is_active;
+  document.getElementById('editId').value   = item.id;
+  document.getElementById('modalTitle').textContent = 'Edit Item';
+  document.getElementById('submitBtn').textContent = 'Update Item';
+  editing = true;
+  document.getElementById('modal').classList.add('open');
+}
+async function handleSubmit(e) {
+  e.preventDefault();
+  const form     = e.target;
+  const id       = form.id.value;
+  const payload  = { name: form.name.value, description: form.description.value, point_cost: parseInt(form.point_cost.value), item_type: form.item_type.value, sort_order: parseInt(form.sort_order.value || 0), is_active: form.is_active.checked };
+  const url = id ? '/api/points-shop/items/' + id : '/api/points-shop/items';
+  const method = id ? 'PUT' : 'POST';
+  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  if (res.ok) { closeModal(); loadItems(); }
+  else { const err = await res.json(); alert('Error: ' + (err.error || 'Save failed')); }
+}
+async function deleteItem(id) {
+  if (!confirm('Delete this item? This cannot be undone.')) return;
+  const res = await fetch('/api/points-shop/items/' + id, { method: 'DELETE' });
+  if (res.ok) loadItems();
+  else alert('Delete failed');
+}
+</script>
+`; %>
+<%- include('../admin/layout', { body, navSection: 'Admin', activeTab: 'point-shop', userEmail: typeof userEmail !== 'undefined' ? userEmail : '' }) %>

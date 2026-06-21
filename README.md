@@ -1,14 +1,14 @@
 # WAGE Society — Creator OS
 
-Express.js + EJS + PostgreSQL (Neon) + Supabase Auth. A platform where creators
+Express.js + EJS + PostgreSQL (Neon) + bcrypt custom auth. A platform where creators
 manage profiles, go live, sell memberships and merch, blog, and build audiences
 without platform middlemen taking a cut.
 
 ## Stack
 
 - **Backend**: Express.js (server.js), EJS templates, express-session + connect-pg-simple
-- **Auth**: Supabase Auth (magic link, Google OAuth, Discord OAuth) via @supabase/supabase-js
-- **Database**: Supabase Postgres via `pg` Pool (DATABASE_URL from Neon)
+- **Auth**: Custom bcrypt in auth_users table + Discord account linking (Supabase removed)
+- **Database**: Neon Postgres via `pg` Pool (DATABASE_URL)
 - **Payments**: Stripe (membership checkout + webhook)
 - **Discord**: Bot-based guild role sync (tier roles)
 - **Email**: Zoho SMTP
@@ -18,7 +18,7 @@ without platform middlemen taking a cut.
 ```bash
 npm install
 # Required env vars:
-DATABASE_URL, SESSION_SECRET, SUPABASE_URL, SUPABASE_ANON_KEY, APP_URL
+DATABASE_URL, SESSION_SECRET, APP_URL
 node server.js
 ```
 
@@ -28,10 +28,10 @@ node server.js
 |------|---------|
 | `server.js` | Express entry — middleware, route mounts, listen |
 | `migrate.js` | Migration runner — runs on every `npm run build` |
-| `routes/auth.js` | Magic link (send + PKCE verify) + logout |
+| `routes/auth-custom.js` | Email/password + magic link auth (bcrypt, custom) |
 | `routes/pages.js` | All server-rendered pages |
-| `routes/api/stripe.js` | Stripe checkout + webhook |
-| `lib/auth.js` | User provisioning on first OAuth login |
+| `routes/api/webhooks.js` | Stripe webhook handler |
+| `lib/auth.js` | User provisioning on login |
 | `db/index.js` | `pg` Pool singleton — only file allowed to `new Pool()` |
 | `db/*.js` | All DB queries as named functions |
 | `migrations/` | All DDL as timestamped `.sql` files |
@@ -39,9 +39,9 @@ node server.js
 
 ## Auth
 
-- **Magic link**: `POST /auth/magic-link` → Supabase OTP → `GET /auth/verify?code=` → Express session
-- **Google/Discord**: Client-side Supabase SDK `signInWithOAuth` → `GET /auth/verify`
-- Superadmin: `lib/auth.js` `SUPERADMIN_EMAILS` set promotes on login
+- **Email/password**: `POST /auth/signup` / `POST /auth/login` → bcrypt → Express session
+- **Magic link**: `POST /auth/magic-link` → email token → `GET /auth/verify?token=` → Express session
+- **Discord**: Account linking via Discord OAuth bot
 
 ## Deployment
 

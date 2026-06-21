@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  
+
+<%- include('../../partials/head-pwa') %>
+  <title>Discord Servers — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+<%- include('../../partials/nav') %>
+
+<section class="dashboard-page">
+  <div class="dashboard-inner">
+
+    <div class="page-header">
+      <span class="section-label">Discord Integration</span>
+      <h1 class="section-title">Your Servers</h1>
+      <p class="section-sub">Add the W.A.G.E. Society bot to your Discord servers to enable membership sync, auto-roles, and more.</p>
+    </div>
+
+    <!-- Discord Connection Status -->
+    <% if (discordLink) { %>
+    <div class="dash-card" style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;background:#0d2b0d;border:1px solid #16a34a;">
+      <div style="width:12px;height:12px;border-radius:50%;background:#22c55e;flex-shrink:0;box-shadow:0 0 6px #22c55e;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:0.875rem;"><%= discordLink.discord_username || 'Discord' %> &nbsp;<span style="color:var(--muted);font-weight:400;">— Connected</span></div>
+        <div style="font-size:0.75rem;color:var(--muted);">Discord account linked to W.A.G.E. Society</div>
+      </div>
+      <form method="POST" action="/auth/discord/unlink" style="margin:0;" onsubmit="return confirm('Disconnect Discord? You will lose auto-role sync on all servers.');"><button type="submit" style="padding:0.5rem 1rem;background:transparent;border:1px solid #7f1d1d;color:#fca5a5;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;white-space:nowrap;">Disconnect</button></form>
+    </div>
+    <% } else { %>
+    <div class="dash-card" style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;background:#1a1a2e;border:1px solid var(--border);">
+      <div style="width:12px;height:12px;border-radius:50%;background:var(--muted);flex-shrink:0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:0.875rem;">Not Connected</div>
+        <div style="font-size:0.75rem;color:var(--muted);">Connect your Discord account to manage your servers</div>
+      </div>
+      <a href="/auth/discord/link?return_url=/dashboard/discord/servers" style="padding:0.625rem 1.25rem;background:#5865F2;color:#fff;border-radius:6px;font-size:0.8rem;font-weight:600;text-decoration:none;white-space:nowrap;">Connect Discord</a>
+    </div>
+    <% } %>
+
+    <!-- Server List — loaded dynamically from Discord API -->
+    <% if (discordLink) { %>
+    <h2 style="font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;margin-bottom:0.5rem;color:var(--text);">Your Admin Servers</h2>
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1.25rem;">Servers where you have <strong>Administrator</strong> permission. Click "Invite Bot" to add the W.A.G.E. Society bot.</p>
+    <div id="guilds-loading" style="text-align:center;padding:2rem;color:var(--muted);">
+      <div style="font-size:1.25rem;margin-bottom:0.5rem;">⏳</div>
+      <p style="font-size:0.85rem;">Loading your Discord servers…</p>
+    </div>
+    <div id="guilds-list" style="display:none;"></div>
+    <div id="guilds-empty" style="display:none;text-align:center;padding:3rem 2rem;background:var(--surface);border:1px dashed var(--border);border-radius:12px;color:var(--muted);">
+      <div style="font-size:2rem;margin-bottom:0.75rem;">🔒</div>
+      <p style="font-size:0.95rem;">No admin servers found. You need <strong>Administrator</strong> permission on a Discord server to add the bot.</p>
+    </div>
+    <div id="guilds-relink" style="display:none;text-align:center;padding:2rem;background:#1a1a2e;border:1px solid var(--border);border-radius:12px;">
+      <p style="font-size:0.9rem;color:var(--text);margin-bottom:1rem;">Your Discord connection needs to be refreshed to fetch your servers.</p>
+      <a href="/auth/discord/link?return_url=/dashboard/discord/servers" style="padding:0.625rem 1.25rem;background:#5865F2;color:#fff;border-radius:6px;font-size:0.8rem;font-weight:600;text-decoration:none;">Reconnect Discord</a>
+    </div>
+    <% } else { %>
+    <div style="text-align:center;padding:3rem 2rem;background:var(--surface);border:1px dashed var(--border);border-radius:12px;color:var(--muted);">
+      <div style="font-size:2rem;margin-bottom:0.75rem;">🔗</div>
+      <p style="font-size:0.95rem;">Connect your Discord account above to see your servers.</p>
+    </div>
+    <% } %>
+
+    <!-- Config Modal -->
+    <div id="config-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;padding:1rem;">
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:2rem;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+          <h2 style="font-family:'Space Grotesk',sans-serif;font-size:1.25rem;font-weight:700;">Server Config</h2>
+          <button onclick="closeConfig()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--muted);padding:0;">✕</button>
+        </div>
+        <div id="config-body">
+          <div style="text-align:center;padding:2rem;color:var(--muted);">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<%- include('../../partials/footer') %>
+
+<script>
+// Load guilds on page load if connected
+<% if (discordLink) { %>
+(async function loadGuilds() {
+  const loading = document.getElementById('guilds-loading');
+  const list = document.getElementById('guilds-list');
+  const empty = document.getElementById('guilds-empty');
+  const relink = document.getElementById('guilds-relink');
+
+  try {
+    const res = await fetch('/api/discord-servers/user-guilds');
+    const data = await res.json();
+    loading.style.display = 'none';
+
+    if (!data.connected || data.needsRelink) {
+      relink.style.display = 'block';
+      return;
+    }
+
+    if (!data.guilds || data.guilds.length === 0) {
+      empty.style.display = 'block';
+      return;
+    }
+
+    list.style.display = 'flex';
+    list.style.flexDirection = 'column';
+    list.style.gap = '1rem';
+
+    for (const g of data.guilds) {
+      const card = document.createElement('div');
+      card.className = 'dash-card';
+      card.style.cssText = 'display:flex;align-items:center;gap:1.25rem;';
+
+      const iconHtml = g.icon
+        ? `<img src="${g.icon}" alt="${esc(g.name)}" style="width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;">`
+        : `<div style="width:56px;height:56px;border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:1.25rem;font-weight:700;flex-shrink:0;color:var(--muted);">${esc(g.name.charAt(0).toUpperCase())}</div>`;
+
+      let actionHtml;
+      if (g.botInstalled) {
+        actionHtml = `
+          <span style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.75rem;background:#0d2b0d;border:1px solid #16a34a;color:#22c55e;border-radius:6px;font-size:0.75rem;font-weight:600;">
+            <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 4px #22c55e;"></span>
+            Bot Active
+          </span>
+          <button style="padding:0.4rem 0.75rem;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;" onclick="showConfig(null,'${g.id}')">Configure</button>`;
+      } else {
+        actionHtml = `<a href="${g.inviteUrl}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.5rem 1rem;background:#5865F2;color:#fff;border-radius:6px;font-size:0.8rem;font-weight:600;text-decoration:none;white-space:nowrap;">Invite Bot →</a>`;
+      }
+
+      const wageInfo = g.botInstalled && g.wageRoleId
+        ? `<span style="font-size:0.7rem;color:#ff6600;margin-left:0.5rem;">● WAGE Role Active</span>`
+        : '';
+
+      card.innerHTML = `
+        ${iconHtml}
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:1rem;margin-bottom:0.2rem;">${esc(g.name)}${wageInfo}</div>
+          <div style="font-size:0.8rem;color:var(--muted);">${g.botInstalled ? 'Bot installed' : 'Bot not installed'}</div>
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;align-items:center;">
+          ${actionHtml}
+        </div>`;
+      list.appendChild(card);
+    }
+  } catch (err) {
+    loading.innerHTML = `<div style="color:#fca5a5;padding:1rem;background:#2d1111;border-radius:6px;">Failed to load servers: ${err.message}</div>`;
+  }
+})();
+<% } %>
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+async function showConfig(serverId, guildId) {
+  const modal = document.getElementById('config-modal');
+  const body = document.getElementById('config-body');
+  modal.style.display = 'flex';
+  body.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted);">Loading...</div>';
+
+  try {
+    const res = await fetch(`/api/discord-servers/${guildId}`);
+    if (res.status === 403) {
+      // User doesn't own this server yet — claim it first
+      body.innerHTML = `
+        <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1rem;">You haven't claimed this server yet. Claim it to configure bot settings.</p>
+        <button style="padding:0.625rem 1.25rem;background:#5865F2;border:none;color:#fff;border-radius:6px;font-size:0.875rem;font-weight:600;cursor:pointer;" onclick="claimAndConfigure('${guildId}')">Claim Server</button>
+        <div id="claim-status" style="font-size:0.8rem;color:var(--muted);margin-top:0.75rem;"></div>`;
+      return;
+    }
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+
+    const s = data.server;
+    body.innerHTML = `
+      <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1.5rem;">Configure auto-role assignment and feature toggles for <strong>${esc(s.name || guildId)}</strong>.</p>
+      <div style="margin-bottom:1.5rem;">
+        <div style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent);margin-bottom:0.75rem;">Auto Role Assignment</div>
+        <label style="display:flex;align-items:center;gap:0.75rem;padding:0.625rem 0;border-bottom:1px solid var(--border);cursor:pointer;">
+          <input type="checkbox" id="cfg-free" ${s.auto_role_free !== false ? 'checked' : ''} onchange="saveConfig('${guildId}')">
+          <div><div style="font-weight:600;font-size:0.875rem;">Free Tier</div><div style="font-size:0.75rem;color:var(--muted);">Auto-assign when member is on free plan</div></div>
+        </label>
+        <label style="display:flex;align-items:center;gap:0.75rem;padding:0.625rem 0;border-bottom:1px solid var(--border);cursor:pointer;">
+          <input type="checkbox" id="cfg-creator" ${s.auto_role_creator !== false ? 'checked' : ''} onchange="saveConfig('${guildId}')">
+          <div><div style="font-weight:600;font-size:0.875rem;">Creator Tier</div><div style="font-size:0.75rem;color:var(--muted);">Auto-assign when member has creator membership</div></div>
+        </label>
+        <label style="display:flex;align-items:center;gap:0.75rem;padding:0.625rem 0;cursor:pointer;">
+          <input type="checkbox" id="cfg-pro" ${s.auto_role_pro !== false ? 'checked' : ''} onchange="saveConfig('${guildId}')">
+          <div><div style="font-weight:600;font-size:0.875rem;">Pro Tier</div><div style="font-size:0.75rem;color:var(--muted);">Auto-assign when member has pro membership</div></div>
+        </label>
+      </div>
+      <div style="margin-bottom:1.5rem;">
+        <div style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent);margin-bottom:0.75rem;">Features</div>
+        <label style="display:flex;align-items:center;gap:0.75rem;padding:0.625rem 0;border-bottom:1px solid var(--border);cursor:pointer;">
+          <input type="checkbox" id="cfg-greetings" ${s.greetings_enabled ? 'checked' : ''} onchange="saveConfig('${guildId}')">
+          <div><div style="font-weight:600;font-size:0.875rem;">Welcome Messages</div><div style="font-size:0.75rem;color:var(--muted);">Send greeting when new members join</div></div>
+        </label>
+        <label style="display:flex;align-items:center;gap:0.75rem;padding:0.625rem 0;cursor:pointer;">
+          <input type="checkbox" id="cfg-mod" ${s.mod_commands_enabled !== false ? 'checked' : ''} onchange="saveConfig('${guildId}')">
+          <div><div style="font-weight:600;font-size:0.875rem;">Mod Commands</div><div style="font-size:0.75rem;color:var(--muted);">Enable bot moderation commands</div></div>
+        </label>
+      </div>
+      <div id="config-save-status" style="font-size:0.8rem;color:var(--muted);margin-top:0.5rem;"></div>`;
+  } catch (err) {
+    body.innerHTML = `<div style="color:#fca5a5;padding:1rem;background:#2d1111;border-radius:6px;">${esc(err.message)}</div>`;
+  }
+}
+
+async function claimAndConfigure(guildId) {
+  const status = document.getElementById('claim-status');
+  status.textContent = 'Claiming...';
+  try {
+    const res = await fetch('/api/discord-servers/claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ guildId }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    showConfig(null, guildId);
+  } catch (err) {
+    status.textContent = 'Error: ' + err.message;
+    status.style.color = '#fca5a5';
+  }
+}
+
+async function saveConfig(guildId) {
+  const status = document.getElementById('config-save-status');
+  status.textContent = 'Saving...';
+  try {
+    const res = await fetch(`/api/discord-servers/${guildId}/config`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        auto_role_free: document.getElementById('cfg-free').checked,
+        auto_role_creator: document.getElementById('cfg-creator').checked,
+        auto_role_pro: document.getElementById('cfg-pro').checked,
+        greetings_enabled: document.getElementById('cfg-greetings').checked,
+        mod_commands_enabled: document.getElementById('cfg-mod').checked,
+      }),
+    });
+    const data = await res.json();
+    status.textContent = res.ok ? '✓ Saved' : 'Error: ' + (data.error || 'Unknown');
+  } catch (err) {
+    status.textContent = 'Error: ' + err.message;
+  }
+}
+
+function closeConfig() {
+  document.getElementById('config-modal').style.display = 'none';
+}
+
+document.getElementById('config-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeConfig();
+});
+</script>
+
+<style>
+#config-modal { backdrop-filter: blur(4px); }
+</style>
+</body>
+</html>

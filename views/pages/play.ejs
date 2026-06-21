@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <%- include('../partials/head-pwa') %>
+  <title>WAGE World — Play the Game</title>
+  <meta name="description" content="WAGE World — the game that pays. Earn, level up, and compete against creators.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    body {
+      background: #050508;
+      overflow-x: hidden;
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+    /* Background atmosphere */
+    .play-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 30%, rgba(245,158,11,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 40% at 20% 80%, rgba(139,92,246,0.08) 0%, transparent 50%),
+        radial-gradient(ellipse 40% 40% at 80% 70%, rgba(6,182,212,0.06) 0%, transparent 50%);
+    }
+    .play-main {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem 1.5rem;
+      text-align: center;
+    }
+    .play-logo-ring {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 2rem;
+      animation: play-ring-spin 6s linear infinite;
+    }
+    @keyframes play-ring-spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    .play-title {
+      font-size: clamp(3rem, 10vw, 6rem);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 0.9;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(135deg, #fff 0%, #F59E0B 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .play-subtitle {
+      font-size: clamp(1rem, 3vw, 1.3rem);
+      color: #94A3B8;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+    .play-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: rgba(245,158,11,0.1);
+      border: 1px solid rgba(245,158,11,0.25);
+      color: #F59E0B;
+      padding: 0.35rem 0.8rem;
+      border-radius: 999px;
+      margin-bottom: 2rem;
+    }
+    .play-badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #F59E0B;
+      box-shadow: 0 0 6px #F59E0B;
+      animation: pulse-gold 2s infinite;
+    }
+    @keyframes pulse-gold {
+      0%, 100% { opacity: 1; box-shadow: 0 0 6px #F59E0B; }
+      50%       { opacity: 0.5; box-shadow: 0 0 3px #F59E0B; }
+    }
+    /* Game iframe container */
+    .play-game-container {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto 2.5rem;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(245,158,11,0.2);
+      box-shadow: 0 0 60px rgba(245,158,11,0.08), 0 20px 60px rgba(0,0,0,0.5);
+      aspect-ratio: 16/9;
+      background: #0a0a0f;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .play-game-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+    .play-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      color: #64748B;
+    }
+    .play-placeholder-icon {
+      width: 64px;
+      height: 64px;
+      border: 2px solid rgba(245,158,11,0.3);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: play-ring-spin 6s linear infinite;
+    }
+    .play-placeholder p {
+      font-size: 0.9rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: #94A3B8;
+    }
+    .play-placeholder span {
+      font-size: 0.75rem;
+      color: #64748B;
+    }
+    /* Stats row */
+    .play-stats {
+      display: flex;
+      gap: 1.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 2.5rem;
+    }
+    .play-stat {
+      background: rgba(15,17,21,0.8);
+      border: 1px solid rgba(245,158,11,0.15);
+      border-radius: 12px;
+      padding: 1rem 1.5rem;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      text-align: center;
+    }
+    .play-stat-value {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #F59E0B;
+      font-family: 'Space Grotesk', sans-serif;
+      display: block;
+    }
+    .play-stat-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748B;
+      margin-top: 0.25rem;
+    }
+    /* Back button */
+    .play-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      background: none;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      color: #94A3B8;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .play-back:hover {
+      border-color: #F59E0B;
+      color: #F59E0B;
+      transform: translateY(-2px);
+    }
+    .play-back:focus-visible {
+      outline: 2px solid #F59E0B;
+      outline-offset: 3px;
+    }
+    /* Feature chips */
+    .play-features {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+    }
+    .play-feature-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(15,17,21,0.8);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 999px;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.78rem;
+      color: #94A3B8;
+      font-weight: 500;
+    }
+    .play-feature-chip svg { color: #F59E0B; }
+    /* Mobile adjustments */
+    @media (max-width: 600px) {
+      .play-game-container { aspect-ratio: 4/3; border-radius: 12px; }
+      .play-stats { gap: 0.75rem; }
+      .play-stat { padding: 0.75rem 1rem; }
+      .play-stat-value { font-size: 1.2rem; }
+    }
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .play-logo-ring, .play-placeholder-icon { animation: none; }
+      .play-badge-dot { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <a href="/" class="skip-link">Skip to main content</a>
+
+  <!-- Background atmosphere -->
+  <div class="play-bg" aria-hidden="true"></div>
+
+  <main class="play-main">
+    <!-- Logo ring -->
+    <svg class="play-logo-ring" viewBox="0 0 80 80" fill="none" aria-hidden="true">
+      <circle cx="40" cy="40" r="35" stroke="#F59E0B" stroke-width="2" stroke-dasharray="6 4" opacity="0.6"/>
+      <circle cx="40" cy="40" r="26" stroke="#F59E0B" stroke-width="1.5" opacity="0.4"/>
+      <circle cx="40" cy="40" r="18" fill="rgba(245,158,11,0.1)" stroke="#F59E0B" stroke-width="1"/>
+      <text x="40" y="46" text-anchor="middle" font-family="Space Grotesk" font-size="14" font-weight="900" fill="#F59E0B">W</text>
+    </svg>
+
+    <!-- Title -->
+    <p class="play-badge">
+      <span class="play-badge-dot"></span>
+      Game Portal
+    </p>
+    <h1 class="play-title">WAGE World</h1>
+    <p class="play-subtitle">The game that pays you to play.</p>
+
+    <!-- Feature chips -->
+    <div class="play-features" role="list">
+      <span class="play-feature-chip" role="listitem">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        Earn rewards
+      </span>
+      <span class="play-feature-chip" role="listitem">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Leaderboard
+      </span>
+      <span class="play-feature-chip" role="listitem">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 2a4 4 0 0 1 4 4c0 1.95-1.4 3.58-3.25 3.93"/><rect x="7" y="13" width="10" height="8" rx="2"/><path d="M12 13v8"/><circle cx="12" cy="6" r="1.5"/></svg>
+        Creator tools
+      </span>
+    </div>
+
+    <!-- Game container -->
+    <div class="play-game-container">
+      <iframe
+        class="play-game-iframe"
+        src="https://wagesociety.com/play-game/index.html"
+        title="WAGE World — Play"
+        allow="fullscreen"
+        loading="lazy"
+      ></iframe>
+      <div class="play-placeholder" role="img" aria-label="WAGE World game preview — game loading">
+        <div class="play-placeholder-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" aria-hidden="true">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+        </div>
+        <p>Loading WAGE World...</p>
+        <span>Game portal active — connect your wallet to earn</span>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="play-stats" role="list" aria-label="WAGE World community stats">
+      <div class="play-stat" role="listitem">
+        <span class="play-stat-value" data-countup="8472">8,472</span>
+        <span class="play-stat-label">Players</span>
+      </div>
+      <div class="play-stat" role="listitem">
+        <span class="play-stat-value" data-countup="12034">$12,034</span>
+        <span class="play-stat-label">Earned</span>
+      </div>
+      <div class="play-stat" role="listitem">
+        <span class="play-stat-value" data-countup="2847">2,847</span>
+        <span class="play-stat-label">Levels Completed</span>
+      </div>
+    </div>
+
+    <!-- Back button -->
+    <a href="/" class="play-back" aria-label="Return to WAGE Society homepage">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+        <path d="M19 12H5M12 5l-7 7 7 7"/>
+      </svg>
+      Back to WAGE Society
+    </a>
+  </main>
+
+  <!-- Count-up animation -->
+  <script>
+  (function() {
+    var els = document.querySelectorAll('[data-countup]');
+    if (!els.length) return;
+    var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (!entry.isIntersecting) return;
+        var el = entry.target;
+        observer.unobserve(el);
+        var raw = el.getAttribute('data-countup').replace(/[^0-9]/g, '');
+        var target = parseInt(raw, 10);
+        var prefix = el.getAttribute('data-countup').match(/^[^0-9]*/)[0] || '';
+        var duration = 1500;
+        var start = performance.now();
+        function step(now) {
+          var t = Math.min((now - start) / duration, 1);
+          var ease = 1 - Math.pow(1 - t, 3);
+          el.textContent = prefix + Math.round(ease * target).toLocaleString();
+          if (t < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      });
+    }, { threshold: 0.5 });
+    els.forEach(function(el) { observer.observe(el); });
+  })();
+  </script>
+</body>
+</html>

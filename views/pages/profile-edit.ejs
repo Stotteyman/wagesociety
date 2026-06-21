@@ -2,18 +2,36 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+
+<%- include('../partials/head-pwa') %>
   <title>Edit Profile — W.A.G.E. Society</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/theme.css">
   <link rel="stylesheet" href="/css/pages.css">
   <style>
-    .edit-page { max-width: 680px; margin: 0 auto; padding: 3rem 1.5rem; }
+    .edit-page { max-width: 1100px; margin: 0 auto; padding: 3rem 1.5rem; }
     .edit-header { margin-bottom: 2.5rem; }
-    .edit-header h1 { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 900; color: var(--fg); }
+    .edit-header h1 { font-family: 'Space Grotesk', sans-serif; font-size: clamp(1.5rem, 4vw, 2rem); font-weight: 900; color: var(--fg); }
     .edit-header p { color: var(--muted); font-size: 0.95rem; margin-top: 0.5rem; }
+    .edit-profile-grid {
+      display: grid;
+      gap: 1.5rem;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 768px) {
+      .edit-profile-grid {
+        grid-template-columns: 1fr 2fr;
+        gap: 2rem;
+      }
+      .edit-profile-avatar-col {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+    }
     .edit-avatar-preview {
       width: 80px; height: 80px; border-radius: 50%; overflow: hidden;
       background: var(--surface); border: 2px solid var(--border);
@@ -22,14 +40,18 @@
     }
     .edit-avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
     .edit-avatar-preview .initials { font-size: 1.75rem; font-weight: 700; color: var(--accent); }
+    @media (min-width: 768px) {
+      .edit-avatar-preview--lg { width: 120px; height: 120px; }
+      .edit-avatar-preview--lg .initials { font-size: 3rem; }
+    }
     .form-group { margin-bottom: 1.5rem; }
     .form-label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
-    .form-input, .form-textarea { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; color: var(--fg); box-sizing: border-box; }
+    .form-input, .form-textarea { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 1rem; font-family: 'Space Grotesk', sans-serif; font-size: 0.95rem; color: var(--fg); box-sizing: border-box; }
     .form-input:focus, .form-textarea:focus { outline: none; border-color: var(--accent); }
     .form-textarea { resize: vertical; min-height: 100px; }
     .form-hint { font-size: 0.75rem; color: var(--muted); margin-top: 0.4rem; }
-    .form-actions { display: flex; gap: 1rem; align-items: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
-    .btn-save { background: var(--accent); color: #fff; border: none; padding: 0.75rem 2rem; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+    .form-actions { display: flex; gap: 1rem; align-items: center; margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); flex-wrap: wrap; }
+    .btn-save { background: var(--accent); color: #fff; border: none; padding: 0.75rem 2rem; border-radius: 8px; font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
     .btn-save:hover { opacity: 0.85; }
     .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-cancel { color: var(--muted); text-decoration: none; font-size: 0.9rem; }
@@ -37,6 +59,10 @@
     .form-error { color: #dc2626; font-size: 0.85rem; margin-top: 0.5rem; display: none; }
     .form-success { color: #16a34a; font-size: 0.85rem; margin-top: 0.5rem; display: none; }
     .social-row { display: grid; grid-template-columns: 120px 1fr; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; }
+    @media (max-width: 480px) {
+      .social-row { grid-template-columns: 1fr; }
+      .social-platform { margin-bottom: 0.25rem; }
+    }
     .social-platform { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
     .social-hint { font-size: 0.7rem; color: var(--muted); margin-top: 0.25rem; }
 
@@ -65,6 +91,58 @@
       color: var(--fg);
       margin: 0;
     }
+    /* Connected accounts cards */
+    .connected-accounts {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 2rem;
+    }
+    .account-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+    }
+    .account-card-icon {
+      width: 38px; height: 38px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .account-card-icon svg { width: 20px; height: 20px; }
+    .account-card-icon--google { background: var(--surface); border: 1px solid var(--border); }
+    .account-card-icon--kick    { background: #1a1a1a; }
+    .account-card-icon--discord { background: #5865F2; }
+    .account-card-info { flex: 1; min-width: 0; }
+    .account-card-name { font-weight: 600; font-size: 0.875rem; color: var(--fg); }
+    .account-card-email { font-size: 0.775rem; color: var(--muted); margin-top: 0.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .account-card-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+    .btn-account-connect {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: var(--accent); color: #fff; border: none;
+      padding: 0.5rem 1.1rem; border-radius: 7px;
+      font-family: 'Space Grotesk', sans-serif; font-size: 0.8rem;
+      font-weight: 600; cursor: pointer; text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .btn-account-connect:hover { opacity: 0.85; }
+    .btn-account-unlink {
+      background: none; border: 1px solid var(--border);
+      color: var(--muted); padding: 0.4rem 0.9rem;
+      border-radius: 6px; font-size: 0.775rem; cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif; transition: color 0.15s, border-color 0.15s;
+    }
+    .btn-account-unlink:hover { color: #dc2626; border-color: #dc2626; }
+    .connected-badge {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      background: rgba(34,197,94,0.12); color: #22c55e;
+      font-size: 0.75rem; font-weight: 600;
+      padding: 0.2rem 0.6rem; border-radius: 20px;
+    }
+    .connected-badge::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
     .discord-linked-info {
       display: flex;
       align-items: center;
@@ -99,7 +177,7 @@
       display: inline-flex; align-items: center; gap: 0.5rem;
       background: #5865F2; color: #fff; border: none;
       padding: 0.65rem 1.4rem; border-radius: 8px;
-      font-family: 'DM Sans', sans-serif; font-size: 0.875rem;
+      font-family: 'Space Grotesk', sans-serif; font-size: 0.875rem;
       font-weight: 600; cursor: pointer; text-decoration: none;
       transition: opacity 0.2s;
     }
@@ -108,7 +186,7 @@
       background: none; border: 1px solid var(--border);
       color: var(--muted); padding: 0.45rem 1rem;
       border-radius: 6px; font-size: 0.8rem; cursor: pointer;
-      font-family: 'DM Sans', sans-serif; transition: color 0.15s, border-color 0.15s;
+      font-family: 'Space Grotesk', sans-serif; transition: color 0.15s, border-color 0.15s;
     }
     .btn-discord-unlink:hover { color: #dc2626; border-color: #dc2626; }
 
@@ -120,8 +198,8 @@
       font-weight: 500;
       margin-bottom: 1.5rem;
     }
-    .flash-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-    .flash-info    { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .flash-success { background: rgba(34,197,94,0.1); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+    .flash-info    { background: rgba(234,179,8,0.1); color: #fbbf24; border: 1px solid rgba(234,179,8,0.3); }
   </style>
 </head>
 <body>
@@ -134,15 +212,171 @@
     </div>
 
     <%# Flash banners for Discord link/unlink results %>
-    <% if (discordFlash === 'linked') { %>
+    <% if (discordFlash === 'linked' && joinServer) { %>
+      <div class="flash-banner" style="background:rgba(88,101,242,0.15);border:1px solid rgba(88,101,242,0.4);color:#a5b4fc;">
+        <strong>✓ Discord connected!</strong> You're almost set — <a href="<%= discordServerInvite || '#' %>" target="_blank" style="color:#c7d2fe;font-weight:700;">join the W.A.G.E. Society server</a> to unlock your creator role.
+      </div>
+    <% } else if (discordFlash === 'linked') { %>
       <div class="flash-banner flash-success">✓ Discord account connected successfully.</div>
     <% } else if (discordFlash === 'unlinked') { %>
       <div class="flash-banner flash-info">Discord account unlinked.</div>
     <% } else if (discordFlash === 'denied') { %>
       <div class="flash-banner flash-info">Discord authorization was cancelled.</div>
     <% } else if (discordFlash === 'error') { %>
-      <div class="flash-banner" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;">Something went wrong connecting Discord. Try again.</div>
+      <div class="flash-banner" style="background:rgba(239,68,68,0.1);color:#fca5a5;border:1px solid rgba(239,68,68,0.3);">Something went wrong connecting Discord. Try again.</div>
+    <% } else if (googleFlash === 'linked') { %>
+      <div class="flash-banner flash-success">✓ YouTube account connected.</div>
+    <% } else if (googleFlash === 'unlinked') { %>
+      <div class="flash-banner flash-info">YouTube account unlinked.</div>
+    <% } else if (kickFlash === 'linked') { %>
+      <div class="flash-banner flash-success">✓ Kick account connected.</div>
+    <% } else if (kickFlash === 'unlinked') { %>
+      <div class="flash-banner flash-info">Kick account unlinked.</div>
     <% } %>
+
+    <%# Connected accounts section (Google + Kick) %>
+    <div class="connected-accounts">
+      <%# Google %>
+      <div class="account-card">
+        <div class="account-card-icon account-card-icon--google">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+        </div>
+        <div class="account-card-info">
+          <div class="account-card-name">YouTube</div>
+          <% if (oauthByProvider['google']) { %>
+            <div class="account-card-email"><%= profile && profile.youtube_channel_name ? profile.youtube_channel_name : 'Connected' %></div>
+          <% } else { %>
+            <div class="account-card-email" style="color:var(--muted);">Not connected</div>
+          <% } %>
+        </div>
+        <div class="account-card-actions">
+          <% if (oauthByProvider['google']) { %>
+            <span class="connected-badge">Connected</span>
+            <form method="POST" action="/auth/google/unlink" style="display:inline;">
+              <button type="submit" class="btn-account-unlink">Unlink</button>
+            </form>
+          <% } else { %>
+            <a href="/auth/google?return=/settings" class="btn-account-connect">Connect YouTube</a>
+          <% } %>
+        </div>
+      </div>
+
+      <%# Kick %>
+      <div class="account-card">
+        <div class="account-card-icon account-card-icon--kick">
+          <svg viewBox="0 0 24 24" fill="#53d900" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M16.5 8.5L10 15.5H8.5L7 14V10L16.5 8.5Z" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="0.5" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="account-card-info">
+          <div class="account-card-name">Kick</div>
+          <% if (oauthByProvider['kick']) { %>
+            <div class="account-card-email"><%= oauthByProvider['kick'].display_name || oauthByProvider['kick'].email %></div>
+          <% } else { %>
+            <div class="account-card-email" style="color:var(--muted);">Not connected</div>
+          <% } %>
+        </div>
+        <div class="account-card-actions">
+          <% if (oauthByProvider['kick']) { %>
+            <span class="connected-badge">Connected</span>
+            <form method="POST" action="/auth/kick/unlink" style="display:inline;">
+              <button type="submit" class="btn-account-unlink">Unlink</button>
+            </form>
+          <% } else { %>
+            <a href="/auth/kick?return=/settings" class="btn-account-connect">Connect</a>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <%# YouTube channel selector — only shown when Google is connected %>
+    <div class="dash-card" id="ytChannelSection" style="margin-bottom:2rem;display:none;">
+      <h3 class="dash-card-title">Featured YouTube Channel</h3>
+      <p style="color:var(--muted);font-size:0.875rem;margin-bottom:1rem;">Select the YouTube channel to use for livestream integration. Your Streams page will pull live data from this channel.</p>
+      <div id="ytChannelsLoading" style="color:var(--muted);font-size:0.85rem;">Loading your YouTube channels…</div>
+      <div id="ytChannelsError" class="error-msg" style="display:none;margin-bottom:1rem;font-size:0.85rem;"></div>
+      <select id="ytChannelSelect" class="form-input" style="width:100%;max-width:400px;display:none;" onchange="saveYoutubeChannel()">
+        <option value="">— Select a channel —</option>
+      </select>
+      <div id="ytChannelSaved" style="display:none;align-items:center;gap:0.5rem;margin-top:0.75rem;font-size:0.85rem;color:#22c55e;">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0;"></span>
+        <span id="ytChannelSavedText">Channel saved!</span>
+      </div>
+    </div>
+
+    <script>
+    async function loadYoutubeChannels() {
+      const section = document.getElementById('ytChannelSection');
+      if (!section) return;
+      <% if (!oauthByProvider['google']) { %>
+      section.style.display = 'none';
+      return;
+      <% } %>
+
+      section.style.display = 'block';
+      try {
+        const res = await fetch('/api/me/youtube-channels');
+        const data = await res.json();
+        document.getElementById('ytChannelsLoading').style.display = 'none';
+
+        if (data.error) {
+          const errEl = document.getElementById('ytChannelsError');
+          errEl.textContent = data.error;
+          errEl.style.display = 'block';
+          return;
+        }
+
+        const channels = data.channels || [];
+        const select = document.getElementById('ytChannelSelect');
+        select.innerHTML = '<option value="">— Select a channel —</option>';
+        channels.forEach(ch => {
+          const opt = document.createElement('option');
+          opt.value = ch.channelId;
+          opt.textContent = ch.title;
+          if (ch.channelId === '<%= featuredYoutubeChannelId || '' %>') opt.selected = true;
+          select.appendChild(opt);
+        });
+        select.style.display = 'block';
+        document.getElementById('ytChannelsLoading').style.display = 'none';
+      } catch (e) {
+        document.getElementById('ytChannelsLoading').style.display = 'none';
+        const errEl = document.getElementById('ytChannelsError');
+        errEl.textContent = 'Failed to load YouTube channels.';
+        errEl.style.display = 'block';
+      }
+    }
+
+    async function saveYoutubeChannel() {
+      const select = document.getElementById('ytChannelSelect');
+      const channelId = select.value;
+      const savedEl = document.getElementById('ytChannelSaved');
+      savedEl.style.display = 'none';
+      try {
+        const res = await fetch('/api/me/youtube-channel', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channelId: channelId || null }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          const savedText = document.getElementById('ytChannelSavedText');
+          savedText.textContent = channelId ? '✓ Channel saved!' : '✓ Channel cleared';
+          savedEl.style.display = 'flex';
+          setTimeout(() => { savedEl.style.display = 'none'; }, 3000);
+        }
+      } catch (e) {
+        // Silently fail on save error
+      }
+    }
+
+    loadYoutubeChannels();
+    </script>
 
     <%# Discord connect card %>
     <div class="discord-card">
@@ -177,7 +411,7 @@
           </div>
         <% } else { %>
           <div style="margin-top:0.75rem;display:flex;align-items:center;gap:0.5rem;">
-            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f97316;flex-shrink:0;"></span>
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff6600;flex-shrink:0;"></span>
             <span style="font-size:0.8rem;color:var(--muted);">Role sync pending — could not assign role. Try unlinking and reconnecting.</span>
           </div>
         <% } %>
@@ -197,19 +431,24 @@
       <% } %>
     </div>
 
-    <form id="profileForm" onsubmit="return false;">
-      <div class="form-group">
-        <label class="form-label">Avatar URL</label>
-        <input type="url" class="form-input" id="avatar_url" value="<%= profile.avatar_url || '' %>" placeholder="https://..." />
-        <p class="form-hint">Paste a direct image URL. Square images look best.</p>
-        <div class="edit-avatar-preview" id="avatarPreview">
+    <div class="edit-profile-grid">
+      <div class="edit-profile-avatar-col">
+        <%# Avatar preview column (left, desktop) %>
+        <div class="edit-avatar-preview edit-avatar-preview--lg" id="editAvatarPreviewWrap">
           <% if (profile.avatar_url) { %>
-            <img src="<%= profile.avatar_url %>" alt="Avatar preview" />
+            <img src="<%= profile.avatar_url %>" alt="Avatar preview" id="editAvatarPreviewImg" />
           <% } else { %>
-            <span class="initials"><%= (profile.display_name || profile.username || 'U').charAt(0).toUpperCase() %></span>
+            <span class="initials" id="editAvatarInitials"><%= (profile.display_name || profile.username || 'U').charAt(0).toUpperCase() %></span>
           <% } %>
         </div>
       </div>
+
+      <form id="profileForm" onsubmit="return false;">
+        <div class="form-group">
+          <label class="form-label">Avatar URL</label>
+          <input type="url" class="form-input" id="avatar_url" value="<%= profile.avatar_url || '' %>" placeholder="https://..." />
+          <p class="form-hint">Paste a direct image URL. Square images look best.</p>
+        </div>
 
       <div class="form-group">
         <label class="form-label">Display Name</label>
@@ -255,7 +494,8 @@
         <span class="form-success" id="successMsg">✓ Saved!</span>
         <span class="form-error" id="errorMsg"></span>
       </div>
-    </form>
+      </form>
+    </div><%# end .edit-profile-grid %>
   </main>
 
   <%- include('../partials/footer') %>
@@ -269,13 +509,13 @@
 
     // Avatar URL preview
     const avatarUrlEl = document.getElementById('avatar_url');
-    const avatarPreview = document.getElementById('avatarPreview');
+    const avatarPreview = document.getElementById('editAvatarPreviewWrap');
     avatarUrlEl.addEventListener('input', () => {
       const url = avatarUrlEl.value.trim();
       if (url) {
-        avatarPreview.innerHTML = '<img src="' + url + '" alt="Avatar preview" onerror="this.parentElement.innerHTML=\\\\'<span class=\\\"initials\\\">?</span>\\\\'"/>';
+        avatarPreview.innerHTML = '<img src="' + url + '" alt="Avatar preview" id="editAvatarPreviewImg" onerror="this.parentElement.innerHTML=\\\\'<span class=\\\"initials\\\">?</span>\\\\'"/>';
       } else {
-        avatarPreview.innerHTML = '<span class="initials"><%= (profile.display_name || profile.username || "U").charAt(0).toUpperCase() %></span>';
+        avatarPreview.innerHTML = '<span class="initials" id="editAvatarInitials"><%= (profile.display_name || profile.username || "U").charAt(0).toUpperCase() %></span>';
       }
     });
 

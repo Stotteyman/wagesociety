@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+
+<%- include('../partials/head-pwa') %>
   <title>Signing in — W.A.G.E. Society</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,7 +13,7 @@
   <style>
     .cb-wrap { display:flex; align-items:center; justify-content:center; min-height:100vh; }
     .cb-card { text-align:center; max-width:360px; padding:40px 32px; }
-    .cb-spinner { width:32px; height:32px; border:3px solid rgba(249,115,22,0.2); border-top-color:#f97316; border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 16px; }
+    .cb-spinner { width:32px; height:32px; border:3px solid rgba(255,102,0,0.2); border-top-color:#ff6600; border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 16px; }
     @keyframes spin { to { transform:rotate(360deg); } }
     .cb-msg { font-size:1rem; color:var(--text,#f5f5f5); font-family:'Space Grotesk',sans-serif; }
     .cb-error { color:#ef4444; font-size:0.9rem; margin-top:12px; }
@@ -20,89 +22,24 @@
 <body>
   <div class="cb-wrap">
     <div class="cb-card">
-      <div class="cb-spinner" id="spinner"></div>
-      <p class="cb-msg" id="statusMsg">Signing you in&hellip;</p>
-      <p class="cb-error" id="errorMsg" style="display:none"></p>
+      <div class="cb-spinner"></div>
+      <p class="cb-msg">Signing you in&hellip;</p>
     </div>
   </div>
 
   <script>
-  // auth-callback.ejs — Handles both magic link (token_hash) and OAuth (code) callbacks.
-  //
-  // Both flows delegate to the server-side /auth/verify endpoint which uses
-  // the Supabase Node.js SDK to handle PKCE exchange and session creation.
-  // No client-side fetch needed — eliminates body-parsing failures.
-  //
-  // Magic link:  ?token_hash=xxx&type=magiclink  → GET /auth/verify
-  // OAuth:       ?code=xxx                       → GET /auth/verify
   (function() {
-    var statusEl  = document.getElementById('statusMsg');
-    var errorEl  = document.getElementById('errorMsg');
-    var spinnerEl = document.getElementById('spinner');
-
-    function showErr(msg) {
-      spinnerEl.style.display = 'none';
-      statusEl.textContent = 'Sign-in failed';
-      errorEl.textContent = msg;
-      errorEl.style.display = '';
-      setTimeout(function() { window.location.href = '/login?error=' + encodeURIComponent(msg); }, 4000);
-    }
-
     var params = new URLSearchParams(window.location.search);
-    var token_hash = params.get('token_hash');
-    var type       = params.get('type');
-    var code       = params.get('code');
-    var provider   = params.get('provider');
-    var errParam   = params.get('error') || params.get('error_description');
+    var token = params.get('token');
 
-    console.log('[auth-callback] params: token_hash=' + (token_hash ? 'YES' : 'NO') + ' type=' + (type||'none') + ' code=' + (code?'YES':'NO') + ' provider=' + (provider||'none'));
-
-    if (errParam) {
-      showErr(errParam);
+    // Magic link: redirect to server-side /auth/verify
+    if (token) {
+      window.location.href = '/auth/verify?token=' + encodeURIComponent(token);
       return;
     }
 
-    // Magic link: redirect to server-side verify which uses verifyOtp()
-    // Supabase sends type=email (not type=magiclink) for magic link callbacks.
-    if (token_hash && type === 'email') {
-      console.log('[auth-callback] magic link — redirecting to /auth/verify');
-      window.location.href = '/auth/verify?token_hash=' + encodeURIComponent(token_hash) + '&type=email';
-      return;
-    }
-
-    // OAuth PKCE: read verifier from localStorage and POST to /auth/exchange.
-    // The verifier was stored by login.ejs under 'wage_pkce_verifier'.
-    // We exchange the code + verifier directly with Supabase via server route.
-    if (code) {
-      var verifier = localStorage.getItem('wage_pkce_verifier');
-      console.log('[auth-callback] OAuth code present=' + !!code + ' verifier present=' + !!verifier);
-      if (!verifier) {
-        showErr('Session expired. Please try signing in again.');
-        return;
-      }
-      spinnerEl.style.display = 'block';
-      statusEl.textContent = 'Completing sign-in\u2026';
-      console.log('[auth-callback] POSTing to /auth/exchange with code_len=' + code.length + ' verifier_len=' + verifier.length);
-      fetch('/auth/exchange', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: code, code_verifier: verifier }),
-      }).then(function(r) { return r.json(); }).then(function(data) {
-        localStorage.removeItem('wage_pkce_verifier');
-        if (data.ok) {
-          window.location.href = data.redirect || '/dashboard';
-        } else {
-          showErr(data.error || 'Sign-in failed. Please try again.');
-        }
-      }).catch(function(err) {
-        console.error('[auth-callback] exchange error:', err);
-        showErr('Sign-in failed. Please try again.');
-      });
-      return;
-    }
-
-    // No recognizable params
-    showErr('No sign-in code received. Please try again.');
+    // OAuth flow no longer supported — redirect to login
+    window.location.href = '/login?error=oauth_not_supported';
   })();
   </script>
 </body>
