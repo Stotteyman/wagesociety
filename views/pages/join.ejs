@@ -2,9 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+
+<%- include('../partials/head-pwa') %>
   <title>Join the Society — W.A.G.E. Society</title>
   <meta name="description" content="Join W.A.G.E. Society. Free, Creator, or Pro — pick your tier and start building without platform middlemen taking a cut.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Join the Society — W.A.G.E. Society">
+  <meta property="og:description" content="Join W.A.G.E. Society. Free, Creator, or Pro — pick your tier and start building without platform middlemen taking a cut.">
+  <meta property="og:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
+  <meta property="og:url" content="https://wagesociety.com/join">
+  <meta property="og:site_name" content="WAGE Society">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Join the Society — W.A.G.E. Society">
+  <meta name="twitter:description" content="Join W.A.G.E. Society. Free, Creator, or Pro — pick your tier and start building without platform middlemen taking a cut.">
+  <meta name="twitter:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -15,7 +27,7 @@
     .join-hero {
       padding: 5rem 3rem 3rem;
       text-align: center;
-      background: radial-gradient(ellipse 60% 50% at 50% 20%, rgba(249,115,22,0.06) 0%, transparent 70%);
+      background: radial-gradient(ellipse 60% 50% at 50% 20%, rgba(255,102,0,0.06) 0%, transparent 70%);
     }
     .join-eyebrow {
       font-size: 0.7rem;
@@ -64,10 +76,10 @@
       position: relative;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .tier-card:hover { border-color: rgba(249,115,22,0.4); }
+    .tier-card:hover { border-color: rgba(255,102,0,0.4); }
     .tier-card.featured {
       border-color: var(--accent);
-      box-shadow: 0 0 0 1px rgba(249,115,22,0.2), 0 20px 60px rgba(249,115,22,0.08);
+      box-shadow: 0 0 0 1px rgba(255,102,0,0.2), 0 20px 60px rgba(255,102,0,0.08);
     }
     .tier-badge {
       font-size: 0.65rem;
@@ -160,11 +172,11 @@
       background: var(--accent);
       color: #fff;
     }
-    .tier-cta-primary:hover { background: var(--accent-hover); box-shadow: 0 4px 20px rgba(249,115,22,0.25); }
+    .tier-cta-primary:hover { background: var(--accent-hover); box-shadow: 0 4px 20px rgba(255,102,0,0.25); }
     .tier-cta-secondary {
       background: transparent;
       color: var(--accent);
-      border: 1px solid rgba(249,115,22,0.3);
+      border: 1px solid rgba(255,102,0,0.3);
     }
     .tier-cta-secondary:hover { background: var(--accent-dim); }
     .tier-cta-current {
@@ -183,7 +195,7 @@
     }
     .current-tier-card {
       background: var(--bg-2);
-      border: 1px solid rgba(249,115,22,0.3);
+      border: 1px solid rgba(255,102,0,0.3);
       border-radius: var(--radius-card);
       padding: 1.5rem 2rem;
       display: flex;
@@ -201,7 +213,7 @@
       letter-spacing: 0.12em;
       text-transform: uppercase;
       background: var(--accent-dim);
-      border: 1px solid rgba(249,115,22,0.2);
+      border: 1px solid rgba(255,102,0,0.2);
       color: var(--accent);
       padding: 0.25rem 0.75rem;
       border-radius: 100px;
@@ -286,7 +298,7 @@
 
   <section class="join-hero">
     <p class="join-eyebrow">Join the Society</p>
-    <h1 class="join-title">We All<br>Gonna Eat.</h1>
+    <h1 class="join-title">We All<br>Gotta Eat.</h1>
     <p class="join-sub">Pick your tier. No platform middlemen. No algorithm grief. You keep your cut.</p>
   </section>
 
@@ -313,6 +325,15 @@
       <% } else { %>
       <span style="color:var(--muted-2);font-size:0.875rem;">You have the highest tier.</span>
       <% } %>
+    </div>
+  </div>
+  <% } %>
+
+  <% if (referrerName) { %>
+  <div class="referral-banner" style="max-width:1100px;margin:0 auto 1rem;padding:0 3rem;">
+    <div style="background:rgba(255,102,0,0.08);border:1px solid rgba(255,102,0,0.25);border-radius:var(--radius-card);padding:0.875rem 1.25rem;display:flex;align-items:center;gap:0.6rem;font-size:0.875rem;color:var(--accent);">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      Invited by <strong>@<%= referrerName %></strong> — you both earn rewards when you verify your email!
     </div>
   </div>
   <% } %>
@@ -365,6 +386,7 @@
               <div id="freeError" class="join-msg error" style="display:none;"></div>
               <div id="freeSuccess" class="join-msg success" style="display:none;"></div>
               <form id="freePasswordForm" class="free-form" onsubmit="submitFreePassword(event)">
+                <input type="hidden" id="freeReferralCode" value="<%= referralCode || '' %>">
                 <div class="free-form-row">
                   <input type="email" id="freeEmail" class="auth-input" placeholder="Email address" required autocomplete="email">
                 </div>
@@ -477,6 +499,88 @@
         <button class="tier-cta tier-cta-secondary" onclick="startCheckout('pro')">Go Pro →</button>
       <% } %>
     </div>
+
+    <!-- ── ELITE ─────────────────────────────────────────────── -->
+    <div class="tier-card" id="eliteCard">
+      <h2 class="tier-name">ELITE</h2>
+      <div class="tier-price">
+        <span class="tier-price-amount">$199</span>
+        <span class="tier-price-period">/month</span>
+      </div>
+      <p class="tier-tagline">Full access to all W.A.G.E. Society features.</p>
+      <div class="tier-divider"></div>
+      <ul class="tier-features">
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Everything in Pro
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Featured profile
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Early access to new features
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          VIP community access
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Dedicated onboarding
+        </li>
+      </ul>
+
+      <% if (currentTier === 'elite') { %>
+        <button class="tier-cta tier-cta-current" disabled>Current Plan</button>
+      <% } else { %>
+        <button class="tier-cta tier-cta-secondary" onclick="startCheckout('elite')">Go ELITE →</button>
+      <% } %>
+    </div>
+
+    <!-- ── UNLIMITED ─────────────────────────────────────────── -->
+    <div class="tier-card" id="unlimitedCard">
+      <h2 class="tier-name">UNLIMITED</h2>
+      <div class="tier-price">
+        <span class="tier-price-amount">$499</span>
+        <span class="tier-price-period">/month</span>
+      </div>
+      <p class="tier-tagline">The complete W.A.G.E. Society experience. No restrictions.</p>
+      <div class="tier-divider"></div>
+      <ul class="tier-features">
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Everything in ELITE
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Unlimited blog posts &amp; livestream tools
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Custom branded profile
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          1-on-1 strategy session (monthly)
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Advanced revenue analytics
+        </li>
+        <li>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          White-glove support
+        </li>
+      </ul>
+
+      <% if (currentTier === 'unlimited') { %>
+        <button class="tier-cta tier-cta-current" disabled>Current Plan</button>
+      <% } else { %>
+        <button class="tier-cta tier-cta-secondary" onclick="startCheckout('unlimited')">Go UNLIMITED →</button>
+      <% } %>
+    </div>
   </div>
 
   <p class="join-fine-print">
@@ -507,6 +611,7 @@ async function submitFreePassword(e) {
   e.preventDefault();
   const email = document.getElementById('freeEmail').value.trim();
   const password = document.getElementById('freePassword').value;
+  const refCode = document.getElementById('freeReferralCode').value.trim() || null;
   const btn = document.getElementById('freePasswordBtn');
   const errEl = document.getElementById('freeError');
   const succEl = document.getElementById('freeSuccess');
@@ -521,7 +626,7 @@ async function submitFreePassword(e) {
     const r = await fetch('/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, referral_code: refCode }),
     });
     const data = await r.json();
     if (data.ok) {
@@ -589,12 +694,18 @@ async function submitFreeMagic(e) {
   }
 }
 
-// ── Paid checkout (Creator/Pro) — direct Stripe subscription links ───
+// ── Paid checkout (Creator/Pro/ELITE/UNLIMITED) — direct Stripe subscription links ───
 function startCheckout(planSlug) {
   // If logged in, jump straight to Stripe subscription link
   <% if (userEmail) { %>
-    const links = { creator: '<%= subscriptionLinksMonthly.creator %>', pro: '<%= subscriptionLinksMonthly.pro %>' };
+    const links = {
+      creator:   '<%= subscriptionLinksMonthly.creator %>',
+      pro:       '<%= subscriptionLinksMonthly.pro %>',
+      elite:     '<%= subscriptionLinksMonthly.elite %>',
+      unlimited: '<%= subscriptionLinksMonthly.unlimited %>',
+    };
     if (links[planSlug]) window.location.href = links[planSlug];
+    else alert('Plan not available: ' + planSlug);
   <% } else { %>
     // Not logged in — prompt signup first
     window.location.href = '/login?next=' + encodeURIComponent('/join?checkout=' + planSlug);

@@ -15,7 +15,7 @@
     }
     .debug-header h1 { font-size: 1.4rem; font-weight: 700; color: var(--accent); }
     .debug-badge {
-      background: rgba(249,115,22,0.15); border: 1px solid rgba(249,115,22,0.3);
+      background: rgba(255,102,0,0.15); border: 1px solid rgba(255,102,0,0.3);
       color: var(--accent); font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 100px;
       letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600;
     }
@@ -152,12 +152,12 @@
       <div class="error-flash visible"><%= error %></div>
     <% } %>
 
-    <!-- ── Section 1: Supabase ─────────────────────────────────── -->
+    <!-- ── Section 1: Database Health ─────────────────────────── -->
     <div class="section-card" id="sec-supabase">
       <div class="section-header" onclick="toggleSection('sec-supabase')">
         <div style="display:flex;align-items:center;gap:0.6rem;">
           <span class="status-dot" id="dot-supabase"></span>
-          <span class="section-title"><span class="icon">⚡</span> Supabase Connection</span>
+          <span class="section-title"><span class="icon">🗄️</span> Database Health</span>
         </div>
         <div style="display:flex;align-items:center;gap:1rem;">
           <span class="section-meta" id="meta-supabase"></span>
@@ -166,7 +166,7 @@
       </div>
       <div class="section-body">
         <div class="btn-row">
-          <button class="btn btn-primary" onclick="runSupabaseCheck()">Run Full Diagnostic</button>
+          <button class="btn btn-primary" onclick="runSupabaseCheck()">Run Health Check</button>
         </div>
         <div id="supabase-results"></div>
 
@@ -484,7 +484,7 @@
       card.classList.toggle('open');
     }
 
-    // ── Supabase ────────────────────────────────────────────────
+    // ── Database Health ───────────────────────────────────────
     async function runSupabaseCheck() {
       show('supabase-results', '<div class="state-msg"><span class="spinner"></span>Running checks...</div>');
       try {

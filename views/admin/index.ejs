@@ -1,0 +1,112 @@
+<% const body = `
+<style>
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+  @media (max-width: 900px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.25rem;
+    display: flex; flex-direction: column; gap: 0.3rem;
+  }
+  .stat-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+  .stat-value { font-size: 1.75rem; font-weight: 800; color: var(--fg); }
+  .stat-sub { font-size: 0.75rem; color: var(--muted); }
+  .quick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  @media (max-width: 900px) { .quick-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .quick-grid { grid-template-columns: 1fr; } }
+  .quick-card {
+    background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;
+    text-decoration: none; color: var(--fg);
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .quick-card:hover { border-color: var(--accent); background: var(--surface); }
+  .quick-icon { font-size: 1.75rem; }
+  .quick-title { font-weight: 700; font-size: 1rem; }
+  .quick-desc { font-size: 0.8rem; color: var(--muted); line-height: 1.4; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .section-title { font-size: 1rem; font-weight: 700; }
+</style>
+
+<div class="admin-page-header">
+  <span class="admin-page-label">Admin</span>
+  <h1 class="admin-page-title">Overview</h1>
+  <p class="admin-page-subtitle">Platform management and settings.</p>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">Total Members</div>
+    <div class="stat-value" id="stat-members">—</div>
+    <div class="stat-sub">all registered users</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Active Subscribers</div>
+    <div class="stat-value" id="stat-subscribers">—</div>
+    <div class="stat-sub">paid + trialing</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Monthly Revenue</div>
+    <div class="stat-value" id="stat-revenue">—</div>
+    <div class="stat-sub">from subscriptions</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Referral Points</div>
+    <div class="stat-value" id="stat-points">—</div>
+    <div class="stat-sub">distributed to community</div>
+  </div>
+</div>
+
+<div class="section-header">
+  <h2 class="section-title">Quick Access</h2>
+</div>
+<div class="quick-grid">
+  <a href="/admin/users" class="quick-card">
+    <div class="quick-icon">👥</div>
+    <div class="quick-title">Manage Members</div>
+    <div class="quick-desc">Search, ban, suspend, change tiers, view all users.</div>
+  </a>
+  <a href="/admin/roles" class="quick-card">
+    <div class="quick-icon">🔑</div>
+    <div class="quick-title">Roles &amp; Permissions</div>
+    <div class="quick-desc">Edit roles, toggle permissions, assign roles to users.</div>
+  </a>
+  <a href="/admin/discord" class="quick-card">
+    <div class="quick-icon">🤖</div>
+    <div class="quick-title">Discord Bot</div>
+    <div class="quick-desc">Configure verify, re-sync roles, check server status.</div>
+  </a>
+  <a href="/admin/tiers" class="quick-card">
+    <div class="quick-icon">💳</div>
+    <div class="quick-title">Tiers &amp; Pricing</div>
+    <div class="quick-desc">Manage membership plans, prices, and features.</div>
+  </a>
+  <a href="/admin/shop" class="quick-card">
+    <div class="quick-icon">🛒</div>
+    <div class="quick-title">Merch Shop</div>
+    <div class="quick-desc">Add, edit, and manage merchandise items.</div>
+  </a>
+  <a href="/admin/diagnostics" class="quick-card">
+    <div class="quick-icon">🔧</div>
+    <div class="quick-title">Diagnostics</div>
+    <div class="quick-desc">Health checks, DB browser, env vars, error logs.</div>
+  </a>
+</div>
+
+<script>
+fetch('/api/auth/me').then(function(r) { return r.json(); }).then(function(data) {
+  if (!data.user || (!data.access?.permissions?.includes('users.manage') && !data.access?.isSuperadmin)) return;
+  fetch('/api/admin/users').then(function(r) { return r.json(); }).then(function(d) {
+    if (d.users) {
+      var total = d.users.length;
+      var subs = d.users.filter(function(u) { return u.membership_status === 'active' || u.membership_status === 'trialing'; }).length;
+      var points = d.users.reduce(function(s, u) { return s + (u.referral_points || 0); }, 0);
+      document.getElementById('stat-members').textContent = total;
+      document.getElementById('stat-subscribers').textContent = subs;
+      document.getElementById('stat-points').textContent = points.toLocaleString();
+    }
+  }).catch(function() {});
+}).catch(function() {});
+</script>
+`; %>
+<%- include('layout', { body, navSection: 'Admin', activeTab: 'home', userEmail: typeof userEmail !== 'undefined' ? userEmail : '' }) %>

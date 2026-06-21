@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  
+
+<%- include('../../partials/head-pwa') %>
+  <title><%= server.name || 'Server' %> — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    :root { --discord-accent: #5865F2; --discord-dim: rgba(88,101,242,0.12); }
+    body { font-family: 'Space Grotesk', sans-serif; }
+    .discord-label { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--discord-accent); margin-bottom: 1rem; background: var(--discord-dim); border: 1px solid rgba(88,101,242,0.25); padding: 0.35rem 0.9rem; border-radius: 100px; }
+    .dashboard-page { padding: 3rem 3rem 5rem; }
+    .dashboard-inner { max-width: 1100px; margin: 0 auto; }
+    .server-hero { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 2rem; flex-wrap: wrap; }
+    .server-hero-icon { width: 80px; height: 80px; border-radius: 14px; object-fit: cover; background: var(--discord-dim); flex-shrink: 0; }
+    .server-hero-icon-placeholder { width: 80px; height: 80px; border-radius: 14px; background: var(--discord-dim); display: flex; align-items: center; justify-content: center; font-size: 2rem; flex-shrink: 0; }
+    .server-hero-name { font-size: clamp(1.5rem, 3vw, 2.25rem); font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; }
+    .server-hero-meta { font-size: 0.85rem; color: var(--muted); margin-top: 0.25rem; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .server-status { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.65rem; border-radius: 100px; background: rgba(34,197,94,0.15); color: #4ade80; }
+    .stat-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem; margin: 1.5rem 0; }
+    .stat-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; text-align: center; }
+    .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--text); }
+    .stat-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 0.2rem; }
+    /* Tabs */
+    .tab-bar { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--border); margin-bottom: 2rem; flex-wrap: wrap; }
+    .tab-btn { padding: 0.75rem 1.25rem; font-size: 0.85rem; font-weight: 600; color: var(--muted); background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s; border-radius: 6px 6px 0 0; font-family: inherit; }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--discord-accent); border-bottom-color: var(--discord-accent); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    /* Config rows */
+    .config-section { margin-bottom: 2rem; }
+    .config-section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--discord-accent); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+    .config-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.875rem 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .config-row:last-child { border-bottom: none; }
+    .config-info { flex: 1; min-width: 200px; }
+    .config-label { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.15rem; }
+    .config-desc { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+    /* Toggle switch */
+    .toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 100px; cursor: pointer; transition: all 0.2s; }
+    .toggle-slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 2px; top: 2px; background: var(--muted); border-radius: 50%; transition: all 0.2s; }
+    .toggle input:checked + .toggle-slider { background: var(--discord-accent); border-color: var(--discord-accent); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(20px); background: #fff; }
+    /* Number inputs */
+    .num-input { width: 80px; padding: 0.4rem 0.75rem; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.85rem; font-family: inherit; text-align: center; }
+    .num-input:focus { outline: none; border-color: var(--discord-accent); }
+    /* Buttons */
+    .btn-discord { display: inline-flex; align-items: center; gap: 0.4rem; background: var(--discord-accent); color: #fff; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.8rem; font-weight: 600; text-decoration: none; border: none; cursor: pointer; transition: background 0.2s; font-family: inherit; }
+    .btn-discord:hover { background: #4752C4; }
+    .btn-discord:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-ghost { display: inline-flex; align-items: center; gap: 0.4rem; background: var(--surface); color: var(--muted); padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid var(--border); font-size: 0.8rem; font-weight: 600; text-decoration: none; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+    .btn-ghost:hover { color: var(--text); border-color: var(--border-hover); }
+    /* Quick actions */
+    .quick-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1.5rem; }
+    /* Roles list */
+    .role-item { display: flex; align-items: center; gap: 0.875rem; padding: 0.75rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.625rem; transition: border-color 0.2s; }
+    .role-item:hover { border-color: var(--discord-accent); }
+    .role-color { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+    .role-name { flex: 1; font-weight: 600; font-size: 0.9rem; }
+    .role-count { font-size: 0.78rem; color: var(--muted); }
+    /* Logs table */
+    .log-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .log-table th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
+    .log-table td { padding: 0.75rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .log-table tr:last-child td { border-bottom: none; }
+    .log-table tr:hover td { background: var(--surface); }
+    .log-type { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.2rem 0.5rem; border-radius: 4px; }
+    .log-type.join { background: rgba(34,197,94,0.12); color: #4ade80; }
+    .log-type.leave { background: rgba(239,68,68,0.12); color: #f87171; }
+    .log-type.mod { background: rgba(88,101,242,0.15); color: #818cf8; }
+    .log-type.warn { background: rgba(251,191,36,0.12); color: #fbbf24; }
+    .log-type.ban { background: rgba(239,68,68,0.2); color: #f87171; }
+    .log-empty { text-align: center; padding: 3rem; color: var(--muted); }
+    .nav-back { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--muted); text-decoration: none; margin-bottom: 1.5rem; transition: color 0.2s; }
+    .nav-back:hover { color: var(--text); }
+    .save-status { font-size: 0.8rem; color: var(--muted); margin-left: auto; }
+    .save-status.ok { color: #4ade80; }
+    /* Filter bar */
+    .filter-bar { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .filter-chip { padding: 0.35rem 0.875rem; border-radius: 100px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--muted); transition: all 0.2s; font-family: inherit; }
+    .filter-chip.active { background: var(--discord-dim); border-color: rgba(88,101,242,0.4); color: var(--discord-accent); }
+    .save-btn { padding: 0.625rem 1.5rem; background: var(--discord-accent); color: #fff; border: none; border-radius: 6px; font-weight: 700; font-size: 0.875rem; cursor: pointer; font-family: inherit; transition: background 0.2s; }
+    .save-btn:hover { background: #4752C4; }
+    .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .inline-save { display: flex; align-items: center; gap: 0.75rem; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+<%- include('../../partials/nav') %>
+
+<section class="dashboard-page">
+  <div class="dashboard-inner">
+
+    <a href="/dashboard/discord" class="nav-back">← Discord Servers</a>
+
+    <!-- Server hero -->
+    <div class="server-hero">
+      <% if (server.icon_url) { %>
+        <img src="<%= server.icon_url %>" alt="<%= server.name %>" class="server-hero-icon">
+      <% } else { %>
+        <div class="server-hero-icon-placeholder">🤖</div>
+      <% } %>
+      <div>
+        <h1 class="server-hero-name"><%= server.name || 'Unnamed Server' %></h1>
+        <div class="server-hero-meta">
+          <span class="server-status"><span style="width:6px;height:6px;border-radius:50%;background:#4ade80;"></span>Connected</span>
+          <span>ID: <%= server.guild_id %></span>
+          <% if (server.connected_at) { %>
+          <span>Since <%= new Date(server.connected_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %></span>
+          <% } %>
+        </div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <button class="btn-ghost" onclick="syncNow()">↻ Sync</button>
+        <button class="btn-ghost" onclick="generateInviteLink()">🔗 Invite</button>
+        <a href="https://discord.com/channels/<%= server.guild_id %>" target="_blank" class="btn-ghost">View on Discord ↗</a>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stat-row" id="stats-row">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-members">—</div>
+        <div class="stat-label">Members</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-online">—</div>
+        <div class="stat-label">Online</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-channels">—</div>
+        <div class="stat-label">Channels</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-roles">—</div>
+        <div class="stat-label">Roles</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-bar" id="tab-bar">
+      <button class="tab-btn <%= tab === 'overview' ? 'active' : '' %>" data-tab="overview">Overview</button>
+      <button class="tab-btn <%= tab === 'role-mappings' ? 'active' : '' %>" data-tab="role-mappings">Role Mappings</button>
+      <button class="tab-btn <%= tab === 'members' ? 'active' : '' %>" data-tab="members">Members</button>
+      <button class="tab-btn <%= tab === 'roles' ? 'active' : '' %>" data-tab="roles">Auto-Roles</button>
+      <button class="tab-btn <%= tab === 'channels' ? 'active' : '' %>" data-tab="channels">Channels</button>
+      <button class="tab-btn <%= tab === 'security' ? 'active' : '' %>" data-tab="security">Security</button>
+      <button class="tab-btn <%= tab === 'logs' ? 'active' : '' %>" data-tab="logs">Logs</button>
+    </div>
+
+    <!-- ══ OVERVIEW TAB ══════════════════════════════════════════════════════════ -->
+    <div class="tab-panel <%= tab === 'overview' ? 'active' : '' %>" id="panel-overview">
+      <div class="config-section">
+        <div class="config-section-title">Server Information</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1rem;">
+            <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.3rem;">Server ID</div>
+            <div style="font-family:monospace;font-size:0.85rem;font-weight:600;"><%= server.guild_id %></div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1rem;">
+            <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.3rem;">Connection</div>
+            <div style="font-size:0.85rem;font-weight:600;color:#4ade80;">✓ Bot installed</div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1rem;">
+            <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.3rem;">Last Updated</div>
+            <div style="font-size:0.85rem;"><%= server.updated_at ? new Date(server.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Never' %></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="config-section">
+        <div class="config-section-title">Quick Actions</div>
+        <div class="quick-actions">
+          <button class="btn-discord" onclick="syncNow()">↻ Refresh Stats</button>
+          <button class="btn-ghost" onclick="generateInviteLink()">🔗 Regenerate Invite Link</button>
+          <a href="https://discord.com/invite/<%= server.invite_code || '' %>" target="_blank" class="btn-ghost">Copy Invite Link</a>
+          <button class="btn-ghost" onclick="refreshAll()">↻ Refresh All</button>
+        </div>
+      </div>
+
+      <div class="config-section">
+        <div class="config-section-title">Active Configuration</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:0.75rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;">
+            <span style="font-size:0.85rem;">Auto-role Free</span>
+            <span id="cfg-overview-free" style="font-size:0.78rem;font-weight:700;color:var(--discord-accent);">—</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;">
+            <span style="font-size:0.85rem;">Auto-role Creator</span>
+            <span id="cfg-overview-creator" style="font-size:0.78rem;font-weight:700;color:var(--discord-accent);">—</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;">
+            <span style="font-size:0.85rem;">Auto-role Pro</span>
+            <span id="cfg-overview-pro" style="font-size:0.78rem;font-weight:700;color:var(--discord-accent);">—</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;">
+            <span style="font-size:0.85rem;">Greetings</span>
+            <span id="cfg-overview-greetings" style="font-size:0.78rem;font-weight:700;color:var(--discord-accent);">—</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;">
+            <span style="font-size:0.85rem;">Mod Commands</span>
+            <span id="cfg-overview-mod" style="font-size:0.78rem;font-weight:700;color:var(--discord-accent);">—</span>
+          </div>
+        </div>
+        <div style="margin-top:0.75rem;">
+          <a href="/dashboard/discord/<%= server.guild_id %>?tab=roles" class="btn-ghost" style="font-size:0.78rem;">Edit configuration →</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ROLE MAPPINGS TAB ══════════════════════════════════════════════════════ -->
+    <div class="tab-panel <%= tab === 'role-mappings' ? 'active' : '' %>" id="panel-role-mappings">
+      <div class="config-section">
+        <div class="config-section-title">Tier → Discord Role Mapping</div>
+        <p style="font-size:0.875rem;color:var(--muted);margin-bottom:1.5rem;line-height:1.6;">
+          Set which Discord role corresponds to each membership tier. When a member's WAGEOS tier changes, the bot updates their Discord role automatically. Roles are looked up by name — they must exist in your Discord server.
+        </p>
+
+        <div id="role-mappings-loading" style="text-align:center;padding:2rem;color:var(--muted);">Loading Discord roles…</div>
+
+        <div id="role-mappings-form" style="display:none;">
+          <div class="config-row">
+            <div class="config-info">
+              <div class="config-label">Free Tier Role</div>
+              <div class="config-desc">Role assigned to members on the free plan</div>
+            </div>
+            <select id="mapping-free" class="role-select" style="padding:0.4rem 0.75rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;min-width:160px;">
+              <option value="">— Not set —</option>
+            </select>
+          </div>
+          <div class="config-row">
+            <div class="config-info">
+              <div class="config-label">Creator Tier Role</div>
+              <div class="config-desc">Role assigned to members with an active Creator membership</div>
+            </div>
+            <select id="mapping-creator" class="role-select" style="padding:0.4rem 0.75rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;min-width:160px;">
+              <option value="">— Not set —</option>
+            </select>
+          </div>
+          <div class="config-row">
+            <div class="config-info">
+              <div class="config-label">Pro Tier Role</div>
+              <div class="config-desc">Role assigned to members with an active Pro membership</div>
+            </div>
+            <select id="mapping-pro" class="role-select" style="padding:0.4rem 0.75rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;min-width:160px;">
+              <option value="">— Not set —</option>
+            </select>
+          </div>
+          <div class="inline-save">
+            <button class="save-btn" id="mapping-save-btn" onclick="saveRoleMappings()">Save Mappings</button>
+            <span class="save-status" id="mapping-save-status"></span>
+          </div>
+        </div>
+
+        <div id="role-mappings-error" style="display:none;padding:1rem;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;color:#f87171;font-size:0.875rem;margin-top:1rem;">
+          Could not load Discord roles. Make sure the bot is in this server.
+        </div>
+      </div>
+
+      <div class="config-section" style="margin-top:2.5rem;">
+        <div class="config-section-title">Current Mappings Summary</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.75rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;">
+            <div>
+              <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);">Free</div>
+              <div id="summary-free" style="font-weight:700;font-size:0.9rem;margin-top:0.2rem;">—</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;">
+            <div>
+              <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);">Creator</div>
+              <div id="summary-creator" style="font-weight:700;font-size:0.9rem;margin-top:0.2rem;">—</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;">
+            <div>
+              <div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);">Pro</div>
+              <div id="summary-pro" style="font-weight:700;font-size:0.9rem;margin-top:0.2rem;">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ MEMBERS TAB ═══════════════════════════════════════════════════════════ -->
+    <div class="tab-panel <%= tab === 'members' ? 'active' : '' %>" id="panel-members">
+      <div class="config-section">
+        <div class="config-section-title">Guild Members</div>
+        <p style="font-size:0.875rem;color:var(--muted);margin-bottom:1.5rem;line-height:1.6;">
+          Members in this Discord server with their linked WAGEOS account and current tier. Admins can manually add or remove Discord roles.
+        </p>
+
+        <div style="display:flex;gap:0.75rem;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center;">
+          <input type="text" id="member-search" placeholder="Search by username…" style="flex:1;min-width:180px;padding:0.5rem 0.875rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.875rem;" oninput="debouncedSearch()">
+          <select id="member-tier-filter" style="padding:0.5rem 0.75rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;" onchange="loadMembers()">
+            <option value="">All tiers</option>
+            <option value="pro">Pro</option>
+            <option value="creator">Creator</option>
+            <option value="free">Free</option>
+            <option value="unlinked">Unlinked</option>
+          </select>
+          <span id="member-count" style="font-size:0.8rem;color:var(--muted);"></span>
+        </div>
+
+        <div id="members-loading" style="text-align:center;padding:2rem;color:var(--muted);">Loading members…</div>
+        <div id="members-error" style="display:none;padding:1rem;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;color:#f87171;font-size:0.875rem;">
+          Could not load members. Make sure the bot has permission to view the member list.
+        </div>
+
+        <div id="members-list" style="display:none;"></div>
+        <div id="members-empty" style="display:none;text-align:center;padding:2rem;color:var(--muted);">No members found matching your search.</div>
+      </div>
+    </div>
+
+    <!-- ══ ROLES TAB ═════════════════════════════════════════════════════════════ -->
+    <div class="tab-panel <%= tab === 'roles' ? 'active' : '' %>" id="panel-roles">
+      <div class="config-section">
+        <div class="config-section-title">Auto-Role Assignment</div>
+        <p style="font-size:0.875rem;color:var(--muted);margin-bottom:1.5rem;line-height:1.6;">
+          When a W.A.G.E. Society member joins or updates their membership, the bot automatically assigns the matching Discord role. Each member needs their Discord account linked in our system.
+        </p>
+
+        <div class="config-row">
+          <div class="config-info">
+            <div class="config-label">Free Tier</div>
+            <div class="config-desc">Auto-assign to members on the free plan</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="role-free" onchange="markDirty()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="config-row">
+          <div class="config-info">
+            <div class="config-label">Creator Tier</div>
+            <div class="config-desc">Auto-assign to members with an active Creator membership</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="role-creator" onchange="markDirty()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="config-row">
+          <div class="config-info">
+            <div class="config-label">Pro Tier</div>
+            <div class="config-desc">Auto-assign to members with an active Pro membership</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="role-pro" onchange="markDirty()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="inline-save">
+          <button class="save-btn" id="role-save-btn" onclick="saveRoles()">Save Role Settings</button>
+          <span class="save-status" id="role-save-status"></span>
+        </div>
+      </div>
+
+      <div class="config-section" style="margin-top:2.5rem;">
+        <div class="config-section-title">Features</div>
+        <div class="config-row">
+          <div class="config-info">
+            <div class="config-label">Welcome Messages</div>
+            <div class="config-desc">Send a greeting when new members join the server</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="role-greetings" onchange="markDirty()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="config-row">
+          <div class="config-info">
+            <div class="config-label">Mod Commands</div>
+            <div class="config-desc">Enable bot moderation commands (kick, ban, mute, etc.)</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="role-mod" onchange="markDirty()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="inline-save">
+          <button class="save-btn" id="role-save-btn-2" onclick="saveRoles()">Save Features</button>
+          <span class="save-status" id="role-save-status-2"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ CHANNELS TAB ════════════════════════════════════════════════════════ -->
+    <div class="tab-panel <%= tab === 'channels' ? 'active' : '' %>" id="panel-channels">
+      <div class="config-section">
+        <div class="config-section-title">Channel Configuration</div>
+        <p style="font-size:0.875rem;color:var(--muted);margin-bottom:1.5rem;line-height:1.6;">
+          Configure which channels the bot uses for welcome messages, logging, and moderation. These are Discord channel IDs — copy them from Developer Mode.
+        </p>
+
+        <div class="config-row">
+          <div class="config-info">
+            <div class="config-label">Welcome Channel ID</div>
+            <div class="config-desc">The channel where the bot sends welcome messages for new members</div>
+          </div>
+          <input type="text" id="ch-welcome" class="num-input" style="width:180px;font-family:monospace;" placeholder="Channel ID" onchange="markDirty()">
+        </div>
+
+        <div class="config-row">
+          <div class="config-info">
+            <div class="config-label">Log Channel ID</div>
+            <div class="config-desc">The channel where moderation events (joins, leaves, bans) are logged</div>
+          </div>
+          <input type="text" id="ch-log" class="num-input" style="width:180px;font-family:monospace;" placeholder="Channel ID" onchange="markDirty()">
+        </div>
+
+        <div class="inline-save">
+          <button class="save-btn" onclick="saveChannels()">Save Channel Settings</button>
+          <span class="save-status" id="ch-save-status"></span>
+        </div>
+      </div>
+
+      <div class="config-section" style="margin-top:2.5rem;">
+        <div class="config-section-title">Channel Permissions (Coming Soon)</div>
+        <div style="background:var(--surface);border:1px dashed var(--border);border-radius:8px;padding:1.5rem;text-align:center;color:var(--muted);font-size:0.875rem;">
+          Advanced channel-level permission management is being built. For now, use Discord's built-in role permissions to control bot access to specific channels.
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECURITY TAB ════════════════════════════════════════════════════════ -->
+    <div class="tab-panel <%= tab === 'security' ? 'active' : '' %>" id="panel-security">
+      <div class="config-section">
+        <div class="config-section-title">Anti-Spam</div>
+        <div class="config-row">
+          <div class="config-info">
+            <div class="config-label">Enable Anti-Spam</div>
+            <div class="config-desc">Automatically warn/mute members who send too many messages in a short window</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="sec-anti-spam" onchange="markDirty()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="config-row">
+          <div class="config-info">
+            <div class="config-label">Spam Threshold</div>
+            <div class="config-desc">Number of messages in the detection window before action is taken</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <input type="number" id="sec-spam-threshold" class="num-input" value="10" min="3" max="50" onchange="markDirty()">
+            <span style="font-size:0.8rem;color:var(--muted);">messages</span>
+          </div>
+        </div>
+        <div class="inline-save">
+          <button class="save-btn" onclick="saveSecurity('anti-spam')">Save Anti-Spam</button>
+          <span class="save-status" id="sec-spam-status"></span>
+        </div>
+      </div>
+
+      <div class="config-section" style="margin-top:2rem;">
+        <div class="config-section-title">Anti-Raid</div>
+        <div class="config-row">
+          <div class="config-info">
+            <div class="config-label">Enable Anti-Raid</div>
+            <div class="config-desc">Pause member joins if many accounts join in a short time (bot protection)</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="sec-anti-raid" onchange="markDirty()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="config-row">
+          <div class="config-info">
+            <div class="config-label">Join Threshold</div>
+            <div class="config-desc">Number of joins that triggers the raid protection</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <input type="number" id="sec-raid-threshold" class="num-input" value="10" min="3" max="100" onchange="markDirty()">
+            <span style="font-size:0.8rem;color:var(--muted);">joins</span>
+          </div>
+        </div>
+        <div class="config-row">
+          <div class="config-info">
+            <div class="config-label">Detection Window</div>
+            <div class="config-desc">Time window for counting joins (in seconds)</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <input type="number" id="sec-raid-window" class="num-input" value="30" min="5" max="300" onchange="markDirty()">
+            <span style="font-size:0.8rem;color:var(--muted);">seconds</span>
+          </div>
+        </div>
+        <div class="inline-save">
+          <button class="save-btn" onclick="saveSecurity('anti-raid')">Save Anti-Raid</button>
+          <span class="save-status" id="sec-raid-status"></span>
+        </div>
+      </div>
+
+      <div class="config-section" style="margin-top:2rem;">
+        <div class="config-section-title">Verification & Invite Controls</div>
+        <div class="config-row">
+          <div class="config-info">
+            <div class="config-label">Invite Age Limit</div>
+            <div class="config-desc">Maximum age of invite links the bot will honor (0 = disabled, 7 = 7 days, etc.)</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.5rem;">
+            <input type="number" id="sec-invite-age" class="num-input" value="0" min="0" max="1440" onchange="markDirty()">
+            <span style="font-size:0.8rem;color:var(--muted);">minutes (0=disabled)</span>
+          </div>
+        </div>
+        <div class="config-row">
+          <div class="config-info">
+            <div class="config-label">Verification Gate</div>
+            <div class="config-desc">Only allow members whose WAGEOS account is linked to Discord to join</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="sec-verification-gate" onchange="markDirty()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="inline-save">
+          <button class="save-btn" onclick="saveSecurity('general')">Save Settings</button>
+          <span class="save-status" id="sec-general-status"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ LOGS TAB ════════════════════════════════════════════════════════════ -->
+    <div class="tab-panel <%= tab === 'logs' ? 'active' : '' %>" id="panel-logs">
+      <div class="config-section">
+        <div class="config-section-title">Recent Events</div>
+        <div class="filter-bar">
+          <button class="filter-chip active" data-filter="all" onclick="filterLogs('all', this)">All</button>
+          <button class="filter-chip" data-filter="join" onclick="filterLogs('join', this)">Joins</button>
+          <button class="filter-chip" data-filter="leave" onclick="filterLogs('leave', this)">Leaves</button>
+          <button class="filter-chip" data-filter="mod" onclick="filterLogs('mod', this)">Moderation</button>
+          <button class="filter-chip" data-filter="warn" onclick="filterLogs('warn', this)">Warnings</button>
+        </div>
+
+        <div id="log-container">
+          <div class="log-empty">No events logged yet. Moderation events will appear here once the bot has been active.</div>
+        </div>
+
+        <div style="margin-top:1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+          <p style="font-size:0.78rem;color:var(--muted);">Showing mock event log. Real events populate after the bot processes member activity.</p>
+          <button class="btn-ghost" onclick="refreshLogs()">↻ Refresh Logs</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<%- include('../../partials/footer') %>
+
+<script>
+// ── Tab switching ───────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    document.getElementById('panel-' + tab)?.classList.add('active');
+    history.replaceState({}, '', `?tab=${tab}`);
+  });
+});
+
+// ── Load server data on init ─────────────────────────────────────────────────
+const guildId = '<%= server.guild_id %>';
+let isDirty = false;
+
+async function loadServerData() {
+  try {
+    const res = await fetch(`/api/discord/servers/${guildId}`);
+    if (!res.ok) return;
+
+    const data = await res.json();
+
+    // Update stats
+    if (data.stats) {
+      if (data.stats.memberCount != null) document.getElementById('stat-members').textContent = data.stats.memberCount;
+      if (data.stats.onlineCount != null) document.getElementById('stat-online').textContent = data.stats.onlineCount;
+      if (data.stats.channelCount != null) document.getElementById('stat-channels').textContent = data.stats.channelCount;
+      if (data.stats.roleCount != null) document.getElementById('stat-roles').textContent = data.stats.roleCount;
+    }
+
+    const s = data.server;
+    if (s) {
+      // Roles tab
+      if ('auto_role_free' in s) document.getElementById('role-free').checked = s.auto_role_free !== false;
+      if ('auto_role_creator' in s) document.getElementById('role-creator').checked = s.auto_role_creator !== false;
+      if ('auto_role_pro' in s) document.getElementById('role-pro').checked = s.auto_role_pro !== false;
+      if ('greetings_enabled' in s) document.getElementById('role-greetings').checked = s.greetings_enabled;
+      if ('mod_commands_enabled' in s) document.getElementById('role-mod').checked = s.mod_commands_enabled !== false;
+
+      // Overview config
+      if ('auto_role_free' in s) document.getElementById('cfg-overview-free').textContent = (s.auto_role_free !== false) ? 'ON' : 'OFF';
+      if ('auto_role_creator' in s) document.getElementById('cfg-overview-creator').textContent = (s.auto_role_creator !== false) ? 'ON' : 'OFF';
+      if ('auto_role_pro' in s) document.getElementById('cfg-overview-pro').textContent = (s.auto_role_pro !== false) ? 'ON' : 'OFF';
+      if ('greetings_enabled' in s) document.getElementById('cfg-overview-greetings').textContent = s.greetings_enabled ? 'ON' : 'OFF';
+      if ('mod_commands_enabled' in s) document.getElementById('cfg-overview-mod').textContent = (s.mod_commands_enabled !== false) ? 'ON' : 'OFF';
+
+      // Channels
+      if (s.welcome_channel_id) document.getElementById('ch-welcome').value = s.welcome_channel_id;
+      if (s.log_channel_id) document.getElementById('ch-log').value = s.log_channel_id;
+    }
+  } catch (err) {
+    console.error('[loadServerData]', err);
+  }
+}
+
+function markDirty() { isDirty = true; }
+
+// ── Save: Roles ───────────────────────────────────────────────────────────────
+async function saveRoles() {
+  const btn = document.getElementById('role-save-btn');
+  const status = document.getElementById('role-save-status');
+  const btn2 = document.getElementById('role-save-btn-2');
+  const status2 = document.getElementById('role-save-status-2');
+
+  btn.disabled = true;
+  btn2 && (btn2.disabled = true);
+  status.textContent = 'Saving...';
+  status2 && (status2.textContent = 'Saving...');
+
+  try {
+    const res = await fetch(`/api/discord/servers/${guildId}/config`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        auto_role_free: document.getElementById('role-free').checked,
+        auto_role_creator: document.getElementById('role-creator').checked,
+        auto_role_pro: document.getElementById('role-pro').checked,
+        greetings_enabled: document.getElementById('role-greetings').checked,
+        mod_commands_enabled: document.getElementById('role-mod').checked,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Save failed');
+
+    status.textContent = '✓ Saved';
+    status.className = 'save-status ok';
+    status2 && (status2.textContent = '✓ Saved');
+    status2 && (status2.className = 'save-status ok');
+    isDirty = false;
+    loadServerData(); // refresh overview
+  } catch (err) {
+    status.textContent = '✗ ' + (err.message || 'Error');
+    status.className = 'save-status';
+    status2 && (status2.textContent = '✗ Error');
+    status2 && (status2.className = 'save-status');
+    btn.disabled = false;
+    btn2 && (btn2.disabled = false);
+  }
+}
+
+// ── Save: Channels ────────────────────────────────────────────────────────────
+async function saveChannels() {
+  const btn = document.querySelector('#panel-channels .save-btn');
+  const status = document.getElementById('ch-save-status');
+  btn.disabled = true;
+  status.textContent = 'Saving...';
+
+  try {
+    const res = await fetch(`/api/discord/servers/${guildId}/config`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        welcome_channel_id: document.getElementById('ch-welcome').value || null,
+        log_channel_id: document.getElementById('ch-log').value || null,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Save failed');
+    status.textContent = '✓ Saved';
+    status.className = 'save-status ok';
+    isDirty = false;
+  } catch (err) {
+    status.textContent = '✗ ' + (err.message || 'Error');
+    status.className = 'save-status';
+    btn.disabled = false;
+  }
+}
+
+// ── Save: Security ────────────────────────────────────────────────────────────
+async function saveSecurity(section) {
+  let statusId = 'sec-' + section + '-status';
+  const status = document.getElementById(statusId);
+  const btn = event?.target || document.querySelector('#panel-security .save-btn');
+  btn.disabled = true;
+  status.textContent = 'Saving...';
+
+  try {
+    const res = await fetch(`/api/discord/servers/${guildId}/config`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        anti_spam_enabled: document.getElementById('sec-anti-spam').checked,
+        anti_spam_threshold: parseInt(document.getElementById('sec-spam-threshold').value) || 10,
+        anti_raid_enabled: document.getElementById('sec-anti-raid').checked,
+        anti_raid_threshold: parseInt(document.getElementById('sec-raid-threshold').value) || 10,
+        anti_raid_window: parseInt(document.getElementById('sec-raid-window').value) || 30,
+        invite_age_limit: parseInt(document.getElementById('sec-invite-age').value) || 0,
+        verification_gate: document.getElementById('sec-verification-gate').checked,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Save failed');
+    status.textContent = '✓ Saved';
+    status.className = 'save-status ok';
+    isDirty = false;
+  } catch (err) {
+    status.textContent = '✗ ' + (err.message || 'Error');
+    status.className = 'save-status';
+    btn.disabled = false;
+  }
+}
+
+// ── Sync ──────────────────────────────────────────────────────────────────────
+async function syncNow() {
+  try {
+    const res = await fetch(`/api/discord/servers/${guildId}/sync`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Sync failed');
+    if (data.stats) {
+      if (data.stats.memberCount != null) document.getElementById('stat-members').textContent = data.stats.memberCount;
+      if (data.stats.onlineCount != null) document.getElementById('stat-online').textContent = data.stats.onlineCount;
+      if (data.stats.channelCount != null) document.getElementById('stat-channels').textContent = data.stats.channelCount;
+    }
+  } catch (err) {
+    alert('Sync failed: ' + err.message);
+  }
+}
+
+async function refreshAll() {
+  await syncNow();
+  await loadServerData();
+}
+
+// ── Invite ────────────────────────────────────────────────────────────────────
+async function generateInviteLink() {
+  try {
+    const res = await fetch(`/api/discord/servers/${guildId}/generate-invite`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    window.open(data.installUrl, '_blank');
+  } catch (err) {
+    alert('Failed: ' + err.message);
+  }
+}
+
+// ── Logs ──────────────────────────────────────────────────────────────────────
+let currentFilter = 'all';
+const mockLogs = [
+  { type: 'join', user: 'User#1234', actor: 'WAGE Bot', time: '2 min ago', detail: 'Joined the server (member #420)' },
+  { type: 'mod', user: 'SpamBot#9999', actor: 'WAGE Bot', time: '8 min ago', detail: 'Kicked: spam in #general' },
+  { type: 'join', user: 'CreatorJane#001', actor: 'WAGE Bot', time: '15 min ago', detail: 'Joined — auto-role assigned (Creator)' },
+  { type: 'leave', user: 'RandomUser#554', actor: '—', time: '1 hour ago', detail: 'Left the server' },
+  { type: 'warn', user: 'User#7890', actor: 'Admin', time: '2 hours ago', detail: 'Warned: harassment in #chat' },
+  { type: 'join', user: 'ProMember#2024', actor: 'WAGE Bot', time: '3 hours ago', detail: 'Joined — auto-role assigned (Pro)' },
+];
+
+function renderLogs(filter) {
+  const container = document.getElementById('log-container');
+  const filtered = filter === 'all' ? mockLogs : mockLogs.filter(l => l.type === filter);
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="log-empty">No events of this type yet.</div>';
+    return;
+  }
+
+  container.innerHTML = `<table class="log-table">
+    <thead>
+      <tr>
+        <th>Type</th><th>User</th><th>Action</th><th>When</th><th>Detail</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${filtered.map(log => `
+        <tr>
+          <td><span class="log-type ${log.type}">${log.type}</span></td>
+          <td style="font-weight:600;font-size:0.85rem;">${log.user}</td>
+          <td style="color:var(--muted);font-size:0.8rem;">${log.actor}</td>
+          <td style="color:var(--muted);font-size:0.78rem;">${log.time}</td>
+          <td style="font-size:0.85rem;">${log.detail}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>`;
+}
+
+function filterLogs(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  btn?.classList.add('active');
+  renderLogs(filter);
+}
+
+function refreshLogs() {
+  renderLogs(currentFilter);
+}
+
+// ── Role Mappings Tab ─────────────────────────────────────────────────────────
+let mappingData = null;
+
+function populateRoleSelects(roles, currentMappings) {
+  const tiers = ['free', 'creator', 'pro'];
+  for (const tier of tiers) {
+    const sel = document.getElementById('mapping-' + tier);
+    if (!sel) continue;
+    sel.innerHTML = '<option value="">— Not set —</option>';
+    for (const role of roles) {
+      const opt = document.createElement('option');
+      opt.value = role.name;
+      opt.textContent = role.name;
+      sel.appendChild(opt);
+    }
+    const current = currentMappings?.[tier] || '';
+    if (current) sel.value = current;
+    else sel.selectedIndex = 0;
+  }
+  document.getElementById('summary-free').textContent    = currentMappings?.free    || '—';
+  document.getElementById('summary-creator').textContent = currentMappings?.creator || '—';
+  document.getElementById('summary-pro').textContent     = currentMappings?.pro     || '—';
+}
+
+async function loadRoleMappings() {
+  const panel = document.getElementById('panel-role-mappings');
+  if (!panel?.classList.contains('active')) return;
+
+  try {
+    const res = await fetch(`/api/discord/role-mappings/${guildId}`);
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    mappingData = data;
+
+    document.getElementById('role-mappings-loading').style.display = 'none';
+    document.getElementById('role-mappings-form').style.display = 'block';
+
+    populateRoleSelects(data.availableRoles || [], data.mappings);
+  } catch (err) {
+    document.getElementById('role-mappings-loading').style.display = 'none';
+    document.getElementById('role-mappings-error').style.display = 'block';
+  }
+}
+
+async function saveRoleMappings() {
+  const btn = document.getElementById('mapping-save-btn');
+  const status = document.getElementById('mapping-save-status');
+  btn.disabled = true;
+  status.textContent = 'Saving…';
+
+  try {
+    const res = await fetch(`/api/discord/role-mappings/${guildId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tier_role_free:    document.getElementById('mapping-free').value || null,
+        tier_role_creator: document.getElementById('mapping-creator').value || null,
+        tier_role_pro:     document.getElementById('mapping-pro').value || null,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Save failed');
+
+    status.textContent = '✓ Saved';
+    status.className = 'save-status ok';
+
+    // Update summary
+    document.getElementById('summary-free').textContent    = data.mappings?.tier_role_free    || '—';
+    document.getElementById('summary-creator').textContent = data.mappings?.tier_role_creator || '—';
+    document.getElementById('summary-pro').textContent     = data.mappings?.tier_role_pro     || '—';
+
+    // Reload role data
+    await loadRoleMappings();
+  } catch (err) {
+    status.textContent = '✗ ' + (err.message || 'Error');
+    status.className = 'save-status';
+    btn.disabled = false;
+  }
+}
+
+// ── Members Tab ────────────────────────────────────────────────────────────────
+let membersData = null;
+let debounceTimer = null;
+
+function tierBadge(tier) {
+  const map = { pro: 'Pro', creator: 'Creator', free: 'Free', unlinked: 'Unlinked' };
+  const colors = { pro: '#a855f7', creator: '#3b82f6', free: '#6b7280', unlinked: '#9ca3af' };
+  const label = map[tier] || 'Unknown';
+  const color = colors[tier] || '#6b7280';
+  return `<span style="display:inline-block;padding:0.15rem 0.6rem;border-radius:100px;font-size:0.72rem;font-weight:700;background:${color}22;color:${color};border:1px solid ${color}44;">${label}</span>`;
+}
+
+function renderMembers(members) {
+  const container = document.getElementById('members-list');
+  const empty = document.getElementById('members-empty');
+
+  if (!members || members.length === 0) {
+    container.style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  container.style.display = 'block';
+
+  container.innerHTML = `<div style="overflow-x:auto;">
+    <table class="log-table">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>WAGEOS Status</th>
+          <th>Tier</th>
+          <th>Roles</th>
+          <th style="text-align:right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${members.map(m => `
+        <tr data-discord-id="${m.discordId}">
+          <td>
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+              ${m.avatar ? `<img src="${m.avatar}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;">` : '<div style="width:28px;height:28px;border-radius:50%;background:var(--bg-2);display:flex;align-items:center;justify-content:center;font-size:0.75rem;">👤</div>'}
+              <div>
+                <div style="font-weight:600;font-size:0.875rem;">${m.username}</div>
+                ${m.wageosEmail ? `<div style="font-size:0.72rem;color:var(--muted);">${m.wageosEmail}</div>` : ''}
+              </div>
+            </div>
+          </td>
+          <td>${m.wageosLinked ? '<span style="color:#4ade80;font-size:0.8rem;font-weight:600;">✓ Linked</span>' : '<span style="color:var(--muted);font-size:0.8rem;">Not linked</span>'}</td>
+          <td>${tierBadge(m.wageosTier)}</td>
+          <td style="font-size:0.78rem;color:var(--muted);">${m.roles.length} roles</td>
+          <td style="text-align:right;">
+            ${m.wageosLinked ? `<button class="btn-ghost" style="font-size:0.75rem;padding:0.3rem 0.6rem;" onclick="openMemberRolesModal('${m.discordId}', '${m.username.replace(/'/g, "\\'")}')">Manage roles</button>` : ''}
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+
+  document.getElementById('member-count').textContent = `${members.length} member${members.length !== 1 ? 's' : ''}`;
+}
+
+function applyMemberTierFilter(members) {
+  const filter = document.getElementById('member-tier-filter')?.value || '';
+  if (!filter) return members;
+  return members.filter(m => m.wageosTier === filter || (filter === 'unlinked' && !m.wageosLinked));
+}
+
+async function loadMembers() {
+  const panel = document.getElementById('panel-members');
+  if (!panel?.classList.contains('active')) return;
+
+  const search = document.getElementById('member-search')?.value || '';
+
+  try {
+    const params = new URLSearchParams({ search });
+    const res = await fetch(`/api/discord/guild-members/${guildId}?${params}`);
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    membersData = data.members || [];
+
+    const filtered = applyMemberTierFilter(membersData);
+    renderMembers(filtered);
+
+    document.getElementById('members-loading').style.display = 'none';
+  } catch (err) {
+    document.getElementById('members-loading').style.display = 'none';
+    document.getElementById('members-error').style.display = 'block';
+  }
+}
+
+function debouncedSearch() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(loadMembers, 300);
+}
+
+// ── Member Roles Modal ─────────────────────────────────────────────────────────
+function openMemberRolesModal(discordId, username) {
+  const member = membersData?.find(m => m.discordId === discordId);
+  if (!member) return;
+
+  const allRoles = mappingData?.availableRoles || [];
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:999;display:flex;align-items:center;justify-content:center;';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+  const currentRoleIds = new Set(member.roles || []);
+
+  overlay.innerHTML = `
+  <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:1.5rem;max-width:480px;width:90%;max-height:80vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+      <h3 style="font-size:1rem;font-weight:700;">Manage Roles — ${username}</h3>
+      <button onclick="this.closest('[style*=&quot;position:fixed&quot;]').remove()" style="background:none;border:none;color:var(--muted);font-size:1.25rem;cursor:pointer;">✕</button>
+    </div>
+    <p style="font-size:0.8rem;color:var(--muted);margin-bottom:1rem;">Toggle Discord roles for this member. Changes apply immediately.</p>
+    <div id="modal-roles-list">
+      ${allRoles.length === 0 ? '<p style="color:var(--muted);font-size:0.85rem;">No roles found in this server.</p>' : allRoles.map(role => {
+        const has = currentRoleIds.has(role.id);
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:0.625rem 0.75rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:0.5rem;">
+          <span style="font-weight:600;font-size:0.875rem;">${role.name}</span>
+          <button onclick="toggleMemberRole('${discordId}', '${role.id}', ${!has})" class="${has ? 'btn-discord' : 'btn-ghost'}" style="font-size:0.78rem;">
+            ${has ? 'Remove' : 'Add'}
+          </button>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+
+  document.body.appendChild(overlay);
+}
+
+async function toggleMemberRole(discordId, roleId, shouldAdd) {
+  try {
+    const res = await fetch(`/api/discord/guild-members/${guildId}/roles`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ discordId, action: shouldAdd ? 'add' : 'remove', roleId }),
+    });
+    if (!res.ok) throw new Error('Failed to update role');
+
+    // Update local member data
+    if (membersData) {
+      const m = membersData.find(m => m.discordId === discordId);
+      if (m) {
+        if (shouldAdd) m.roles = [...new Set([...m.roles, roleId])];
+        else m.roles = m.roles.filter(r => r !== roleId);
+      }
+    }
+
+    // Re-open modal with updated roles
+    const modal = document.querySelector('[style*="position:fixed"]');
+    const username = membersData?.find(m => m.discordId === discordId)?.username || 'Member';
+    modal?.remove();
+    openMemberRolesModal(discordId, username);
+  } catch (err) {
+    alert('Failed to update role: ' + err.message);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadServerData();
+  renderLogs('all');
+
+  // Load role mappings when tab becomes active
+  const mappingObserver = new MutationObserver(() => {
+    const panel = document.getElementById('panel-role-mappings');
+    if (panel?.classList.contains('active') && !mappingData) loadRoleMappings();
+  });
+  const tabBar = document.getElementById('tab-bar');
+  if (tabBar) mappingObserver.observe(tabBar, { childList: true, subtree: true });
+
+  // Load members when tab becomes active
+  const membersObserver = new MutationObserver(() => {
+    const panel = document.getElementById('panel-members');
+    if (panel?.classList.contains('active') && !membersData) loadMembers();
+  });
+  if (tabBar) membersObserver.observe(tabBar, { childList: true, subtree: true });
+});
+</script>
+</body>
+</html>

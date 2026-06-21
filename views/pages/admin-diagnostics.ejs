@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnostics — W.A.G.E. Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    :root { --admin-sidebar-w: 220px; }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    .admin-nav { background: var(--bg); border-bottom: 1px solid var(--border); padding: 0.85rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+    .admin-nav-logo { font-weight: 800; font-size: 1rem; color: var(--fg); text-decoration: none; }
+    .admin-nav-logo span { color: var(--accent); }
+    .admin-nav-divider { width: 1px; height: 20px; background: var(--border); }
+    .admin-nav-right { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+    .admin-nav-link { font-size: 0.8rem; color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 0.3rem; }
+    .admin-nav-link:hover { color: var(--fg); }
+    .admin-body { display: flex; flex: 1; max-width: 1300px; margin: 0 auto; width: 100%; padding: 2rem 1.5rem; gap: 2rem; }
+    .admin-sidebar { position: sticky; top: 1.5rem; width: var(--admin-sidebar-w); flex-shrink: 0; }
+    .admin-sidebar-section { margin-bottom: 1.5rem; }
+    .admin-sidebar-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 0.4rem; padding: 0 0.5rem; }
+    .admin-sidebar-link { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: 0.82rem; font-weight: 500; transition: background 0.1s, color 0.1s; }
+    .admin-sidebar-link:hover { background: var(--surface); color: var(--fg); }
+    .admin-sidebar-link.active { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+    .admin-sidebar-link .link-icon { font-size: 0.9rem; width: 18px; text-align: center; }
+    .admin-main { flex: 1; min-width: 0; }
+    .admin-page-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); display: block; margin-bottom: 0.2rem; }
+    .admin-page-title { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; font-weight: 800; margin: 0; }
+    .admin-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .admin-card-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 1rem; margin-bottom: 1rem; color: var(--fg); }
+    /* Tabs */
+    .diag-tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--border); margin-bottom: 1.75rem; overflow-x: auto; scrollbar-width: none; }
+    .diag-tabs::-webkit-scrollbar { display: none; }
+    .diag-tab { padding: 0.65rem 1.1rem; font-size: 0.82rem; font-weight: 600; font-family: 'Space Grotesk', sans-serif; color: var(--muted); background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; transition: color 0.15s; white-space: nowrap; }
+    .diag-tab:hover { color: var(--fg); }
+    .diag-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    /* Stats grid */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+    @media (max-width: 900px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px) { .stats-grid { grid-template-columns: 1fr; } }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
+    .stat-card .stat-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.4rem; }
+    .stat-card .stat-value { font-family: 'Space Grotesk', sans-serif; font-size: 1.6rem; font-weight: 800; color: var(--fg); line-height: 1.1; }
+    .stat-card .stat-value.accent { color: var(--accent); }
+    .stat-card .stat-value.green { color: #10b981; }
+    .stat-card .stat-sub { font-size: 0.72rem; color: var(--muted); margin-top: 0.25rem; }
+    /* Tier badges */
+    .tier-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; }
+    .tier-chip { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem; text-align: center; }
+    .tier-chip .tier-name { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--fg); }
+    .tier-chip .tier-count { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; font-weight: 800; color: var(--accent); }
+    /* Tables */
+    .audit-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .audit-table th { text-align: left; padding: 0.5rem 0.75rem; background: rgba(255,255,255,0.03); color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    .audit-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: top; }
+    .audit-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .audit-table tr.expanded td { background: rgba(255,102,0,0.05); }
+    .audit-action-badge { display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 6px; background: rgba(255,102,0,0.12); color: var(--accent); border: 1px solid rgba(255,102,0,0.2); }
+    .audit-detail-row { display: none; background: rgba(0,0,0,0.2); }
+    .audit-detail-row.open { display: table-row; }
+    .audit-detail-row td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); }
+    .audit-detail-json { font-family: 'Courier New', monospace; font-size: 0.72rem; color: var(--muted); background: var(--bg); padding: 0.75rem; border-radius: 6px; max-height: 200px; overflow-y: auto; word-break: break-all; }
+    /* Changelog timeline */
+    .changelog-entry { display: flex; gap: 1.25rem; padding: 1.25rem 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .changelog-entry:last-child { border-bottom: none; }
+    .changelog-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 6px; }
+    .changelog-body { flex: 1; }
+    .changelog-meta { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; flex-wrap: wrap; }
+    .changelog-version { font-family: 'Courier New', monospace; font-size: 0.7rem; font-weight: 700; background: rgba(255,102,0,0.12); color: var(--accent); padding: 0.1rem 0.45rem; border-radius: 4px; }
+    .changelog-date { font-size: 0.72rem; color: var(--muted); }
+    .changelog-author { font-size: 0.72rem; color: var(--muted); }
+    .changelog-category { font-size: 0.68rem; font-weight: 600; padding: 0.1rem 0.4rem; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .cat-feature { background: rgba(16,185,56,0.12); color: #10b981; }
+    .cat-bugfix { background: rgba(239,68,68,0.12); color: #ef4444; }
+    .cat-improvement { background: rgba(59,130,246,0.12); color: #3b82f6; }
+    .cat-breaking { background: rgba(234,179,8,0.12); color: #eab308; }
+    .changelog-title { font-weight: 700; font-size: 0.95rem; color: var(--fg); margin-bottom: 0.35rem; }
+    .changelog-desc { font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+    /* Console */
+    .console-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .console-tab-btn { padding: 0.4rem 0.85rem; border-radius: 6px; font-size: 0.78rem; font-weight: 600; background: var(--surface); color: var(--muted); border: 1px solid var(--border); cursor: pointer; font-family: 'Space Grotesk', sans-serif; }
+    .console-tab-btn:hover { color: var(--fg); }
+    .console-tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .log-viewer { background: #0a0a0a; border: 1px solid var(--border); border-radius: 10px; padding: 1rem; font-family: 'Courier New', monospace; font-size: 0.75rem; color: #ccc; height: 380px; overflow-y: auto; line-height: 1.6; }
+    .log-line { padding: 0.1rem 0; }
+    .log-ts { color: var(--muted); margin-right: 0.5rem; }
+    .log-info { color: #e5e5e5; }
+    .log-warn { color: #eab308; }
+    .log-error { color: #ef4444; }
+    .log-controls { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; align-items: center; flex-wrap: wrap; }
+    .log-status { font-size: 0.72rem; color: var(--muted); }
+    /* Query console */
+    .query-presets { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    .preset-btn { padding: 0.3rem 0.65rem; border-radius: 6px; font-size: 0.72rem; background: var(--surface); color: var(--muted); border: 1px solid var(--border); cursor: pointer; font-family: 'Space Grotesk', sans-serif; }
+    .preset-btn:hover { color: var(--fg); border-color: var(--accent); }
+    .query-textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--fg); font-family: 'Courier New', monospace; font-size: 0.82rem; padding: 0.75rem; box-sizing: border-box; min-height: 100px; resize: vertical; }
+    .query-textarea:focus { outline: none; border-color: var(--accent); }
+    .query-results { margin-top: 1rem; overflow-x: auto; }
+    .query-results table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+    .query-results th { text-align: left; padding: 0.45rem 0.65rem; background: var(--surface); color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    .query-results td { padding: 0.45rem 0.65rem; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--fg); font-family: 'Courier New', monospace; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .query-results tr:hover td { background: rgba(255,255,255,0.02); }
+    .query-meta { font-size: 0.75rem; color: var(--muted); margin-top: 0.5rem; }
+    .query-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; padding: 0.75rem; border-radius: 8px; font-size: 0.82rem; margin-top: 0.75rem; }
+    /* System info grid */
+    .sysinfo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+    @media (max-width: 600px) { .sysinfo-grid { grid-template-columns: repeat(2, 1fr); } }
+    .sysinfo-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.85rem; }
+    .sysinfo-item .key { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.25rem; }
+    .sysinfo-item .val { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 0.95rem; color: var(--fg); }
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.55rem 1.1rem; border-radius: 8px; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 0.8rem; cursor: pointer; border: none; text-decoration: none; transition: background 0.2s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #e65500; }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--surface); color: var(--fg); }
+    .btn-sm { padding: 0.3rem 0.65rem; font-size: 0.75rem; }
+    .btn-danger { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+    .btn-danger:hover { background: rgba(239,68,68,0.25); }
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; width: 500px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+    .modal h2 { font-family: 'Space Grotesk', sans-serif; font-weight: 800; font-size: 1.25rem; margin: 0 0 1.5rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    .form-input, .form-select, .form-textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--fg); font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; padding: 0.65rem 0.85rem; box-sizing: border-box; }
+    .form-input:focus, .form-textarea:focus { outline: none; border-color: var(--accent); }
+    .form-textarea { min-height: 80px; resize: vertical; }
+    .modal-actions { display: flex; gap: 0.75rem; margin-top: 1.5rem; justify-content: flex-end; }
+    .notification { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--surface); border: 1px solid var(--accent); color: var(--fg); padding: 0.85rem 1.25rem; border-radius: 10px; font-size: 0.875rem; font-weight: 600; z-index: 200; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+    .notification.show { display: block; animation: slideUp 0.3s ease-out; }
+    .notification.error { border-color: #ef4444; color: #ef4444; }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    /* Filter bar */
+    .filter-bar { display: flex; gap: 0.75rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; }
+    .filter-bar .form-select { width: auto; min-width: 180px; }
+    /* Pagination */
+    .pagination { display: flex; gap: 0.3rem; align-items: center; margin-top: 1rem; }
+    .page-btn { padding: 0.3rem 0.6rem; background: var(--surface); border: 1px solid var(--border); color: var(--muted); border-radius: 6px; font-size: 0.75rem; cursor: pointer; }
+    .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .page-info { font-size: 0.75rem; color: var(--muted); padding: 0 0.5rem; }
+    .total-badge { display: inline-block; font-size: 0.72rem; background: rgba(255,102,0,0.1); color: var(--accent); padding: 0.15rem 0.5rem; border-radius: 12px; font-weight: 600; margin-left: 0.5rem; }
+    .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--muted); }
+    .empty-state small { display: block; font-size: 0.75rem; margin-top: 0.25rem; opacity: 0.7; }
+    /* Category dot colors */
+    .changelog-dot.cat-feature { background: #10b981; }
+    .changelog-dot.cat-bugfix { background: #ef4444; }
+    .changelog-dot.cat-improvement { background: #3b82f6; }
+    .changelog-dot.cat-breaking { background: #eab308; }
+    /* Confirm delete */
+    .confirm-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; }
+    .confirm-overlay.open { display: flex; }
+    .confirm-box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; width: 380px; text-align: center; }
+    .confirm-box h3 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; margin: 0 0 0.75rem; }
+    .confirm-box p { color: var(--muted); font-size: 0.9rem; margin: 0 0 1.5rem; }
+    .confirm-box .modal-actions { justify-content: center; }
+    @media (max-width: 768px) { .admin-sidebar { display: none; } .admin-body { padding: 1rem; } }
+  </style>
+</head>
+<body>
+
+<!-- Admin nav -->
+<nav class="admin-nav">
+  <a href="/dashboard" class="admin-nav-logo">W.A.G.E. <span>Admin</span></a>
+  <div class="admin-nav-divider"></div>
+  <span style="font-size:0.75rem;color:var(--muted);">Diagnostics</span>
+  <div class="admin-nav-right">
+    <a href="/admin" class="admin-nav-link">← Overview</a>
+    <a href="/dashboard" class="admin-nav-link">Dashboard</a>
+    <a href="/logout" class="admin-nav-link">Logout</a>
+  </div>
+</nav>
+
+<!-- Body -->
+<div class="admin-body">
+  <!-- Sidebar -->
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Management</div>
+      <a href="/admin" class="admin-sidebar-link"><span class="link-icon">🏠</span> Overview</a>
+      <a href="/admin/users" class="admin-sidebar-link"><span class="link-icon">👥</span> Members</a>
+      <a href="/admin/roles" class="admin-sidebar-link"><span class="link-icon">🔑</span> Roles &amp; Permissions</a>
+    </div>
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Platform</div>
+      <a href="/admin/discord" class="admin-sidebar-link"><span class="link-icon">🤖</span> Discord Bot</a>
+      <a href="/admin/tiers" class="admin-sidebar-link"><span class="link-icon">⭐</span> Membership Tiers</a>
+      <a href="/admin/point-shop" class="admin-sidebar-link"><span class="link-icon">🏪</span> Point Shop</a>
+    </div>
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Tools</div>
+      <a href="/admin/diagnostics" class="admin-sidebar-link active"><span class="link-icon">🔧</span> Diagnostics</a>
+      <a href="/admin/shop" class="admin-sidebar-link"><span class="link-icon">🛒</span> Merch Shop</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="admin-main">
+    <div class="admin-page-header" style="margin-bottom:1.5rem;">
+      <span class="admin-page-label">Admin</span>
+      <h1 class="admin-page-title">Diagnostics</h1>
+    </div>
+
+    <!-- Tabs -->
+    <div class="diag-tabs" id="diagTabs">
+      <button class="diag-tab active" data-tab="overview" onclick="switchTab('overview')">Overview</button>
+      <button class="diag-tab" data-tab="audit" onclick="switchTab('audit')">Audit Log</button>
+      <button class="diag-tab" data-tab="changelog" onclick="switchTab('changelog')">Changelog</button>
+      <button class="diag-tab" data-tab="console" onclick="switchTab('console')">Console</button>
+    </div>
+
+    <!-- ══ TAB A: OVERVIEW ═══════════════════════════════════════════════════════ -->
+    <div class="tab-panel active" id="tab-overview">
+      <div class="admin-card">
+        <div class="admin-card-title">Platform Health</div>
+        <div id="statsLoading" style="color:var(--muted);font-size:0.85rem;">Loading stats...</div>
+        <div id="statsContent" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- ══ TAB B: AUDIT LOG ═══════════════════════════════════════════════════════ -->
+    <div class="tab-panel" id="tab-audit">
+      <div class="filter-bar">
+        <select class="form-select" id="auditActionFilter" onchange="loadAuditLog(1)" style="max-width:220px;">
+          <option value="">All actions</option>
+        </select>
+        <span class="total-badge" id="auditTotalBadge"></span>
+      </div>
+      <div class="admin-card" style="padding:0;">
+        <div style="overflow-x:auto;">
+          <table class="audit-table" id="auditTable">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Actor</th>
+                <th>Action</th>
+                <th>IP</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="auditBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="auditPagination" class="pagination"></div>
+    <div class="empty-state" id="auditEmpty" style="display:none;">
+      No audit entries found.<small>Admin actions will appear here once logged.</small>
+    </div>
+    </div>
+
+    <!-- ══ TAB C: CHANGELOG ═══════════════════════════════════════════════════════ -->
+    <div class="tab-panel" id="tab-changelog">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">
+        <button class="btn btn-primary" onclick="openChangelogModal()">+ Add Entry</button>
+      </div>
+      <div id="changelogEmpty" class="empty-state" style="display:none;">
+        No changelog entries yet.<small>Add your first release note.</small>
+      </div>
+      <div id="changelogList"></div>
+      <div id="changelogPagination" class="pagination"></div>
+    </div>
+
+    <!-- ══ TAB D: CONSOLE ════════════════════════════════════════════════════════ -->
+    <div class="tab-panel" id="tab-console">
+      <div class="console-tabs">
+        <button class="console-tab-btn active" id="consoleTab-logs" onclick="switchConsoleTab('logs')">📜 Server Logs</button>
+        <button class="console-tab-btn" id="consoleTab-query" onclick="switchConsoleTab('query')">⌨️ Query Console</button>
+        <button class="console-tab-btn" id="consoleTab-system" onclick="switchConsoleTab('system')">⚙️ System Info</button>
+      </div>
+
+      <!-- Logs panel -->
+      <div id="console-logs" class="console-panel">
+        <div class="log-controls">
+          <span class="log-status" id="logStatus">Connecting...</span>
+          <button class="btn btn-ghost btn-sm" onclick="clearLogs()">Clear display</button>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.78rem;color:var(--muted);">
+            <input type="checkbox" id="autoScroll" checked onchange="autoScrollEnabled=this.checked"> Auto-scroll
+          </label>
+        </div>
+        <div class="log-viewer" id="logViewer" onclick="toggleLogDetails(this)">
+          <div id="logLines"></div>
+        </div>
+      </div>
+
+      <!-- Query panel -->
+      <div id="console-query" class="console-panel" style="display:none;">
+        <div class="query-presets" id="queryPresets"></div>
+        <div class="form-group">
+          <label class="form-label">SQL Query (SELECT only)</label>
+          <textarea class="query-textarea" id="queryInput" placeholder="SELECT * FROM auth_users LIMIT 20"></textarea>
+        </div>
+        <div style="display:flex;gap:0.5rem;">
+          <button class="btn btn-primary" onclick="runQuery()">Run Query</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('queryInput').value='';document.getElementById('queryOutput').innerHTML='';">Clear</button>
+        </div>
+        <div id="queryOutput"></div>
+      </div>
+
+      <!-- System info panel -->
+      <div id="console-system" class="console-panel" style="display:none;">
+        <div id="sysinfoContent"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Changelog Modal -->
+<div class="modal-overlay" id="changelogModal">
+  <div class="modal">
+    <h2 id="clModalTitle">Add Changelog Entry</h2>
+    <input type="hidden" id="clId">
+    <div class="form-group">
+      <label class="form-label">Version (optional)</label>
+      <input type="text" id="clVersion" class="form-input" placeholder="1.2.3">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Title *</label>
+      <input type="text" id="clTitle" class="form-input" placeholder="Added audit log tracking">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea id="clDescription" class="form-textarea" placeholder="What changed..." style="min-height:100px;"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <select id="clCategory" class="form-select">
+        <option value="feature">Feature</option>
+        <option value="bugfix">Bugfix</option>
+        <option value="improvement">Improvement</option>
+        <option value="breaking">Breaking</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Author (optional)</label>
+      <input type="text" id="clAuthor" class="form-input" placeholder="Polsia">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeChangelogModal()">Cancel</button>
+      <button class="btn btn-primary" id="clSaveBtn" onclick="saveChangelog()">Add Entry</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirm -->
+<div class="confirm-overlay" id="confirmModal">
+  <div class="confirm-box">
+    <h3>Delete Entry?</h3>
+    <p id="confirmText">This cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirmDeleteBtn" onclick="doDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Notification -->
+<div class="notification" id="notification"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let auditPage = 1;
+let auditActions = [];
+let changelogPage = 1;
+let deleteTarget = null;
+let deleteType = null;
+let autoScrollEnabled = true;
+let logOffset = 0;
+let logTimer = null;
+let currentConsoleTab = 'logs';
+
+// ── Tab Navigation ────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.diag-tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.diag-tab[data-tab="${tab}"]`).classList.add('active');
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+
+  if (tab === 'audit')    loadAuditLog(1);
+  if (tab === 'changelog') loadChangelog(1);
+  if (tab === 'console')  initConsole();
+}
+
+// ── TAB A: Overview ──────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const data = await fetch('/api/admin/diagnostics/api/stats').then(r => r.json());
+    const u = data.users || {};
+    const t = data.tiers || [];
+    const c = data.content || {};
+    const p = data.points || {};
+    const r = data.referrals || {};
+
+    document.getElementById('statsContent').innerHTML = `
+      <div class="stats-grid" style="margin-bottom:1.5rem;">
+        <div class="stat-card">
+          <div class="stat-label">Total Users</div>
+          <div class="stat-value">${u.total_users || 0}</div>
+          <div class="stat-sub">${u.active_users_7d || 0} active (7d)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">New Signups</div>
+          <div class="stat-value green">${u.new_signups_7d || 0}</div>
+          <div class="stat-sub">${u.new_signups_30d || 0} in last 30d</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Content</div>
+          <div class="stat-value accent">${(c.profiles||0)+(c.streams||0)+(c.merch||0)+(c.posts||0)}</div>
+          <div class="stat-sub">${c.profiles||0} profiles · ${c.streams||0} streams</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Points in Circulation</div>
+          <div class="stat-value">${p.total_in_circulation || 0}</div>
+          <div class="stat-sub">+${p.earned_this_week||0} earned · -${p.redeemed_this_week||0} redeemed (7d)</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+        <div>
+          <div class="admin-card-title" style="margin-bottom:0.75rem;">Tiers</div>
+          <div class="tier-grid">
+            ${t.map(tier => `
+              <div class="tier-chip">
+                <div class="tier-name">${tier.tier || 'free'}</div>
+                <div class="tier-count">${tier.user_count || 0}</div>
+              </div>`).join('')}
+          </div>
+        </div>
+        <div>
+          <div class="admin-card-title" style="margin-bottom:0.75rem;">Referrals</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
+            <div class="stat-card" style="padding:0.75rem;">
+              <div class="stat-label">Total Referrals</div>
+              <div class="stat-value" style="font-size:1.3rem;">${r.total_referrals || 0}</div>
+            </div>
+            <div class="stat-card" style="padding:0.75rem;">
+              <div class="stat-label">Active Codes</div>
+              <div class="stat-value green" style="font-size:1.3rem;">${r.active_codes || 0}</div>
+            </div>
+            <div class="stat-card" style="padding:0.75rem;">
+              <div class="stat-label">Converted</div>
+              <div class="stat-value accent" style="font-size:1.3rem;">${r.converted || 0}</div>
+            </div>
+            <div class="stat-card" style="padding:0.75rem;">
+              <div class="stat-label">MRR Est.</div>
+              <div class="stat-value" style="font-size:1.3rem;">$${data.mrrEstimate || 0}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.getElementById('statsLoading').style.display = 'none';
+    document.getElementById('statsContent').style.display = 'block';
+  } catch (err) {
+    document.getElementById('statsLoading').textContent = 'Failed to load stats: ' + err.message;
+  }
+}
+
+// ── TAB B: Audit Log ────────────────────────────────────────────────────────
+async function loadAuditLog(page) {
+  auditPage = page;
+  const filter = document.getElementById('auditActionFilter').value;
+  try {
+    const params = new URLSearchParams({ page, action: filter });
+    const data = await fetch(`/api/admin/diagnostics/api/audit-log?${params}`).then(r => r.json());
+
+    // Populate filter options
+    if (auditActions.length === 0 && data.actions?.length) {
+      auditActions = data.actions;
+      const sel = document.getElementById('auditActionFilter');
+      auditActions.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a; opt.textContent = a;
+        sel.appendChild(opt);
+      });
+      if (filter) sel.value = filter;
+    }
+
+    const tbody = document.getElementById('auditBody');
+    const empty = document.getElementById('auditEmpty');
+    const pagEl = document.getElementById('auditPagination');
+
+    if (!data.entries?.length) {
+      tbody.innerHTML = '';
+      empty.style.display = 'block';
+      pagEl.innerHTML = '';
+      document.getElementById('auditTotalBadge').textContent = '';
+      return;
+    }
+    empty.style.display = 'none';
+
+    document.getElementById('auditTotalBadge').textContent = `${data.total} entries`;
+
+    tbody.innerHTML = data.entries.map(entry => `
+      <tr onclick="toggleAuditRow(this)" style="cursor:pointer;" title="Click to expand details">
+        <td style="white-space:nowrap;font-family:'Courier New',monospace;font-size:0.72rem;color:var(--muted);">${fmtTs(entry.created_at)}</td>
+        <td style="font-family:'Courier New',monospace;font-size:0.75rem;">${escHtml(entry.actor || 'system')}</td>
+        <td><span class="audit-action-badge">${escHtml(entry.action)}</span></td>
+        <td style="font-family:'Courier New',monospace;font-size:0.72rem;color:var(--muted);">${entry.ip_address || '—'}</td>
+        <td style="font-size:0.72rem;color:var(--muted);">${entry.detail ? '⋯' : '—'}</td>
+      </tr>
+      <tr class="audit-detail-row" id="detail-${entry.id}">
+        <td colspan="5">
+          <div class="audit-detail-json">${entry.detail ? JSON.stringify(entry.detail, null, 2) : '{ }'}</div>
+        </td>
+      </tr>`).join('');
+
+    // Pagination
+    pagEl.innerHTML = `
+      <button class="page-btn" ${page <= 1 ? 'disabled' : ''} onclick="loadAuditLog(${page - 1})">Prev</button>
+      <span class="page-info">${page} / ${data.totalPages}</span>
+      <button class="page-btn" ${page >= data.totalPages ? 'disabled' : ''} onclick="loadAuditLog(${page + 1})">Next</button>`;
+  } catch (err) {
+    showNotification('Failed to load audit log: ' + err.message, true);
+  }
+}
+
+function toggleAuditRow(tr) {
+  const id = tr.nextElementSibling?.id;
+  if (!id) return;
+  const detail = document.getElementById(id);
+  if (detail) {
+    const isOpen = detail.classList.contains('open');
+    document.querySelectorAll('.audit-detail-row.open').forEach(el => el.classList.remove('open'));
+    if (!isOpen) detail.classList.add('open');
+  }
+}
+
+// ── TAB C: Changelog ─────────────────────────────────────────────────────────
+async function loadChangelog(page) {
+  changelogPage = page;
+  try {
+    const data = await fetch(`/api/admin/diagnostics/api/changelog?page=${page}`).then(r => r.json());
+    const list = document.getElementById('changelogList');
+    const empty = document.getElementById('changelogEmpty');
+    const pagEl = document.getElementById('changelogPagination');
+
+    if (!data.entries?.length) {
+      list.innerHTML = '';
+      empty.style.display = 'block';
+      pagEl.innerHTML = '';
+      return;
+    }
+    empty.style.display = 'none';
+
+    const catClass = { feature: 'cat-feature', bugfix: 'cat-bugfix', improvement: 'cat-improvement', breaking: 'cat-breaking' };
+
+    list.innerHTML = data.entries.map(entry => `
+      <div class="changelog-entry">
+        <div class="changelog-dot ${catClass[entry.category] || 'cat-feature'}"></div>
+        <div class="changelog-body">
+          <div class="changelog-meta">
+            ${entry.version ? `<span class="changelog-version">v${escHtml(entry.version)}</span>` : ''}
+            <span class="changelog-date">${fmtTs(entry.created_at)}</span>
+            <span class="changelog-category ${catClass[entry.category] || 'cat-feature'}">${escHtml(entry.category || 'feature')}</span>
+            ${entry.author ? `<span class="changelog-author">by ${escHtml(entry.author)}</span>` : ''}
+          </div>
+          <div class="changelog-title">${escHtml(entry.title)}</div>
+          ${entry.description ? `<div class="changelog-desc">${escHtml(entry.description)}</div>` : ''}
+          <div style="margin-top:0.5rem;display:flex;gap:0.4rem;">
+            <button class="btn btn-ghost btn-sm" onclick="editChangelog(${entry.id})">Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="confirmDeleteChangelog(${entry.id})">Delete</button>
+          </div>
+        </div>
+      </div>`).join('');
+
+    pagEl.innerHTML = `
+      <button class="page-btn" ${page <= 1 ? 'disabled' : ''} onclick="loadChangelog(${page - 1})">Prev</button>
+      <span class="page-info">${page} / ${data.totalPages}</span>
+      <button class="page-btn" ${page >= data.totalPages ? 'disabled' : ''} onclick="loadChangelog(${page + 1})">Next</button>`;
+  } catch (err) {
+    showNotification('Failed to load changelog: ' + err.message, true);
+  }
+}
+
+function openChangelogModal(entry) {
+  document.getElementById('clModalTitle').textContent = entry ? 'Edit Entry' : 'Add Changelog Entry';
+  document.getElementById('clSaveBtn').textContent = entry ? 'Save Changes' : 'Add Entry';
+  document.getElementById('clId').value = entry?.id || '';
+  document.getElementById('clVersion').value = entry?.version || '';
+  document.getElementById('clTitle').value = entry?.title || '';
+  document.getElementById('clDescription').value = entry?.description || '';
+  document.getElementById('clCategory').value = entry?.category || 'feature';
+  document.getElementById('clAuthor').value = entry?.author || '';
+  document.getElementById('changelogModal').classList.add('open');
+}
+
+function editChangelog(id) {
+  fetch(`/api/admin/diagnostics/api/changelog`)
+    .then(r => r.json())
+    .then(data => {
+      const entry = data.entries?.find(e => e.id === id);
+      if (entry) openChangelogModal(entry);
+    });
+}
+
+async function saveChangelog() {
+  const id = document.getElementById('clId').value;
+  const payload = {
+    version:     document.getElementById('clVersion').value.trim() || null,
+    title:       document.getElementById('clTitle').value.trim(),
+    description: document.getElementById('clDescription').value.trim() || null,
+    category:    document.getElementById('clCategory').value,
+    author:      document.getElementById('clAuthor').value.trim() || null,
+  };
+  if (!payload.title) { showNotification('Title is required', true); return; }
+
+  const url = id ? `/api/admin/diagnostics/api/changelog/${id}` : '/api/admin/diagnostics/api/changelog';
+  const method = id ? 'PUT' : 'POST';
+
+  try {
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    closeChangelogModal();
+    loadChangelog(1);
+    showNotification(id ? 'Entry updated!' : 'Entry added!');
+  } catch (err) {
+    showNotification(err.message, true);
+  }
+}
+
+function closeChangelogModal() {
+  document.getElementById('changelogModal').classList.remove('open');
+}
+
+function confirmDeleteChangelog(id) {
+  deleteTarget = id; deleteType = 'changelog';
+  document.getElementById('confirmText').textContent = 'Delete this changelog entry? This cannot be undone.';
+  document.getElementById('confirmModal').classList.add('open');
+}
+
+async function doDelete() {
+  if (!deleteTarget) return;
+  try {
+    const res = await fetch(`/api/admin/diagnostics/api/changelog/${deleteTarget}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Delete failed');
+    closeConfirm();
+    if (deleteType === 'changelog') loadChangelog(1);
+    showNotification('Deleted');
+  } catch (err) {
+    showNotification(err.message, true);
+  }
+  deleteTarget = null; deleteType = null;
+}
+
+function closeConfirm() {
+  document.getElementById('confirmModal').classList.remove('open');
+  deleteTarget = null; deleteType = null;
+}
+
+// ── TAB D: Console ──────────────────────────────────────────────────────────
+function initConsole() {
+  if (currentConsoleTab === 'logs') startLogPolling();
+  if (currentConsoleTab === 'system') loadSystemInfo();
+  loadQuickQueries();
+}
+
+function switchConsoleTab(tab) {
+  currentConsoleTab = tab;
+  document.querySelectorAll('.console-tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`consoleTab-${tab}`).classList.add('active');
+  document.querySelectorAll('.console-panel').forEach(p => p.style.display = 'none');
+  document.getElementById(`console-${tab}`).style.display = 'block';
+
+  if (tab === 'logs') startLogPolling();
+  else stopLogPolling();
+  if (tab === 'system') loadSystemInfo();
+}
+
+function startLogPolling() {
+  stopLogPolling();
+  loadLogs();
+  logTimer = setInterval(loadLogs, 5000);
+}
+
+function stopLogPolling() {
+  if (logTimer) { clearInterval(logTimer); logTimer = null; }
+}
+
+async function loadLogs() {
+  try {
+    const data = await fetch(`/api/admin/diagnostics/api/logs?since=${logOffset}`).then(r => r.json());
+    if (!data.lines?.length) {
+      if (logOffset === 0) {
+        document.getElementById('logLines').innerHTML = '<div style="color:var(--muted);padding:1rem;">No logs captured yet. Server-side console.log calls will appear here.</div>';
+        document.getElementById('logStatus').textContent = 'Waiting for logs...';
+      }
+      return;
+    }
+    logOffset = data.bufferEnd;
+    const viewer = document.getElementById('logLines');
+    const atBottom = viewer.scrollHeight - viewer.scrollTop <= viewer.clientHeight + 50;
+    viewer.innerHTML = data.lines.map(l => {
+      const cls = l.level === 'error' ? 'log-error' : l.level === 'warn' ? 'log-warn' : 'log-info';
+      const ts = new Date(l.ts).toISOString().replace('T', ' ').slice(0, 19);
+      return `<div class="log-line"><span class="log-ts">${ts}</span><span class="${cls}">${escHtml(l.message)}</span></div>`;
+    }).join('');
+    document.getElementById('logStatus').textContent = `${data.bufferEnd} lines buffered`;
+    if (atBottom && autoScrollEnabled) viewer.scrollTop = viewer.scrollHeight;
+  } catch (err) {
+    document.getElementById('logStatus').textContent = 'Failed to load logs';
+  }
+}
+
+function clearLogs() {
+  document.getElementById('logLines').innerHTML = '<div style="color:var(--muted);padding:1rem;">Display cleared. Logs continue in background.</div>';
+}
+
+// Quick query presets
+async function loadQuickQueries() {
+  try {
+    const data = await fetch('/api/admin/diagnostics/api/quick-queries').then(r => r.json());
+    const container = document.getElementById('queryPresets');
+    container.innerHTML = (data.available || []).map(key => {
+      const label = key.replace(/_/g, ' ').replace(/\b\//g, ' / ');
+      return `<button class="preset-btn" onclick="runPreset('${key}')">${label}</button>`;
+    }).join('');
+  } catch (_) {}
+}
+
+async function runPreset(key) {
+  document.getElementById('queryInput').value = '';
+  try {
+    const data = await fetch(`/api/admin/diagnostics/api/quick-queries?query=${key}`).then(r => r.json());
+    renderQueryResults(data);
+  } catch (err) {
+    showQueryError(err.message);
+  }
+}
+
+async function runQuery() {
+  const sql = document.getElementById('queryInput').value.trim();
+  if (!sql) return;
+  try {
+    const res = await fetch('/api/admin/diagnostics/api/query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sql }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Query failed');
+    renderQueryResults(data);
+  } catch (err) {
+    showQueryError(err.message);
+  }
+}
+
+function renderQueryResults(data) {
+  const out = document.getElementById('queryOutput');
+  if (data.error) { showQueryError(data.error); return; }
+  if (!data.rows?.length) {
+    out.innerHTML = `<div class="query-meta" style="color:var(--muted);">Query returned 0 rows (${data.duration_ms}ms)</div>`;
+    return;
+  }
+  const fields = data.fields || Object.keys(data.rows[0] || {});
+  out.innerHTML = `
+    <div class="query-meta" style="margin-bottom:0.5rem;">${data.rowCount} row${data.rowCount !== 1 ? 's' : ''} · ${data.duration_ms}ms${data.truncated ? ' <span style="color:var(--accent);">(truncated to 200 rows)</span>' : ''}</div>
+    <div class="query-results"><table>
+      <thead><tr>${fields.map(f => `<th>${escHtml(f)}</th>`).join('')}</tr></thead>
+      <tbody>${data.rows.map(row => `<tr>${fields.map(f => {
+        const v = row[f];
+        const display = v === null ? '<span style="color:var(--muted-2)">null</span>' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+        return `<td title="${escHtml(String(v ?? ''))}">${display}</td>`;
+      }).join('')}</tr>`).join('')}</tbody>
+    </table></div>`;
+}
+
+function showQueryError(msg) {
+  document.getElementById('queryOutput').innerHTML = `<div class="query-error">${escHtml(msg)}</div>`;
+}
+
+async function loadSystemInfo() {
+  try {
+    const data = await fetch('/api/admin/diagnostics/api/system-info').then(r => r.json());
+    const pool = data.dbPool || {};
+    document.getElementById('sysinfoContent').innerHTML = `
+      <div class="sysinfo-grid">
+        <div class="sysinfo-item"><div class="key">Node.js</div><div class="val">${data.nodeVersion}</div></div>
+        <div class="sysinfo-item"><div class="key">Environment</div><div class="val" style="text-transform:capitalize;">${data.environment}</div></div>
+        <div class="sysinfo-item"><div class="key">Uptime</div><div class="val">${fmtUptime(data.uptimeSeconds)}</div></div>
+        <div class="sysinfo-item"><div class="key">PID</div><div class="val" style="font-family:'Courier New',monospace;">${data.pid}</div></div>
+        <div class="sysinfo-item"><div class="key">Memory (RSS)</div><div class="val">${data.memoryRSS_MB} MB</div></div>
+        <div class="sysinfo-item"><div class="key">Memory (Heap)</div><div class="val">${data.memoryHeap_MB} MB</div></div>
+        <div class="sysinfo-item"><div class="key">DB Pool — Total</div><div class="val">${pool.totalCount ?? '?'}</div></div>
+        <div class="sysinfo-item"><div class="key">DB Pool — Idle</div><div class="val" style="color:${pool.idleCount > 3 ? '#eab308' : 'inherit'}">${pool.idleCount ?? '?'}</div></div>
+        <div class="sysinfo-item"><div class="key">DB Pool — Waiting</div><div class="val" style="color:${(pool.waitingCount || 0) > 0 ? '#ef4444' : 'inherit'}">${pool.waitingCount ?? 0}</div></div>
+        ${data.buildSha ? `<div class="sysinfo-item"><div class="key">Build</div><div class="val" style="font-family:'Courier New',monospace;font-size:0.8rem;">${data.buildSha}</div></div>` : ''}
+        ${data.lastRestartAt ? `<div class="sysinfo-item"><div class="key">Last Restart</div><div class="val" style="font-size:0.82rem;">${new Date(data.lastRestartAt).toLocaleString()}</div></div>` : ''}
+      </div>
+    `;
+  } catch (err) {
+    document.getElementById('sysinfoContent').innerHTML = `<div style="color:#ef4444;font-size:0.85rem;">Failed to load system info: ${err.message}</div>`;
+  }
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function fmtTs(ts) {
+  if (!ts) return '—';
+  return new Date(ts).toLocaleString('en-US', {
+    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+}
+
+function fmtUptime(seconds) {
+  if (!seconds) return '—';
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+  return `${Math.floor(seconds / 86400)}d ${Math.floor((seconds % 86400) / 3600)}h`;
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showNotification(msg, isError = false) {
+  const el = document.getElementById('notification');
+  el.textContent = msg;
+  el.className = 'notification show' + (isError ? ' error' : '');
+  setTimeout(() => { el.className = 'notification'; }, 4000);
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+loadStats();
+</script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  
+
+<%- include('../partials/head-pwa') %>
+  <title>Monthly Referral Leaderboard — W.A.G.E. Society</title>
+  <meta name="description" content="See who's leading W.A.G.E. Society's monthly referral program. Top referrers earn bonus points and tier perks.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Monthly Referral Leaderboard — W.A.G.E. Society">
+  <meta property="og:description" content="See who's leading W.A.G.E. Society's monthly referral program. Top referrers earn bonus points and tier perks.">
+  <meta property="og:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
+  <meta property="og:url" content="https://wagesociety.com/leaderboard">
+  <meta property="og:site_name" content="WAGE Society">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Monthly Referral Leaderboard — W.A.G.E. Society">
+  <meta name="twitter:description" content="See who's leading W.A.G.E. Society's monthly referral program. Top referrers earn bonus points and tier perks.">
+  <meta name="twitter:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    .leaderboard-page { max-width: 760px; margin: 0 auto; padding: 4rem 2rem; }
+    .leaderboard-header { margin-bottom: 2.5rem; text-align: center; }
+    .leaderboard-header .section-label { margin: 0 auto 1rem; }
+    .leaderboard-header .section-sub { max-width: 50ch; margin: 0 auto; }
+    .leaderboard-stats-bar {
+      display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;
+      margin-top: 1.5rem;
+    }
+    .stat-chip {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 999px; padding: 0.5rem 1.25rem;
+      font-size: 0.8rem; color: var(--muted);
+    }
+    .stat-chip strong { color: var(--fg); font-weight: 700; }
+
+    .lb-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .lb-entry {
+      display: flex; align-items: center; gap: 1rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 0.75rem; padding: 0.75rem 1.25rem;
+      transition: border-color 0.2s;
+    }
+    .lb-entry:hover { border-color: rgba(255,102,0,0.3); }
+    .lb-entry.highlight { border-color: var(--accent); background: var(--accent-dim); }
+    .lb-rank {
+      font-family: 'Space Grotesk', monospace; font-size: 1.1rem; font-weight: 800;
+      min-width: 36px; text-align: center; color: var(--muted);
+    }
+    .lb-entry.top-1 .lb-rank { color: #ffd700; }
+    .lb-entry.top-2 .lb-rank { color: #c0c0c0; }
+    .lb-entry.top-3 .lb-rank { color: #cd7f32; }
+    .lb-avatar {
+      width: 40px; height: 40px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+      background: var(--border); display: flex; align-items: center; justify-content: center;
+    }
+    .lb-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .lb-avatar-placeholder { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+    .lb-info { flex: 1; min-width: 0; }
+    .lb-name { font-family: 'Space Grotesk', sans-serif; font-size: 0.95rem; font-weight: 600; color: var(--fg); }
+    .lb-username { font-size: 0.75rem; color: var(--muted); }
+    .lb-count { text-align: right; min-width: 60px; }
+    .lb-count-num { font-family: 'Space Grotesk', monospace; font-size: 1.25rem; font-weight: 800; color: var(--fg); }
+    .lb-count-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .lb-total { font-size: 0.7rem; color: var(--muted); margin-top: 0.1rem; }
+
+    .your-rank-bar {
+      margin-top: 1.5rem; padding: 1rem 1.25rem;
+      background: var(--surface); border: 1px solid var(--accent);
+      border-radius: 0.75rem; display: flex; align-items: center; justify-content: space-between;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .your-rank-label { font-size: 0.85rem; color: var(--muted); }
+    .your-rank-num { font-size: 1.5rem; font-weight: 900; color: var(--accent); }
+
+    .empty-leaderboard { text-align: center; padding: 4rem 2rem; color: var(--muted); font-family: 'Space Grotesk', sans-serif; font-size: 1rem; }
+    .empty-leaderboard p { margin-bottom: 0.5rem; }
+
+    /* Referral tier badges */
+    .tier-badge { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.2rem 0.65rem; border-radius: 999px; border: 1px solid; }
+    .tier-badge.bronze { color: #cd7f32; border-color: rgba(205,127,50,0.3); background: rgba(205,127,50,0.08); }
+    .tier-badge.silver { color: #c0c0c0; border-color: rgba(192,192,192,0.3); background: rgba(192,192,192,0.08); }
+    .tier-badge.gold { color: #ffd700; border-color: rgba(255,215,0,0.3); background: rgba(255,215,0,0.08); text-shadow: 0 0 4px rgba(255,215,0,0.3); }
+    .tier-badge.diamond { color: #b9f2ff; border-color: rgba(185,242,255,0.3); background: rgba(185,242,255,0.08); text-shadow: 0 0 6px rgba(185,242,255,0.4); animation: diamond-pulse 2s ease-in-out infinite; }
+
+    @keyframes diamond-pulse {
+      0%, 100% { text-shadow: 0 0 4px rgba(185,242,255,0.4); }
+      50% { text-shadow: 0 0 10px rgba(185,242,255,0.7); }
+    }
+
+    .lb-actions { display: flex; gap: 0.75rem; justify-content: center; margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <%- include('../partials/nav') %>
+
+  <main class="leaderboard-page">
+    <div class="leaderboard-header">
+      <div class="section-label">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z"/></svg>
+        Monthly Referral Leaderboard
+      </div>
+      <h1 class="section-title">Top Referrers</h1>
+      <p class="section-sub">The creators bringing in the most new WAGE members this month. Ranking resets on the 1st.</p>
+
+      <div class="leaderboard-stats-bar">
+        <div class="stat-chip">
+          <strong><%= leaders.length %></strong> creators ranked this month
+        </div>
+        <% if (userStats) { %>
+          <div class="stat-chip">
+            Your code: <strong><%= userStats.code %></strong>
+          </div>
+          <div class="stat-chip">
+            <strong><%= userStats.points %></strong> points earned
+          </div>
+        <% } %>
+      </div>
+    </div>
+
+    <% if (leaders.length === 0) { %>
+      <div class="empty-leaderboard">
+        <p>No referrals yet this month.</p>
+        <p style="font-size:0.85rem;">Be the first — share your code and climb the board!</p>
+        <div class="lb-actions">
+          <a href="/dashboard/referrals" class="btn-primary">View Your Referral Stats</a>
+        </div>
+      </div>
+    <% } else { %>
+
+      <div class="lb-list">
+        <% leaders.forEach(function(entry, i) { %>
+          <div class="lb-entry <%= i < 3 ? 'top-' + (i+1) : '' %> <%= userEmail && entry.email === userEmail ? 'highlight' : '' %>">
+            <div class="lb-rank"><%= i + 1 %></div>
+            <div class="lb-avatar">
+              <% if (entry.avatar_url) { %>
+                <img src="<%= entry.avatar_url %>" alt="<%= entry.display_name || entry.username %>">
+              <% } else { %>
+                <span class="lb-avatar-placeholder"><%= (entry.display_name || entry.username || '?').charAt(0).toUpperCase() %></span>
+              <% } %>
+            </div>
+            <div class="lb-info">
+              <div class="lb-name">
+                <%= entry.display_name || entry.username %>
+                <% if (entry.referral_tier && entry.referral_tier !== 'bronze') { %>
+                  <span class="tier-badge <%= entry.referral_tier %>">
+                    <%= entry.referral_tier %>
+                  </span>
+                <% } %>
+              </div>
+              <div class="lb-username">@<%= entry.username %></div>
+            </div>
+            <div class="lb-count">
+              <div class="lb-count-num"><%= entry.monthly_referrals %></div>
+              <div class="lb-count-label">this month</div>
+              <div class="lb-total"><%= entry.total_referrals %> all-time</div>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+
+      <% if (userStats && userEmail && userMonthlyRank === null) { %>
+        <div class="your-rank-bar">
+          <div>
+            <div class="your-rank-label">Your rank this month</div>
+          </div>
+          <div class="your-rank-num">
+            <% if (userStats.monthlyReferrals > 0) { %>
+              <span style="font-size:0.9rem; color: var(--muted);">Not in top 25 yet</span>
+            <% } else { %>
+              <span style="font-size:0.9rem; color: var(--muted);">Share your code to rank</span>
+            <% } %>
+          </div>
+        </div>
+      <% } else if (userMonthlyRank && userStats && userEmail) { %>
+        <div class="your-rank-bar">
+          <div>
+            <div class="your-rank-label">Your rank this month</div>
+          </div>
+          <div class="your-rank-num">#<%= userMonthlyRank %></div>
+        </div>
+      <% } %>
+
+      <div class="lb-actions">
+        <a href="/dashboard/referrals" class="btn-primary">Your Referral Dashboard</a>
+        <a href="/join" class="btn-view">Join & Use a Code</a>
+      </div>
+    <% } %>
+  </main>
+</body>
+</html>

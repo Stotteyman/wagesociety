@@ -3,57 +3,438 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin: Shop — W.A.G.E. Society</title>
+  <title>Admin: Point Shop — W.A.G.E. Society</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/theme.css">
   <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    :root { --admin-sidebar-w: 220px; }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    .admin-nav { background: var(--bg); border-bottom: 1px solid var(--border); padding: 0.85rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+    .admin-nav-logo { font-weight: 800; font-size: 1rem; color: var(--fg); text-decoration: none; }
+    .admin-nav-logo span { color: var(--accent); }
+    .admin-nav-divider { width: 1px; height: 20px; background: var(--border); }
+    .admin-nav-right { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+    .admin-nav-link { font-size: 0.8rem; color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 0.3rem; }
+    .admin-nav-link:hover { color: var(--fg); }
+    .admin-body { display: flex; flex: 1; max-width: 1300px; margin: 0 auto; width: 100%; padding: 2rem 1.5rem; gap: 2rem; }
+    .admin-sidebar { position: sticky; top: 1.5rem; width: var(--admin-sidebar-w); flex-shrink: 0; }
+    .admin-sidebar-section { margin-bottom: 1.5rem; }
+    .admin-sidebar-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 0.4rem; padding: 0 0.5rem; }
+    .admin-sidebar-link { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: 0.82rem; font-weight: 500; transition: background 0.1s, color 0.1s; }
+    .admin-sidebar-link:hover { background: var(--surface); color: var(--fg); }
+    .admin-sidebar-link.active { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+    .admin-sidebar-link .link-icon { font-size: 0.9rem; width: 18px; text-align: center; }
+    .admin-main { flex: 1; min-width: 0; }
+    .admin-page-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); display: block; margin-bottom: 0.2rem; }
+    .admin-page-title { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; font-weight: 800; margin: 0; }
+    .admin-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .admin-card-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 1rem; margin-bottom: 1rem; color: var(--fg); }
+    .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.55rem 1.1rem; border-radius: 8px; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 0.8rem; cursor: pointer; border: none; text-decoration: none; transition: background 0.2s, transform 0.1s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #e65500; transform: scale(1.02); }
+    .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.75rem; }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--surface); color: var(--fg); }
+    .item-table { width: 100%; border-collapse: collapse; }
+    .item-table th { text-align: left; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
+    .item-table td { padding: 0.85rem 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+    .item-table tr:last-child td { border-bottom: none; }
+    .item-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .item-name-cell { font-weight: 600; color: var(--fg); }
+    .item-type-badge { display: inline-block; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.2rem 0.6rem; border-radius: 20px; white-space: nowrap; }
+    .type-badge    { background: rgba(255,102,0,0.15); color: var(--accent); border: 1px solid rgba(255,102,0,0.3); }
+    .type-role     { background: rgba(139,92,246,0.15); color: #a78bfa; border: 1px solid rgba(139,92,246,0.3); }
+    .type-membership_days { background: rgba(0,200,83,0.12); color: #10b981; border: 1px solid rgba(0,200,83,0.25); }
+    .type-profile_frame  { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+    .type-username_color { background: rgba(244,63,94,0.12); color: #f472b6; border: 1px solid rgba(244,63,94,0.25); }
+    .type-marketplace_credit { background: rgba(251,191,36,0.12); color: #fbbf24; border: 1px solid rgba(251,191,36,0.25); }
+    .type-vip_access { background: rgba(168,85,247,0.15); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
+    .point-cost { font-weight: 700; color: var(--accent); font-family: 'Space Grotesk', sans-serif; }
+    .active-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #10b981; margin-right: 0.4rem; }
+    .inactive-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--border); margin-right: 0.4rem; }
+    .status-label { font-size: 0.78rem; color: var(--muted); }
+    .toggle-btn { cursor: pointer; border: none; background: none; padding: 0; }
+    .actions-cell { display: flex; gap: 0.4rem; align-items: center; }
+    .btn-danger { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+    .btn-danger:hover { background: rgba(239,68,68,0.25); }
+    .btn-edit { background: rgba(255,102,0,0.1); color: var(--accent); border: 1px solid rgba(255,102,0,0.2); }
+    .btn-edit:hover { background: rgba(255,102,0,0.2); }
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; width: 480px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+    .modal h2 { font-family: 'Space Grotesk', sans-serif; font-weight: 800; font-size: 1.25rem; margin: 0 0 1.5rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    .form-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--fg); font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; padding: 0.65rem 0.85rem; box-sizing: border-box; }
+    .form-input:focus { outline: none; border-color: var(--accent); }
+    .form-select { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--fg); font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; padding: 0.65rem 0.85rem; box-sizing: border-box; cursor: pointer; }
+    .form-select:focus { outline: none; border-color: var(--accent); }
+    .modal-actions { display: flex; gap: 0.75rem; margin-top: 1.5rem; justify-content: flex-end; }
+    .toggle-switch { position: relative; width: 40px; height: 22px; cursor: pointer; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 22px; transition: background 0.2s; }
+    .toggle-slider:before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: transform 0.2s; }
+    .toggle-switch input:checked + .toggle-slider { background: #10b981; }
+    .toggle-switch input:checked + .toggle-slider:before { transform: translateX(18px); }
+    .empty-table { text-align: center; padding: 3rem 2rem; color: var(--muted); }
+    .notification { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--surface); border: 1px solid var(--accent); color: var(--fg); padding: 0.85rem 1.25rem; border-radius: 10px; font-size: 0.875rem; font-weight: 600; z-index: 200; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+    .notification.show { display: block; animation: slideUp 0.3s ease-out; }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .notification.error { border-color: #ef4444; color: #ef4444; }
+    .confirm-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; }
+    .confirm-overlay.open { display: flex; }
+    .confirm-box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; width: 380px; text-align: center; }
+    .confirm-box h3 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; margin: 0 0 0.75rem; }
+    .confirm-box p { color: var(--muted); font-size: 0.9rem; margin: 0 0 1.5rem; }
+    .confirm-box .modal-actions { justify-content: center; }
+    @media (max-width: 768px) { .admin-sidebar { display: none; } .admin-body { padding: 1rem; } }
+  </style>
 </head>
 <body>
-<%- include('../partials/nav') %>
 
-<section class="dashboard-page">
-  <div class="dashboard-inner">
-    <div style="margin-bottom:2rem;">
-      <a href="/dashboard" style="color:var(--muted);text-decoration:none;font-size:0.875rem;">← Back to Dashboard</a>
-    </div>
-    <div class="page-header">
-      <span class="section-label" style="color:var(--accent);">Admin</span>
-      <h1 class="section-title">Manage Shop</h1>
-    </div>
+<!-- Admin nav -->
+<nav class="admin-nav">
+  <a href="/dashboard" class="admin-nav-logo">W.A.G.E. <span>Admin</span></a>
+  <div class="admin-nav-divider"></div>
+  <span style="font-size:0.75rem;color:var(--muted);">Merch Shop</span>
+  <div class="admin-nav-right">
+    <a href="/admin" class="admin-nav-link">← Overview</a>
+    <a href="/dashboard" class="admin-nav-link">Dashboard</a>
+    <a href="/logout" class="admin-nav-link">Logout</a>
+  </div>
+</nav>
 
-    <div class="dash-card">
-      <h3 class="dash-card-title">Merch Items</h3>
-      <div id="shopItems"></div>
+<!-- Body -->
+<div class="admin-body">
+  <!-- Sidebar -->
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Management</div>
+      <a href="/admin" class="admin-sidebar-link"><span class="link-icon">🏠</span> Overview</a>
+      <a href="/admin/users" class="admin-sidebar-link"><span class="link-icon">👥</span> Members</a>
+      <a href="/admin/roles" class="admin-sidebar-link"><span class="link-icon">🔑</span> Roles &amp; Permissions</a>
+    </div>
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Platform</div>
+      <a href="/admin/discord" class="admin-sidebar-link"><span class="link-icon">🤖</span> Discord Bot</a>
+      <a href="/admin/tiers" class="admin-sidebar-link"><span class="link-icon">⭐</span> Membership Tiers</a>
+      <a href="/admin/point-shop" class="admin-sidebar-link"><span class="link-icon">🏪</span> Point Shop</a>
+    </div>
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Tools</div>
+      <a href="/admin/diagnostics" class="admin-sidebar-link"><span class="link-icon">🔧</span> Diagnostics</a>
+      <a href="/admin/shop" class="admin-sidebar-link active"><span class="link-icon">🛒</span> Merch Shop</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="admin-main">
+    <div class="admin-page-header" style="margin-bottom:1.5rem;">
+      <span class="admin-page-label">Admin</span>
+      <h1 class="admin-page-title">Merch Shop</h1>
+    </div>
+        <!-- Stats summary -->
+        <div class="admin-card">
+          <div class="admin-card-title">Shop Overview</div>
+          <div id="statsRow" style="display:flex;gap:2rem;flex-wrap:wrap;">
+            <div><div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:0.25rem;">Total Items</div><div id="statTotal" style="font-family:'Space Grotesk',sans-serif;font-size:1.75rem;font-weight:800;color:var(--fg);">—</div></div>
+            <div><div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:0.25rem;">Active</div><div id="statActive" style="font-family:'Space Grotesk',sans-serif;font-size:1.75rem;font-weight:800;color:#10b981;">—</div></div>
+            <div><div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:0.25rem;">Total Purchases</div><div id="statPurchases" style="font-family:'Space Grotesk',sans-serif;font-size:1.75rem;font-weight:800;color:var(--accent);">—</div></div>
+          </div>
+        </div>
+
+        <!-- Items table -->
+        <div class="admin-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.75rem;">
+            <div class="admin-card-title" style="margin:0;">Shop Items</div>
+            <button class="btn btn-primary" onclick="openCreateModal()">+ Add Item</button>
+          </div>
+          <div id="itemsTableWrap">
+            <table class="item-table" id="itemsTable">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Cost</th>
+                  <th>Status</th>
+                  <th>Sort</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="itemsBody"></tbody>
+            </table>
+            <div class="empty-table" id="emptyState" style="display:none;">
+              <p>No shop items yet. Create your first one!</p>
+            </div>
+          </div>
+        </div>
+  </main>
+</div>
+
+<!-- Create/Edit Modal -->
+<div class="modal-overlay" id="itemModal">
+  <div class="modal">
+    <h2 id="modalTitle">Add Shop Item</h2>
+    <input type="hidden" id="itemId">
+    <div class="form-group">
+      <label class="form-label">Name *</label>
+      <input type="text" id="itemName" class="form-input" placeholder="VIP Badge" required>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <input type="text" id="itemDescription" class="form-input" placeholder="Short description shown to users">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Point Cost *</label>
+      <input type="number" id="itemCost" class="form-input" placeholder="2000" min="1" required>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Item Type *</label>
+      <select id="itemType" class="form-select">
+        <option value="badge">Badge</option>
+        <option value="role">Role</option>
+        <option value="membership_days">Membership Days</option>
+        <option value="profile_frame">Profile Frame</option>
+        <option value="username_color">Username Color</option>
+        <option value="marketplace_credit">Marketplace Credit</option>
+        <option value="vip_access">VIP Access</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Sort Order</label>
+      <input type="number" id="itemSort" class="form-input" placeholder="0" min="0">
+    </div>
+    <div class="form-group" style="display:flex;align-items:center;gap:0.75rem;">
+      <label class="toggle-switch">
+        <input type="checkbox" id="itemActive" checked>
+        <span class="toggle-slider"></span>
+      </label>
+      <label style="font-size:0.85rem;font-weight:600;color:var(--fg);cursor:pointer;" for="itemActive">Active (visible in shop)</label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="modalSaveBtn" onclick="saveItem()">Create Item</button>
     </div>
   </div>
-</section>
+</div>
+
+<!-- Delete Confirm Modal -->
+<div class="confirm-overlay" id="confirmModal">
+  <div class="confirm-box">
+    <h3>Delete Item?</h3>
+    <p id="confirmText">This will permanently remove this shop item.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirmDeleteBtn" onclick="doDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Notification -->
+<div class="notification" id="notification"></div>
 
 <script>
-fetch('/api/auth/me').then(r=>r.json()).then(data => {
-  if (!data.user || !['superadmin','admin'].includes(data.access?.role)) {
-    document.querySelector('.dash-card').innerHTML = '<p style="color:#dc2626;">Access denied. Admin only.</p>';
+// ── State ──────────────────────────────────────────────────────────────────
+let items = [];
+let deleteTargetId = null;
+
+// ── Load ───────────────────────────────────────────────────────────────────
+async function loadItems() {
+  try {
+    const res = await fetch('/api/points-shop/items');
+    const data = await res.json();
+    items = data.items || [];
+    render();
+    updateStats();
+  } catch (err) {
+    showNotification('Failed to load items', true);
+  }
+}
+
+async function loadPurchaseCount() {
+  // Fetch total purchase count from DB via admin API (or just show total items as placeholder)
+  const statEl = document.getElementById('statPurchases');
+  try {
+    // Use the transactions API to count shop purchases
+    const res = await fetch('/api/points-shop/items');
+    const data = await res.json();
+    statEl.textContent = '—'; // will update when we have a count endpoint
+  } catch {
+    statEl.textContent = '—';
+  }
+}
+
+function updateStats() {
+  document.getElementById('statTotal').textContent = items.length;
+  document.getElementById('statActive').textContent = items.filter(i => i.active).length;
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function render() {
+  const body = document.getElementById('itemsBody');
+  const empty = document.getElementById('emptyState');
+  if (!items.length) {
+    body.innerHTML = '';
+    empty.style.display = 'block';
     return;
   }
-  fetch('/api/shop').then(r=>r.json()).then(shop => {
-    const items = shop.merchItems || [];
-    if (!items.length) {
-      document.getElementById('shopItems').innerHTML = '<p style="color:var(--muted);">No merch items yet.</p>';
-      return;
-    }
-    document.getElementById('shopItems').innerHTML = items.map(item => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:1rem 0;border-bottom:1px solid var(--border);">
-        <div>
-          <div style="font-weight:700;">${item.name}</div>
-          <div style="font-size:0.85rem;color:var(--muted);">${item.price}</div>
+  empty.style.display = 'none';
+  body.innerHTML = items.map(item => `
+    <tr>
+      <td class="item-name-cell">${escHtml(item.name)}</td>
+      <td><span class="item-type-badge type-${item.item_type}">${item.item_type.replace(/_/g,' ')}</span></td>
+      <td><span class="point-cost">${Number(item.point_cost).toLocaleString()} pts</span></td>
+      <td>
+        <span class="${item.active ? 'active-dot' : 'inactive-dot'}"></span>
+        <span class="status-label">${item.active ? 'Active' : 'Inactive'}</span>
+      </td>
+      <td style="color:var(--muted);font-size:0.85rem;">${item.sort_order ?? 0}</td>
+      <td>
+        <div class="actions-cell">
+          <button class="btn btn-sm btn-edit" onclick="openEditModal('${item.id}')">Edit</button>
+          <label class="toggle-switch" title="Toggle active">
+            <input type="checkbox" ${item.active ? 'checked' : ''} onchange="toggleItem('${item.id}', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+          <button class="btn btn-sm btn-danger" onclick="confirmDelete('${item.id}')">Delete</button>
         </div>
-        <span style="font-size:0.75rem;background:var(--surface);border:1px solid var(--border);padding:0.2rem 0.75rem;border-radius:20px;">${item.is_active ? 'Active' : 'Inactive'}</span>
-      </div>
-    `).join('');
-  });
-});
+      </td>
+    </tr>
+  `).join('');
+}
+
+// ── Modal helpers ──────────────────────────────────────────────────────────
+function openCreateModal() {
+  document.getElementById('modalTitle').textContent = 'Add Shop Item';
+  document.getElementById('modalSaveBtn').textContent = 'Create Item';
+  document.getElementById('itemId').value = '';
+  document.getElementById('itemName').value = '';
+  document.getElementById('itemDescription').value = '';
+  document.getElementById('itemCost').value = '';
+  document.getElementById('itemType').value = 'badge';
+  document.getElementById('itemSort').value = '0';
+  document.getElementById('itemActive').checked = true;
+  document.getElementById('itemModal').classList.add('open');
+}
+
+function openEditModal(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  document.getElementById('modalTitle').textContent = 'Edit Shop Item';
+  document.getElementById('modalSaveBtn').textContent = 'Save Changes';
+  document.getElementById('itemId').value = item.id;
+  document.getElementById('itemName').value = item.name || '';
+  document.getElementById('itemDescription').value = item.description || '';
+  document.getElementById('itemCost').value = item.point_cost || '';
+  document.getElementById('itemType').value = item.item_type || 'badge';
+  document.getElementById('itemSort').value = item.sort_order ?? 0;
+  document.getElementById('itemActive').checked = item.active !== false;
+  document.getElementById('itemModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('itemModal').classList.remove('open');
+}
+
+function confirmDelete(id) {
+  deleteTargetId = id;
+  const item = items.find(i => i.id === id);
+  document.getElementById('confirmText').textContent = `Delete "${item?.name || 'this item'}"? This cannot be undone.`;
+  document.getElementById('confirmModal').classList.add('open');
+}
+
+function closeConfirm() {
+  document.getElementById('confirmModal').classList.remove('open');
+  deleteTargetId = null;
+}
+
+// ── API actions ───────────────────────────────────────────────────────────
+async function saveItem() {
+  const id = document.getElementById('itemId').value;
+  const payload = {
+    name: document.getElementById('itemName').value.trim(),
+    description: document.getElementById('itemDescription').value.trim(),
+    point_cost: parseInt(document.getElementById('itemCost').value),
+    item_type: document.getElementById('itemType').value,
+    sort_order: parseInt(document.getElementById('itemSort').value || '0'),
+    is_active: document.getElementById('itemActive').checked,
+  };
+
+  if (!payload.name || !payload.point_cost) {
+    showNotification('Name and point cost are required', true);
+    return;
+  }
+
+  const url = id ? `/api/points-shop/items/${id}` : '/api/points-shop/items';
+  const method = id ? 'PUT' : 'POST';
+
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || 'Save failed');
+    }
+    closeModal();
+    await loadItems();
+    showNotification(id ? 'Item updated!' : 'Item created!');
+  } catch (err) {
+    showNotification(err.message || 'Failed to save item', true);
+  }
+}
+
+async function toggleItem(id, active) {
+  try {
+    const res = await fetch(`/api/points-shop/items/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_active: active }),
+    });
+    if (!res.ok) throw new Error('Toggle failed');
+    await loadItems();
+    showNotification(active ? 'Item activated' : 'Item deactivated');
+  } catch (err) {
+    showNotification(err.message || 'Failed to toggle item', true);
+    // Revert toggle visually
+    render();
+  }
+}
+
+async function doDelete() {
+  if (!deleteTargetId) return;
+  try {
+    const res = await fetch(`/api/points-shop/items/${deleteTargetId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Delete failed');
+    closeConfirm();
+    await loadItems();
+    showNotification('Item deleted');
+  } catch (err) {
+    showNotification(err.message || 'Failed to delete item', true);
+  }
+}
+
+// ── Notifications ──────────────────────────────────────────────────────────
+function showNotification(msg, isError = false) {
+  const el = document.getElementById('notification');
+  el.textContent = msg;
+  el.className = 'notification show' + (isError ? ' error' : '');
+  setTimeout(() => { el.className = 'notification'; }, 3000);
+}
+
+// ── Utility ────────────────────────────────────────────────────────────────
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+loadItems();
 </script>
-<%- include('../partials/footer') %>
 </body>
 </html>

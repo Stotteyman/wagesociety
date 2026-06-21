@@ -2,8 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+
+<%- include('../partials/head-pwa') %>
   <title>Privacy Policy — W.A.G.E. Society</title>
+  <meta name="description" content="W.A.G.E. Society Privacy Policy. How we collect, use, and protect your data — transparent, no-nonsense.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Privacy Policy — W.A.G.E. Society">
+  <meta property="og:description" content="W.A.G.E. Society Privacy Policy. How we collect, use, and protect your data — transparent, no-nonsense.">
+  <meta property="og:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
+  <meta property="og:url" content="https://wagesociety.com/privacy">
+  <meta property="og:site_name" content="WAGE Society">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Privacy Policy — W.A.G.E. Society">
+  <meta name="twitter:description" content="W.A.G.E. Society Privacy Policy. How we collect, use, and protect your data — transparent, no-nonsense.">
+  <meta name="twitter:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -18,23 +31,60 @@
   <p class="faq-sub">Effective date: May 5, 2026</p>
 
   <div style="padding-top:2rem;color:var(--muted);line-height:1.8;">
-    <h2 style="font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;margin:2rem 0 1rem;color:var(--fg);">Information We Collect</h2>
-    <p>We collect information you provide directly: name, email, username, profile photo, bio, and any content you post. We also collect usage data to improve the service.</p>
 
-    <h2 style="font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;margin:2rem 0 1rem;color:var(--fg);">How We Use It</h2>
-    <p>We use your information to provide and improve the service, communicate with you, process payments, and enforce our terms. We do not sell your personal data to third parties.</p>
+    <h2 style="font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;margin:2rem 0 1rem;color:var(--fg);">What We Collect</h2>
+    <p>When you sign up or log in via Google OAuth, we receive your name, email address, and profile picture. We also collect:</p>
+    <ul style="margin:0.75rem 0 0.75rem 1.5rem;">
+      <li>Account information (email, display name, avatar)</li>
+      <li>OAuth tokens (for maintaining your session with Google-connected services)</li>
+      <li>YouTube channel data (when you connect your YouTube account for live streaming)</li>
+      <li>Kick account data (when you connect via Kick OAuth)</li>
+      <li>Discord profile and guild memberships (when you link your Discord account for role sync)</li>
+      <li>Membership tier, payment history, and referral data</li>
+      <li>Content you post: blog articles, livestream info, bio, merch listings</li>
+    </ul>
 
-    <h2 style="font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;margin:2rem 0 1rem;color:var(--fg);">Third-Party Services</h2>
-    <p>We use Stripe for payments and may use other service providers. Their use of your data is governed by their own privacy policies.</p>
+    <h2 style="font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;margin:2rem 0 1rem;color:var(--fg);">How We Use It</h2>
+    <p>We use your data to:</p>
+    <ul style="margin:0.75rem 0 0.75rem 1.5rem;">
+      <li>Authenticate you and maintain your session</li>
+      <li>Display your profile and content to other users</li>
+      <li>Manage your membership tier and billing</li>
+      <li>Sync Discord roles based on your subscription status</li>
+      <li>Process payments via Stripe (we never store your card details)</li>
+      <li>Send transactional emails (account alerts, subscription confirmations, trial reminders)</li>
+      <li>Display aggregate platform statistics on the landing page</li>
+    </ul>
 
-    <h2 style="font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;margin:2rem 0 1rem;color:var(--fg);">Data Retention</h2>
-    <p>We retain your data as long as your account is active or as needed to provide services. You may request deletion of your account data by contacting us.</p>
+    <h2 style="font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;margin:2rem 0 1rem;color:var(--fg);">Data Sharing</h2>
+    <p>We share your data with the following third-party services, each governed by their own privacy policies:</p>
+    <ul style="margin:0.75rem 0 0.75rem 1.5rem;">
+      <li><strong>Stripe</strong> — Processes all payments and subscriptions. WAGE Society never stores your card number or billing details. <a href="https://stripe.com/privacy" style="color:var(--accent);" target="_blank" rel="noopener">Stripe Privacy Policy</a></li>
+      <li><strong>Discord</strong> — When you link your Discord account, we sync your membership tier to your Discord guild roles. Your Discord username and avatar may be displayed in your profile. <a href="https://discord.com/privacy" style="color:var(--accent);" target="_blank" rel="noopener">Discord Privacy Policy</a></li>
+      <li><strong>Google</strong> — Used for OAuth login and YouTube channel linking. <a href="https://policies.google.com/privacy" style="color:var(--accent);" target="_blank" rel="noopener">Google Privacy Policy</a></li>
+      <li><strong>Kick</strong> — Used for OAuth account linking. <a href="https://kick.com/privacy" style="color:var(--accent);" target="_blank" rel="noopener">Kick Privacy Policy</a></li>
+    </ul>
+    <p>We do not sell, rent, or trade your personal data to any other third parties.</p>
 
-    <h2 style="font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;margin:2rem 0 1rem;color:var(--fg);">Cookies</h2>
-    <p>We use session cookies to maintain your login state. You can control cookie preferences in your browser.</p>
+    <h2 style="font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;margin:2rem 0 1rem;color:var(--fg);">Your Rights</h2>
+    <p>You have the right to:</p>
+    <ul style="margin:0.75rem 0 0.75rem 1.5rem;">
+      <li>Access all data we hold about you via Settings</li>
+      <li>Update your profile, display name, and bio at any time</li>
+      <li>Delete your account and all associated data via Settings → Delete Account</li>
+      <li>Unlink Google, Discord, or Kick at any time via Settings → Connected Accounts</li>
+      <li>Export your data before deletion (contact <a href="mailto:support@wagesociety.com" style="color:var(--accent);">support@wagesociety.com</a>)</li>
+    </ul>
 
-    <h2 style="font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;margin:2rem 0 1rem;color:var(--fg);">Contact</h2>
-    <p>Questions? Email <a href="mailto:appeals@wagesociety.com" style="color:var(--accent);">appeals@wagesociety.com</a>.</p>
+    <h2 style="font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;margin:2rem 0 1rem;color:var(--fg);">Cookies</h2>
+    <p>We use a single essential session cookie to maintain your logged-in state. This cookie does not track you across other sites and is required for the platform to function. No advertising or analytics cookies are used.</p>
+
+    <h2 style="font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;margin:2rem 0 1rem;color:var(--fg);">Data Retention</h2>
+    <p>We retain your account data as long as your account is active. Upon deletion, your personal data is removed within 30 days. Some anonymized, aggregated data may be retained for platform statistics.</p>
+
+    <h2 style="font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:700;margin:2rem 0 1rem;color:var(--fg);">Contact</h2>
+    <p>Questions, concerns, or data subject requests: <a href="mailto:support@wagesociety.com" style="color:var(--accent);">support@wagesociety.com</a></p>
+
   </div>
 </div>
 <%- include('../partials/footer') %>

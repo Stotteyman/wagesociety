@@ -2,305 +2,848 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <%- include('../partials/head-pwa') %>
   <title>Memberships — W.A.G.E. Society</title>
+  <meta name="description" content="Invest in your empire. Join W.A.G.E. Society's membership tiers — Free, Creator, Pro, ELITE, or UNLIMITED. 7-day free trial on all paid plans.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Memberships — W.A.G.E. Society">
+  <meta property="og:description" content="7-day free trial on all paid tiers. Cancel anytime — no charge until Day 8.">
+  <meta property="og:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
+  <meta property="og:url" content="https://wagesociety.com/memberships">
+  <meta property="og:site_name" content="WAGE Society">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Memberships — W.A.G.E. Society">
+  <meta name="twitter:description" content="7-day free trial on all paid tiers. Cancel anytime — no charge until Day 8.">
+  <meta name="twitter:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/theme.css">
   <link rel="stylesheet" href="/css/pages.css">
   <style>
+    /* ─── Memberships Page ────────────────────────────────────────────────── */
+    .memberships-page {
+      min-height: 100vh;
+      padding: 4rem 1.5rem 8rem;
+      background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(245,158,11,0.05) 0%, transparent 60%);
+    }
+    .memberships-inner { max-width: 1100px; margin: 0 auto; }
+
+    .memberships-header {
+      text-align: center;
+      margin-bottom: 3.5rem;
+    }
+    .memberships-header .section-label { margin-bottom: 1.25rem; }
+    .memberships-headline {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: clamp(2.25rem, 5vw, 3.5rem);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      color: var(--wage-text-primary);
+      margin-bottom: 0.875rem;
+      line-height: 1.1;
+    }
+    .memberships-sub {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 1.05rem;
+      color: var(--wage-text-secondary);
+      line-height: 1.65;
+      max-width: 46ch;
+      margin: 0 auto;
+    }
+
+    /* ─── Billing Toggle ────────────────────────────────────────────────── */
     .billing-toggle {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.75rem;
-      margin-bottom: 2.5rem;
-      font-family: 'Space Grotesk', sans-serif;
+      gap: 0.875rem;
+      margin-bottom: 3rem;
     }
-    .billing-toggle label {
-      font-size: 0.9rem;
-      font-weight: 500;
-      color: var(--muted);
-      cursor: pointer;
+    .billing-label {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--wage-text-muted);
       transition: color 0.2s;
+      cursor: pointer;
+      padding: 0.4rem 0.75rem;
+      border-radius: 8px;
+      user-select: none;
     }
-    .billing-toggle label.active {
-      color: var(--fg);
-      font-weight: 700;
-    }
-    .toggle-track {
+    .billing-label:hover { color: var(--wage-text-secondary); }
+    .billing-label.active { color: var(--wage-text-primary); }
+    .billing-switch {
       position: relative;
-      width: 52px;
-      height: 28px;
-      background: var(--surface);
-      border: 2px solid var(--accent);
+      width: 48px;
+      height: 26px;
+      background: var(--wage-bg-card);
+      border: 1px solid var(--wage-border);
       border-radius: 999px;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: border-color 0.25s, background 0.25s;
+      flex-shrink: 0;
     }
-    .toggle-track.annual {
-      background: var(--accent);
+    .billing-switch.annual {
+      background: rgba(245,158,11,0.15);
+      border-color: rgba(245,158,11,0.5);
     }
-    .toggle-thumb {
+    .billing-switch-knob {
       position: absolute;
       top: 3px;
       left: 3px;
       width: 18px;
       height: 18px;
-      background: var(--accent);
       border-radius: 50%;
-      transition: transform 0.2s, background 0.2s;
+      background: var(--wage-text-muted);
+      transition: transform 0.25s ease, background 0.25s;
     }
-    .toggle-track.annual .toggle-thumb {
-      transform: translateX(24px);
-      background: #fff;
+    .billing-switch.annual .billing-switch-knob {
+      transform: translateX(22px);
+      background: var(--wage-gold);
     }
-    .billing-badge {
-      font-size: 0.7rem;
-      font-weight: 700;
-      color: #fff;
-      background: #22c55e;
-      padding: 0.2rem 0.6rem;
+    .billing-save-badge {
+      background: rgba(245,158,11,0.1);
+      border: 1px solid rgba(245,158,11,0.3);
+      color: var(--wage-gold);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 0.25rem 0.65rem;
       border-radius: 999px;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
 
-    .plan-card { transition: opacity 0.2s; }
-    .plan-card.inactive { opacity: 0.5; pointer-events: none; }
-
-    .price-display { min-height: 4rem; }
-    .price-amount { font-family: 'Playfair Display', serif; font-size: 2.5rem; font-weight: 900; color: var(--fg); }
-    .price-period { font-size: 1rem; font-weight: 400; color: var(--muted); }
-    .price-equiv { font-size: 0.8rem; color: var(--accent-warm); margin-top: 0.2rem; }
-
-    .savings-callout {
-      display: inline-block;
-      background: #fef3c7;
-      border: 1px solid #f59e0b;
-      color: #92400e;
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 0.2rem 0.65rem;
-      border-radius: 999px;
-      margin-top: 0.5rem;
+    /* ─── Plans Grid ──────────────────────────────────────────────────────── */
+    .plans-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1.25rem;
+      margin-bottom: 3.5rem;
+    }
+    @media (max-width: 1100px) {
+      .plans-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 768px) {
+      .plans-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 520px) {
+      .plans-grid { grid-template-columns: 1fr; }
     }
 
-    .upgrade-btn {
-      display: block;
+    /* ─── Plan Card ──────────────────────────────────────────────────────── */
+    .plan-card {
+      display: flex;
+      flex-direction: column;
+      padding: 1.75rem 1.25rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .plan-card.featured {
+      border-color: rgba(245,158,11,0.45);
+      box-shadow: 0 0 50px rgba(245,158,11,0.1), 0 16px 48px rgba(0,0,0,0.4);
+    }
+    .plan-card.featured::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--wage-gold-dark), var(--wage-gold-light), var(--wage-gold-dark));
+    }
+    .plan-popular-badge {
+      position: absolute;
+      top: -1px;
+      right: 1rem;
+      background: linear-gradient(135deg, var(--wage-gold), var(--wage-gold-dark));
+      color: #000;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.6rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.28rem 0.7rem;
+      border-radius: 0 0 8px 8px;
+    }
+    .plan-tier {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--wage-text-muted);
+      margin-bottom: 0.5rem;
+    }
+    .plan-card.featured .plan-tier { color: var(--wage-gold); }
+    .plan-name {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 1.25rem;
+      font-weight: 900;
+      color: var(--wage-text-primary);
+      margin-bottom: 0.25rem;
+      letter-spacing: -0.02em;
+    }
+    .plan-price-wrap {
+      display: flex;
+      align-items: baseline;
+      gap: 0.3rem;
+      margin-bottom: 0.15rem;
+      min-height: 2.5rem;
+    }
+    .plan-price {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: clamp(1.75rem, 3.5vw, 2.25rem);
+      font-weight: 900;
+      color: var(--wage-text-primary);
+      letter-spacing: -0.03em;
+      line-height: 1;
+      transition: all 0.25s ease;
+    }
+    .plan-price.is-free { color: var(--wage-text-muted); }
+    .plan-period {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.78rem;
+      color: var(--wage-text-muted);
+      font-weight: 500;
+    }
+    .plan-price-sub {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.78rem;
+      color: var(--wage-text-muted);
+      margin-bottom: 1.25rem;
+      min-height: 1.5rem;
+    }
+    .plan-divider { height: 1px; background: var(--wage-border); margin-bottom: 1.25rem; }
+    .plan-features {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 1.5rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+    .plan-feature {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.8rem;
+      color: var(--wage-text-secondary);
+      line-height: 1.4;
+    }
+    .plan-feature-icon { flex-shrink: 0; margin-top: 2px; color: var(--wage-gold); }
+    .plan-feature.dimmed { color: var(--wage-text-muted); }
+    .plan-feature.dimmed .plan-feature-icon { color: var(--wage-text-muted); }
+
+    /* CTA button */
+    .plan-cta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
       width: 100%;
-      padding: 0.8rem;
-      background: var(--on-surface);
-      color: #fff;
-      text-align: center;
+      padding: 0.75rem 1rem;
+      border-radius: var(--wage-radius-btn);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.82rem;
+      font-weight: 700;
       text-decoration: none;
-      border-radius: 10px;
-      font-weight: 600;
-      font-size: 0.95rem;
       border: none;
       cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
+      transition: all 0.2s ease;
     }
-    .upgrade-btn:hover { background: #3a2a1a; transform: translateY(-1px); }
-    .upgrade-btn.annual-btn {
-      background: var(--accent);
+    .plan-cta:hover { transform: translateY(-1px); }
+    .plan-cta:active { transform: translateY(0); }
+    .plan-cta-primary {
+      background: linear-gradient(135deg, var(--wage-gold), var(--wage-gold-dark));
+      color: #000;
     }
-    .upgrade-btn.annual-btn:hover {
-      background: var(--accent-warm);
+    .plan-cta-primary:hover {
+      background: linear-gradient(135deg, var(--wage-gold-light), var(--wage-gold));
+      box-shadow: 0 6px 20px rgba(245,158,11,0.3);
+    }
+    .plan-cta-secondary {
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.25);
+      color: var(--wage-gold);
+    }
+    .plan-cta-secondary:hover {
+      background: rgba(245,158,11,0.16);
+      border-color: rgba(245,158,11,0.5);
+    }
+    .plan-cta-current {
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.2);
+      color: var(--wage-text-muted);
+      cursor: default;
+      pointer-events: none;
+    }
+    .plan-cta-disabled {
+      background: transparent;
+      border: 1px solid var(--wage-border);
+      color: var(--wage-text-muted);
+      cursor: not-allowed;
+    }
+
+    /* Current plan badge */
+    .current-plan-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: rgba(245,158,11,0.1);
+      border: 1px solid rgba(245,158,11,0.3);
+      color: var(--wage-gold);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.25rem 0.65rem;
+      border-radius: 999px;
+      margin-bottom: 0.875rem;
+    }
+
+    /* Trial badge */
+    .trial-badge {
+      position: absolute;
+      top: -1px;
+      right: 1rem;
+      background: linear-gradient(135deg, var(--wage-gold), var(--wage-gold-dark));
+      color: #000;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.6rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.28rem 0.65rem;
+      border-radius: 0 0 8px 8px;
+    }
+
+    /* Alerts */
+    .alert {
+      padding: 0.875rem 1.25rem;
+      border-radius: var(--wage-radius-btn);
+      margin-bottom: 1.75rem;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      max-width: 680px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .alert-success { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); color: #4ade80; }
+    .alert-canceled { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); color: var(--wage-gold); }
+    .alert-trial { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3); color: var(--wage-gold); }
+
+    /* ─── Comparison Table ────────────────────────────────────────────────── */
+    .compare-section {
+      max-width: 960px;
+      margin: 0 auto 5rem;
+    }
+    .compare-title {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--wage-text-primary);
+      letter-spacing: -0.02em;
+      text-align: center;
+      margin-bottom: 1.75rem;
+    }
+    .compare-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    .compare-table th {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--wage-text-muted);
+      padding: 0.75rem 0.875rem;
+      text-align: center;
+      border-bottom: 1px solid var(--wage-border);
+      white-space: nowrap;
+    }
+    .compare-table th:first-child { text-align: left; }
+    .compare-table td {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.82rem;
+      color: var(--wage-text-secondary);
+      padding: 0.75rem 0.875rem;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      text-align: center;
+      vertical-align: middle;
+    }
+    .compare-table td:first-child { text-align: left; font-weight: 600; color: var(--wage-text-primary); }
+    .compare-table tr:last-child td { border-bottom: none; }
+    .compare-table tr:hover td { background: rgba(245,158,11,0.04); }
+    .compare-check { color: var(--wage-gold); }
+    .compare-cross { color: var(--wage-text-muted); }
+    .compare-value { font-weight: 700; color: var(--wage-gold); }
+    .compare-header-name { color: var(--wage-gold) !important; }
+
+    /* ─── FAQ ────────────────────────────────────────────────────────────── */
+    .faq-section { max-width: 680px; margin: 0 auto 4rem; }
+    .faq-title {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--wage-text-primary);
+      letter-spacing: -0.02em;
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .faq-item { border-bottom: 1px solid var(--wage-border); }
+    .faq-question {
+      width: 100%;
+      background: none;
+      border: none;
+      padding: 1.25rem 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      cursor: pointer;
+      text-align: left;
+    }
+    .faq-question span {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--wage-text-primary);
+    }
+    .faq-question svg { flex-shrink: 0; color: var(--wage-text-muted); transition: transform 0.2s ease; }
+    .faq-item.open .faq-question svg { transform: rotate(180deg); }
+    .faq-answer {
+      display: none;
+      padding-bottom: 1.25rem;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.9rem;
+      color: var(--wage-text-secondary);
+      line-height: 1.7;
+    }
+    .faq-item.open .faq-answer { display: block; }
+
+    .contact-note {
+      text-align: center;
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--wage-text-muted);
+      font-size: 0.85rem;
+      padding: 0 0 3rem;
+    }
+    .contact-note a { color: var(--wage-gold); text-decoration: none; }
+    .contact-note a:hover { text-decoration: underline; }
+
+    /* ─── Trial modal ─────────────────────────────────────────────────────── */
+    .trial-modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 900;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .trial-modal-backdrop.open { display: flex; }
+    .trial-modal {
+      background: var(--wage-glass-bg);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--wage-border);
+      border-radius: var(--wage-radius-card);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+      padding: 2.5rem 2rem;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+    }
+    .trial-modal-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: rgba(245,158,11,0.12);
+      border: 1px solid rgba(245,158,11,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.25rem;
+      color: var(--wage-gold);
+    }
+    .trial-modal-title {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: var(--wage-text-primary);
+      letter-spacing: -0.02em;
+      margin-bottom: 0.75rem;
+    }
+    .trial-modal-body {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 0.9rem;
+      color: var(--wage-text-secondary);
+      line-height: 1.6;
+      margin-bottom: 1.75rem;
+    }
+    .trial-modal-actions { display: flex; flex-direction: column; gap: 0.75rem; }
+    .trial-modal-actions .plan-cta { width: 100%; }
+
+    /* ─── Scroll reveal ────────────────────────────────────────────────────── */
+    .plan-card {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    .plan-card.revealed {
+      opacity: 1;
+      transform: none;
+      transition: opacity 400ms cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 400ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .plan-card.revealed:hover {
+      transform: translateY(-4px) !important;
+      border-color: var(--wage-border-hover) !important;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .plan-card { opacity: 1; transform: none; }
+      .plan-card:hover { transform: none !important; }
     }
   </style>
 </head>
 <body>
-  <%- include('../partials/nav') %>
+  <a href="#" class="skip-link">Skip to main content</a>
+  <nav aria-label="Site navigation"><%- include('../partials/nav') %></nav>
 
-  <section class="memberships-page">
+  <main class="memberships-page" id="main-content" role="main" aria-label="Memberships and pricing">
+
     <div class="memberships-inner">
 
-      <!-- ── Header ─────────────────────────────────────────────────────────── -->
-      <div class="page-header">
-        <span class="section-label">Memberships</span>
-        <h1 class="section-title">Choose Your Plan</h1>
-        <p class="section-sub">Join W.A.G.E. Society and build without platform middlemen taking a cut.</p>
-      </div>
-
-      <!-- ── Alerts ──────────────────────────────────────────────────────────── -->
       <% if (success) { %>
-        <div style="background:#d4edda;border:1px solid #28a745;border-radius:8px;padding:1rem;margin-bottom:1.5rem;text-align:center;color:#155724;">
-          <strong>Welcome!</strong> Your membership is now active. Enjoy full access!
-        </div>
-      <% } else if (canceled) { %>
-        <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:1rem;margin-bottom:1.5rem;text-align:center;color:#856404;">
-          No charges were made. You can upgrade anytime.
-        </div>
-      <% } else if (upgrade) { %>
-        <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:1rem;margin-bottom:1.5rem;text-align:center;color:#856404;">
-          <strong>Upgrade required</strong> — this content needs a <strong><%= upgrade %></strong> membership or higher.
-        </div>
+      <div class="alert alert-success" role="alert">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+        Subscription activated! Welcome to <%= upgrade || 'your new tier' %>.
+      </div>
+      <% } %>
+      <% if (canceled) { %>
+      <div class="alert alert-canceled" role="alert">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Checkout canceled — no charge was made.
+      </div>
+      <% } %>
+      <% if (showTrialModal && trialDaysRemaining !== null) { %>
+      <div class="alert alert-trial" role="alert">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <%= trialDaysRemaining %> day<%= trialDaysRemaining !== 1 ? 's' : '' %> left in your trial.
+        <a href="/checkout/trial" style="margin-left:0.5rem;color:var(--wage-gold);text-decoration:underline;font-size:0.8rem;">View Trial</a>
+      </div>
       <% } %>
 
-      <% if (userEmail && currentMembership) { %>
-        <div style="text-align:center;padding:1rem;background:var(--surface);border-radius:8px;margin-bottom:2rem;color:var(--accent);">
-          You're currently on the <strong><%= currentMembership.name %></strong> plan<%= currentMembership.billing_cycle === 'annual' ? ' (annual)' : '' %>.
+      <div class="memberships-header">
+        <div class="section-label">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Memberships
         </div>
-      <% } %>
-
-      <!-- ── Billing toggle ──────────────────────────────────────────────────── -->
-      <div class="billing-toggle">
-        <label id="monthlyLabel" class="active" onclick="setBilling('monthly')">Monthly</label>
-        <div class="toggle-track" id="toggleTrack" onclick="setBilling(currentCycle === 'monthly' ? 'annual' : 'monthly')">
-          <div class="toggle-thumb" id="toggleThumb"></div>
-        </div>
-        <label id="annualLabel" onclick="setBilling('annual')">Annual</label>
-        <span class="billing-badge">2 months free</span>
+        <h1 class="memberships-headline">Choose Your Path</h1>
+        <p class="memberships-sub">Every creator starts free. Upgrade when you're ready to unlock tools, grow your audience, and keep more of what you earn.</p>
       </div>
 
-      <!-- ── Plan cards ──────────────────────────────────────────────────────── -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem;margin-bottom:2rem;">
+      <!-- Billing Toggle -->
+      <div class="billing-toggle" role="group" aria-label="Billing cycle">
+        <button class="billing-label active" id="btn-monthly" onclick="setBilling('monthly')" aria-pressed="true">Monthly</button>
+        <div
+          class="billing-switch"
+          id="billing-switch"
+          role="switch"
+          aria-checked="false"
+          tabindex="0"
+          onclick="setBilling('annual')"
+          onkeydown="if(event.key==='Enter'||event.key===' ')setBilling('annual')"
+          aria-label="Switch to annual billing"
+        ></div>
+        <button class="billing-label" id="btn-annual" onclick="setBilling('annual')" aria-pressed="false">Annual</button>
+        <span class="billing-save-badge">Save ~20%</span>
+      </div>
 
-        <% plans.forEach(function(plan) {
-          const isCurrentPlan = currentMembership && currentMembership.plan_slug === plan.slug;
+      <!-- Plan Cards -->
+      <div class="plans-grid" role="list" aria-label="Membership plan tiers">
+        <% plans.forEach(function(plan, i) {
+          const isFree = plan.price_cents === 0;
+          const isCurrent = currentMembership && currentMembership.plan_slug === plan.slug && ['active','trialing'].includes(currentMembership.status);
           const isFeatured = plan.slug === 'creator';
-          const isFree = plan.slug === 'free';
-
-          // Annual pricing: $29×10=$290, $79×10=$790
-          const annualPrices = { creator: 290, pro: 790 };
-          const monthlyEquiv = annualPrices[plan.slug];
+          const slug = plan.slug || 'free';
         %>
-          <div class="plan-card<%= isCurrentPlan ? ' inactive' : '' %>" id="card-<%= plan.slug %>"
-            style="background:<%= isFeatured ? '#faf6f1' : '#fff' %>;border:2px solid <%= isCurrentPlan ? 'var(--accent)' : (isFeatured ? 'var(--accent)' : 'var(--border)') %>;border-radius:12px;padding:2rem;<%= isCurrentPlan ? 'box-shadow:0 0 0 3px rgba(139,94,60,0.15);' : '' %>">
+        <div
+          class="wage-card plan-card scroll-reveal<%= isFeatured ? ' featured' : '' %>"
+          role="listitem"
+          style="transition-delay: <%= i * 70 %>ms;"
+          id="plan-card-<%= slug %>"
+          data-tier="<%= slug %>"
+        >
+          <% if (isCurrent) { %>
+          <div class="current-plan-badge wage-badge">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+            Current
+          </div>
+          <% } else if (!isFree) { %>
+          <div class="trial-badge wage-badge">7-Day Free Trial</div>
+          <% } %>
+          <% if (isFeatured && !isCurrent) { %>
+          <div class="plan-popular-badge">Most Popular</div>
+          <% } %>
 
-            <% if (isFeatured) { %>
-              <div style="position:absolute;top:-1px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;font-size:0.65rem;font-weight:700;padding:0.2rem 0.9rem;border-radius:0 0 6px 6px;letter-spacing:0.1em;display:none;">MOST POPULAR</div>
-            <% } %>
+          <div class="plan-tier"><%= plan.name %></div>
+          <div class="plan-name"><%= plan.name %></div>
 
-            <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;margin-bottom:0.5rem;color:var(--on-surface);"><%= plan.name %></h3>
-
-            <!-- Price display — JS updates these -->
-            <div class="price-display" id="price-<%= plan.slug %>">
-              <% if (isFree) { %>
-                <div class="price-amount">$0</div>
-                <div class="price-period">forever free</div>
-              <% } else { %>
-                <!-- Monthly -->
-                <div class="price-amount" id="price-amount-<%= plan.slug %>"><%= plan.display_price.replace('/mo','') %><span class="price-period">/mo</span></div>
-                <div class="price-equiv" id="price-equiv-<%= plan.slug %>" style="display:none;"></div>
-              <% } %>
-            </div>
-
-            <!-- Savings callout (annual) -->
-            <% if (monthlyEquiv) { %>
-              <div id="savings-<%= plan.slug %>" style="display:none;">
-                <span class="savings-callout">Save $<%= (plan.display_price.replace(/[^0-9.]/g,'') * 2 - 0.01).toFixed(0) %>/yr — 2 months free</span>
-              </div>
-            <% } %>
-
-            <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1rem;margin-top:0.5rem;"><%= plan.description %></p>
-
-            <ul style="list-style:none;padding:0;margin-bottom:1.5rem;">
-              <% (plan.features || []).forEach(function(f) { %>
-                <li style="padding:0.25rem 0;color:var(--on-surface);font-size:0.88rem;">✓ <%= f %></li>
-              <% }); %>
-            </ul>
-
-            <% if (!userEmail) { %>
-              <a href="/join" class="upgrade-btn">Get Started</a>
-            <% } else if (isCurrentPlan) { %>
-              <button disabled style="display:block;width:100%;padding:0.8rem;background:var(--accent);color:#fff;border:none;border-radius:10px;font-weight:600;font-size:0.95rem;cursor:default;">Current Plan</button>
-            <% } else if (isFree) { %>
-              <button disabled style="display:block;width:100%;padding:0.8rem;background:#ccc;color:#fff;border:none;border-radius:10px;font-weight:600;font-size:0.95rem;">Free — included</button>
-            <% } else { %>
-              <a href="#" id="upgrade-btn-<%= plan.slug %>" class="upgrade-btn" onclick="handleUpgrade('<%= plan.slug %>', '<%= currentCycle || 'monthly' %>'); return false;">
-                Upgrade to <%= plan.name %>
-              </a>
+          <div class="plan-price-wrap">
+            <span
+              class="plan-price<%= isFree ? ' is-free' : '' %>"
+              data-monthly="<%= plan.price_cents / 100 %>"
+              data-annual="<%= (plan.price_cents * 10) / 100 %>"
+            >
+              <%= isFree ? '$0' : '$' + Math.round(plan.price_cents / 100) %>
+            </span>
+            <% if (!isFree) { %>
+            <span class="plan-period">/<span class="bpl">mo</span></span>
             <% } %>
           </div>
+          <div class="plan-price-sub">
+            <% if (isFree) { %>
+            No credit card required
+            <% } else { %>
+            <span class="billing-note">billed <span id="bcycle">monthly</span></span>
+            <% } %>
+          </div>
+
+          <div class="plan-divider"></div>
+
+          <ul class="plan-features" role="list">
+            <% (plan.features || []).forEach(function(f) { %>
+            <li class="plan-feature">
+              <svg class="plan-feature-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+              <%= f %>
+            </li>
+            <% }); %>
+          </ul>
+
+          <% if (!userEmail) { %>
+          <a href="/join" class="plan-cta plan-cta-secondary">
+            Get Started Free
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+          <% } else if (isCurrent) { %>
+          <span class="plan-cta plan-cta-current">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            Active Plan
+          </span>
+          <% } else if (isFree) { %>
+          <button class="plan-cta plan-cta-disabled" disabled>Included in Free</button>
+          <% } else if (plan.price_cents === 0) { %>
+          <a href="/join" class="plan-cta plan-cta-secondary">Get Started Free</a>
+          <% } else { %>
+          <button
+            class="plan-cta plan-cta-primary"
+            onclick="checkout('<%= slug %>')"
+            aria-label="<%= currentMembership ? 'Switch' : 'Start 7-day free trial' %> for <%= plan.name %>"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            <%= currentMembership ? 'Switch' : 'Start Trial' %>
+          </button>
+          <% } %>
+        </div>
         <% }); %>
       </div>
 
-      <p style="text-align:center;color:var(--muted);font-size:0.85rem;">
-        Questions? Email <a href="mailto:hello@wagesociety.com" style="color:var(--accent);">hello@wagesociety.com</a>
+      <!-- Feature Comparison Table -->
+      <div class="compare-section">
+        <div class="compare-title">Full Feature Breakdown</div>
+        <table class="compare-table" aria-label="Feature comparison across membership tiers">
+          <thead>
+            <tr>
+              <th scope="col">Feature</th>
+              <th scope="col">Free</th>
+              <th scope="col" class="compare-header-name">Creator</th>
+              <th scope="col">Pro</th>
+              <th scope="col">Elite</th>
+              <th scope="col">Unlimited</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% const rows = [
+              ['Creator Directory Profile',      ['yes','yes','yes','yes','yes']],
+              ['Livestream Tools',                ['yes','yes','yes','yes','yes']],
+              ['Community Access',               ['yes','yes','yes','yes','yes']],
+              ['Creator Workspace',              ['no','yes','yes','yes','yes']],
+              ['Collaboration Hub',              ['no','yes','yes','yes','yes']],
+              ['Revenue Tracker',                ['no','yes','yes','yes','yes']],
+              ['Knowledge Vault',                ['no','yes','yes','yes','yes']],
+              ['Priority Support',               ['no','no','yes','yes','yes']],
+              ['Advanced Analytics',             ['no','no','yes','yes','yes']],
+              ['Team Members',                   ['0','0','3','10','Unlimited']],
+              ['Merch Studio',                   ['no','no','no','yes','yes']],
+              ['Elite Discord Role',             ['no','no','no','yes','yes']],
+              ['Unlimited Everything',          ['no','no','no','no','yes']],
+            ]; %>
+            <% rows.forEach(function(r) { %>
+            <tr>
+              <td><%= r[0] %></td>
+              <% r[1].forEach(function(v) { %>
+              <td>
+                <% if (v === 'yes') { %>
+                <svg class="compare-check" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-label="Included"><polyline points="20 6 9 17 4 12"/></svg>
+                <% } else if (v === 'no') { %>
+                <svg class="compare-cross" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-label="Not included"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <% } else { %>
+                <span class="compare-value"><%= v %></span>
+                <% } %>
+              </td>
+              <% }); %>
+            </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- FAQ -->
+      <div class="faq-section">
+        <div class="faq-title">Common Questions</div>
+        <% const faqs = [
+          { q: 'Can I change my plan anytime?', a: 'Yes — upgrade or downgrade at any time. When upgrading, you keep access to your new tier immediately. When downgrading, the change takes effect at the end of your current billing period.' },
+          { q: 'What happens when my trial ends?', a: 'After your 7-day free trial, you will be charged for the plan you selected. You can cancel anytime before the trial ends to avoid any charge.' },
+          { q: 'Is there a free plan?', a: 'Yes! The Free tier gives you a creator directory profile, livestream tools, and community access — no credit card required.' },
+          { q: 'What payment methods do you accept?', a: 'All major credit and debit cards (Visa, Mastercard, Amex) via Stripe. Payments are secure and processed entirely through Stripe — we never store your card details.' },
+          { q: 'How do I cancel my subscription?', a: 'Log in, go to Settings, and click "Cancel Subscription." Your access continues until the end of the current billing period.' },
+        ]; %>
+        <% faqs.forEach(function(faq, i) { %>
+        <div class="faq-item" id="faq-<%= i %>">
+          <button class="faq-question" onclick="toggleFaq(<%= i %>)" aria-expanded="false" aria-controls="faq-a-<%= i %>">
+            <span><%= faq.q %></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="faq-answer" id="faq-a-<%= i %>" role="region"><%= faq.a %></div>
+        </div>
+        <% }); %>
+      </div>
+
+      <p class="contact-note">
+        Questions? Email <a href="mailto:support@wagesociety.com">support@wagesociety.com</a>
       </p>
+
     </div>
-  </section>
+  </main>
 
-  <%- include('../partials/footer') %>
+  <!-- Trial modal -->
+  <% if (showTrialModal && !currentMembership) { %>
+  <div class="trial-modal-backdrop open" id="trial-modal" role="dialog" aria-modal="true" aria-labelledby="trial-modal-title">
+    <div class="trial-modal">
+      <div class="trial-modal-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </div>
+      <h2 class="trial-modal-title" id="trial-modal-title">Start Your Free Trial</h2>
+      <p class="trial-modal-body">7 days free on any paid plan — no charge until the trial ends. Cancel anytime before Day 8 and you won't be charged a cent.</p>
+      <div class="trial-modal-actions">
+        <a href="/checkout/trial?plan=creator" class="plan-cta plan-cta-primary">
+          Try Creator — 7 Days Free
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        <a href="/checkout/trial?plan=pro" class="plan-cta plan-cta-secondary">Try Pro — 7 Days Free</a>
+        <button onclick="dismissTrial()" class="plan-cta plan-cta-disabled" style="background:transparent;border:none;color:var(--wage-text-muted);cursor:pointer;font-size:0.8rem;padding:0.5rem;">Maybe later</button>
+      </div>
+    </div>
+  </div>
+  <% } %>
 
-<script>
-  // ── Billing cycle state ───────────────────────────────────────────────────────
-  let currentCycle = 'monthly';
+  <footer role="contentinfo"><%- include('../partials/footer') %></footer>
 
-  const prices = {
-    creator: { monthly: '$29', annual: '$290' },
-    pro:     { monthly: '$79', annual: '$790' },
-  };
+  <script>
+    var currentCycle = 'monthly';
 
-  const monthlyEquiv = {
-    creator: '$24.17/mo',
-    pro:     '$65.83/mo',
-  };
+    function setBilling(cycle) {
+      currentCycle = cycle;
+      var isAnnual = cycle === 'annual';
+      var sw = document.getElementById('billing-switch');
+      sw.classList.toggle('annual', isAnnual);
+      sw.setAttribute('aria-checked', isAnnual);
+      document.getElementById('btn-monthly').classList.toggle('active', !isAnnual);
+      document.getElementById('btn-annual').classList.toggle('active', isAnnual);
+      document.getElementById('btn-monthly').setAttribute('aria-pressed', !isAnnual);
+      document.getElementById('btn-annual').setAttribute('aria-pressed', isAnnual);
 
-  const savings = {
-    creator: 'Save $58/yr',
-    pro:     'Save $158/yr',
-  };
+      document.querySelectorAll('.plan-price').forEach(function(el) {
+        var m = parseFloat(el.dataset.monthly);
+        var a = parseFloat(el.dataset.annual);
+        el.textContent = '$' + Math.round(isAnnual ? a : m);
+      });
+      document.querySelectorAll('.bpl').forEach(function(el) { el.textContent = isAnnual ? 'yr' : 'mo'; });
+      document.getElementById('bcycle').textContent = isAnnual ? 'annually' : 'monthly';
+    }
 
-  function setBilling(cycle) {
-    currentCycle = cycle;
+    function checkout(slug) {
+      var btn = event.currentTarget;
+      btn.disabled = true;
+      btn.textContent = 'Redirecting…';
 
-    // Update toggle UI
-    document.getElementById('monthlyLabel').classList.toggle('active', cycle === 'monthly');
-    document.getElementById('annualLabel').classList.toggle('active', cycle === 'annual');
-    document.getElementById('toggleTrack').classList.toggle('annual', cycle === 'annual');
+      fetch('/api/checkout/redirect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planSlug: slug, cycle: currentCycle })
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.error) { alert(data.error); btn.disabled = false; btn.textContent = 'Try Again'; return; }
+        if (data.redirectUrl) { window.location.href = data.redirectUrl; }
+      })
+      .catch(function(err) {
+        console.error('[memberships] checkout error:', err);
+        alert('Something went wrong. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Try Again';
+      });
+    }
 
-    // Update each plan card
-    ['creator', 'pro'].forEach(function(slug) {
-      const amt = prices[slug][cycle];
-      const equivEl = document.getElementById('price-equiv-' + slug);
-      const savingsEl = document.getElementById('savings-' + slug);
-      const btn = document.getElementById('upgrade-btn-' + slug);
-      const amountEl = document.getElementById('price-amount-' + slug);
-
-      if (amountEl) {
-        amountEl.innerHTML = amt + '<span class="price-period">/' + (cycle === 'monthly' ? 'mo' : 'yr') + '</span>';
-      }
-
-      if (equivEl) {
-        if (cycle === 'annual') {
-          equivEl.textContent = '≈ ' + monthlyEquiv[slug] + ' billed annually';
-          equivEl.style.display = 'block';
+    function toggleFaq(i) {
+      var items = document.querySelectorAll('.faq-item');
+      items.forEach(function(item, idx) {
+        var btn = item.querySelector('.faq-question');
+        if (idx === i) {
+          var isOpen = item.classList.contains('open');
+          item.classList.toggle('open');
+          btn.setAttribute('aria-expanded', !isOpen);
         } else {
-          equivEl.style.display = 'none';
+          item.classList.remove('open');
+          btn.setAttribute('aria-expanded', 'false');
         }
+      });
+    }
+
+    function dismissTrial() {
+      var modal = document.getElementById('trial-modal');
+      if (modal) modal.style.display = 'none';
+      fetch('/api/dismiss-trial-prompt', { method: 'POST' }).catch(function() {});
+    }
+
+    // Sync from URL param
+    (function() {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get('cycle') === 'annual') setBilling('annual');
+
+      // Scroll reveal
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.querySelectorAll('.plan-card').forEach(function(el) { el.classList.add('revealed'); });
+        return;
       }
-
-      if (savingsEl) {
-        savingsEl.style.display = cycle === 'annual' ? 'block' : 'none';
-      }
-
-      if (btn) {
-        btn.classList.toggle('annual-btn', cycle === 'annual');
-        btn.textContent = (cycle === 'annual' ? 'Subscribe Annual' : 'Upgrade to ' + slug.charAt(0).toUpperCase() + slug.slice(1));
-      }
-    });
-  }
-
-  function handleUpgrade(planSlug, cycle) {
-    const links = {
-      creator: {
-        monthly: '<%= subscriptionLinksMonthly.creator %>',
-        annual:  '<%= subscriptionLinksAnnual.creator %>',
-      },
-      pro: {
-        monthly: '<%= subscriptionLinksMonthly.pro %>',
-        annual:  '<%= subscriptionLinksAnnual.pro %>',
-      },
-    };
-    const url = links[planSlug] && links[planSlug][cycle] ? links[planSlug][cycle] : links[planSlug].monthly;
-    window.location.href = url;
-  }
-
-  // Init
-  setBilling('monthly');
-</script>
+      var obs = new IntersectionObserver(function(entries) {
+        entries.forEach(function(e) {
+          if (e.isIntersecting) { e.target.classList.add('revealed'); obs.unobserve(e.target); }
+        });
+      }, { threshold: 0.05, rootMargin: '0px 0px -20px 0px' });
+      document.querySelectorAll('.plan-card').forEach(function(el) { obs.observe(el); });
+    })();
+  </script>
 </body>
 </html>

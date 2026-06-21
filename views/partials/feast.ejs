@@ -1,0 +1,45 @@
+<% /* ── Feast Brand Section ──────────────────────────────────────────────────── */ %>
+<section class="feast-section scroll-reveal" aria-labelledby="feast-headline">
+  <div class="feast-bg-glow" aria-hidden="true"></div>
+  <div class="feast-inner">
+    <div class="feast-label">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      THE BRAND
+    </div>
+    <h2 class="feast-headline" id="feast-headline">WE ALL GONNA EAT.</h2>
+    <p class="feast-sub">
+      In a world that takes, we're building one that gives.<br>
+      Creators own their income, their audience, their future.
+    </p>
+
+    <% /* ── 5 Value Pillar Cards ─────────────────────────────────────────────── */ %>
+    <div class="feast-pillars">
+      <% var pillars = [
+        { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>', title: 'Own Your Audience', body: 'No algorithm can take what you build. Your list, your rules.' },
+        { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>', title: 'Keep What You Earn', body: "No 30% cut. No hidden fees. What you make is yours." },
+        { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>', title: 'Build Your Economy', body: 'Products, subscriptions, referrals, tips — your full business, one place.' },
+        { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>', title: 'Join the Feast', body: 'Community of creators who have had enough of platforms taking their cut.' },
+        { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>', title: 'Enter the Game', body: 'WAGE World — play-to-earn layer on top of everything you build.' }
+      ]; %>
+      <% pillars.forEach(function(p, i) { %>
+        <div class="feast-pillar wage-card scroll-reveal scroll-reveal-delay-<%= (i % 5) + 1 %>">
+          <div class="feast-pillar-icon wage-text-gold" aria-hidden="true"><%- p.icon %></div>
+          <h3 class="feast-pillar-title"><%= p.title %></h3>
+          <p class="feast-pillar-body"><%= p.body %></p>
+        </div>
+      <% }); %>
+    </div>
+
+    <% /* ── CTAs ────────────────────────────────────────────────────────────── */ %>
+    <div class="feast-actions">
+      <a href="/creators" class="wage-btn wage-btn-primary feast-cta-primary">
+        Explore Creators
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+      <a href="/memberships" class="wage-btn feast-cta-secondary">
+        View Memberships
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+      </a>
+    </div>
+  </div>
+</section>

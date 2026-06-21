@@ -25,7 +25,7 @@ router.post('/', async (req, res) => {
     });
     res.json({ success: true, subscription: sub });
   } catch (err) {
-    console.error('[/api/marketing-proof]', err);
+    console.error('[/api/marketing]', err);
     res.status(500).json({ error: 'Could not subscribe right now' });
   }
 });

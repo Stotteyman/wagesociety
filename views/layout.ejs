@@ -2,22 +2,234 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>W.A.G.E. Society — We All Gonna Eat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#f97316">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/images/apple-touch-icon.svg">
+  <title>WAGE Society — We All Gotta Eat</title>
+  <meta name="description" content="W.A.G.E. Society — the creator platform where we keep what we earn. No platform middlemen taking a cut. Free, Creator, and Pro tiers for every creator.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="WAGE Society — We All Gotta Eat">
+  <meta property="og:description" content="The creator platform where we keep what we earn. No platform middlemen. Free, Creator, and Pro tiers.">
+  <meta property="og:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
+  <meta property="og:url" content="https://wagesociety.com/">
+  <meta property="og:site_name" content="WAGE Society">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="WAGE Society — We All Gotta Eat">
+  <meta name="twitter:description" content="The creator platform where we keep what we earn. No platform middlemen. Free, Creator, and Pro tiers.">
+  <meta name="twitter:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/theme.css">
   <link rel="stylesheet" href="/css/pages.css">
 </head>
-<body>
-  <%- include('partials/nav') %>
+<body class="homepage">
+  <!-- Skip to main content (WCAG AA) -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- Three.js canvas — homepage only, behind content, aria-hidden (controls are in HTML) -->
+  <canvas id="wage-canvas" aria-hidden="true"></canvas>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="/js/wage-three.js"></script>
+  <% if (typeof deleted !== 'undefined' && deleted) { %>
+  <div style="background:rgba(255,102,0,0.15);border:1px solid var(--accent);color:var(--accent);padding:0.75rem 1.5rem;text-align:center;font-size:0.9rem;font-weight:600;position:relative;">
+    Your account has been deleted. We hope to see you again someday.
+    <button onclick="this.parentElement.remove()" style="position:absolute;right:1rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--accent);cursor:pointer;font-size:1rem;line-height:1;">✕</button>
+  </div>
+  <% } %>
+  <nav aria-label="Site navigation"><%- include('partials/nav') %></nav>
+  <main id="main-content" role="main">
   <%- include('partials/hero') %>
-  <%- include('partials/manifesto') %>
+  <%- include('partials/live-creators') %>
+  <%- include('partials/feast') %>
   <%- include('partials/features') %>
+  <%- include('partials/manifesto') %>
   <%- include('partials/how') %>
   <%- include('partials/closing') %>
-  <%- include('partials/footer') %>
+  </main>
+  <footer role="contentinfo"><%- include('partials/footer') %></footer>
   <!-- Wage Society Analytics --><script>(function(){var slug="wagesociety";if(!slug)return;var vid=localStorage.getItem('wage_analytics_vid');if(!vid){vid='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return (c==='x'?r:(r&0x3|0x8)).toString(16);});localStorage.setItem('wage_analytics_vid',vid);}new Image().src='https://wagesociety.com/api/beacon/pixel?s='+encodeURIComponent(slug)+'&v='+encodeURIComponent(vid);})();</script>
+<!-- Search overlay -->
+<script>
+(function() {
+  var overlay = document.getElementById('searchOverlay');
+  var input   = document.getElementById('searchInput');
+  var results  = document.getElementById('searchResults');
+  var backdrop = document.getElementById('searchBackdrop');
+  var escBtn   = document.getElementById('searchEsc');
+  var debounce = null;
+  var currentItems = [];
+
+  function openSearch() {
+    overlay.classList.add('open');
+    input.focus();
+  }
+
+  function closeSearch() {
+    overlay.classList.remove('open');
+    input.value = '';
+    results.innerHTML = '';
+    currentItems = [];
+  }
+
+  function renderLoading() {
+    results.innerHTML = '<div class="search-results-empty">Searching...</div>';
+  }
+
+  function renderEmpty() {
+    results.innerHTML = '<div class="search-results-empty">No results found</div>';
+  }
+
+  function renderResults(data) {
+    var html = '';
+    var allItems = [];
+
+    // Pages
+    if (data.pages && data.pages.length) {
+      html += '<div class="search-section"><div class="search-section-label">Pages</div>';
+      data.pages.forEach(function(p) {
+        var escapedName = p.name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        html += '<a href="'+p.url+'" class="search-item" tabindex="0"><div class="search-item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div><div class="search-item-info"><div class="search-item-name">'+escapedName+'</div><div class="search-item-sub">Page</div></div></a>';
+        allItems.push({ type: 'page', url: p.url });
+      });
+      html += '</div>';
+    }
+
+    // Members
+    if (data.members && data.members.length) {
+      html += '<div class="search-section"><div class="search-section-label">Members</div>';
+      data.members.forEach(function(m) {
+        var name = (m.display_name || m.username || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        var username = (m.username || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        var bio = m.bio ? m.bio.replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
+        var avatar = m.avatar_url
+          ? '<img src="'+m.avatar_url+'" alt="">'
+          : (name.charAt(0).toUpperCase());
+        html += '<a href="'+m.url+'" class="search-item" tabindex="0"><div class="search-item-avatar">'+avatar+'</div><div class="search-item-info"><div class="search-item-name">'+name+'</div><div class="search-item-sub">@'+username+(bio ? ' · '+bio : '')+'</div></div>'+(m.role ? '<span class="search-item-badge">'+m.role+'</span>' : '')+'</a>';
+        allItems.push({ type: 'member', url: m.url });
+      });
+      html += '</div>';
+    }
+
+    // Content
+    if (data.content && data.content.length) {
+      html += '<div class="search-section"><div class="search-section-label">Content</div>';
+      data.content.forEach(function(c) {
+        if (c.type === 'post') {
+          var title = (c.title || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          var excerpt = (c.excerpt || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          var author = (c.author || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          html += '<a href="'+c.url+'" class="search-item" tabindex="0"><div class="search-item-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="search-item-info"><div class="search-item-name">'+title+'</div><div class="search-item-sub">'+(author ? author+' · ' : '')+'Blog post</div></div></a>';
+        } else if (c.type === 'merch') {
+          var name = (c.name || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          var price = c.price ? '$'+Number(c.price).toFixed(2) : '';
+          var img = c.image ? '<img src="'+c.image+'" alt="">' : '';
+          html += '<a href="'+c.url+'" class="search-item" tabindex="0"><div class="search-item-icon">'+img+'</div><div class="search-item-info"><div class="search-item-name">'+name+'</div><div class="search-item-sub">Marketplace</div></div>'+(price ? '<span class="search-item-price">'+price+'</span>' : '')+'</a>';
+        }
+        allItems.push({ type: c.type, url: c.url });
+      });
+      html += '</div>';
+    }
+
+    currentItems = allItems;
+    if (!html) { renderEmpty(); return; }
+    results.innerHTML = html;
+
+    // Keyboard nav: focus first result
+    var first = results.querySelector('.search-item');
+    if (first) first.focus();
+  }
+
+  function doSearch(q) {
+    if (!q || q.length < 2) {
+      results.innerHTML = '';
+      return;
+    }
+    renderLoading();
+    fetch('/api/search?q='+encodeURIComponent(q))
+      .then(function(r) { return r.json(); })
+      .then(renderResults)
+      .catch(function() { results.innerHTML = '<div class="search-results-empty">Search failed</div>'; });
+  }
+
+  // Open search
+  var openBtn = document.getElementById('searchOpenBtn');
+  if (openBtn) openBtn.addEventListener('click', openSearch);
+
+  // Keyboard shortcut Cmd/Ctrl+K
+  document.addEventListener('keydown', function(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      openSearch();
+    }
+    if (e.key === 'Escape' && overlay.classList.contains('open')) {
+      closeSearch();
+    }
+  });
+
+  // Debounced search
+  input.addEventListener('input', function() {
+    clearTimeout(debounce);
+    var q = input.value.trim();
+    debounce = setTimeout(function() { doSearch(q); }, 300);
+  });
+
+  // Click backdrop to close
+  backdrop.addEventListener('click', closeSearch);
+  escBtn.addEventListener('click', closeSearch);
+
+  // Keyboard navigation within results
+  results.addEventListener('keydown', function(e) {
+    var items = Array.from(results.querySelectorAll('.search-item'));
+    var cur = results.querySelector('.search-item:focus');
+    var idx = cur ? items.indexOf(cur) : -1;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      var next = items[Math.min(idx + 1, items.length - 1)];
+      if (next) next.focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      var prev = items[Math.max(idx - 1, 0)];
+      if (prev) prev.focus();
+    } else if (e.key === 'Enter' && cur) {
+      window.location.href = cur.href;
+    }
+  });
+})();
+// Show account-deleted flash banner if redirected from deletion
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('deleted') === '1') {
+    var banner = document.createElement('div');
+    banner.style.cssText = 'position:fixed;top:1rem;left:50%;transform:translateX(-50%);z-index:9999;max-width:480px;width:calc(100%-2rem);';
+    banner.innerHTML = '<div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#86efac;padding:0.75rem 1.25rem;border-radius:10px;font-size:0.9rem;text-align:center;">Your account has been permanently deleted.</div>';
+    document.body.appendChild(banner);
+    setTimeout(function() {
+      banner.remove();
+      var url = new URL(window.location);
+      url.searchParams.delete('deleted');
+      window.history.replaceState({}, '', url);
+    }, 5000);
+  }
+})();
+// Scroll reveal observer — global, runs on every page
+(function() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var els = document.querySelectorAll('.scroll-reveal');
+  if (!els.length) return;
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('revealed');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+  els.forEach(function(el) { observer.observe(el); });
+})();
+</script>
 </body>
 </html>

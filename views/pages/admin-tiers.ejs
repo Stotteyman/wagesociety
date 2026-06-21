@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin: Membership Tiers — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    :root { --admin-sidebar-w: 220px; }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    .admin-nav { background: var(--bg); border-bottom: 1px solid var(--border); padding: 0.85rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+    .admin-nav-logo { font-weight: 800; font-size: 1rem; color: var(--fg); text-decoration: none; }
+    .admin-nav-logo span { color: var(--accent); }
+    .admin-nav-divider { width: 1px; height: 20px; background: var(--border); }
+    .admin-nav-right { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; }
+    .admin-nav-link { font-size: 0.8rem; color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 0.3rem; }
+    .admin-nav-link:hover { color: var(--fg); }
+    .admin-body { display: flex; flex: 1; max-width: 1300px; margin: 0 auto; width: 100%; padding: 2rem 1.5rem; gap: 2rem; }
+    .admin-sidebar { position: sticky; top: 1.5rem; width: var(--admin-sidebar-w); flex-shrink: 0; }
+    .admin-sidebar-section { margin-bottom: 1.5rem; }
+    .admin-sidebar-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 0.4rem; padding: 0 0.5rem; }
+    .admin-sidebar-link { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: 0.82rem; font-weight: 500; transition: background 0.1s, color 0.1s; }
+    .admin-sidebar-link:hover { background: var(--surface); color: var(--fg); }
+    .admin-sidebar-link.active { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+    .admin-sidebar-link .link-icon { font-size: 0.9rem; width: 18px; text-align: center; }
+    .admin-main { flex: 1; min-width: 0; }
+    .admin-page-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); display: block; margin-bottom: 0.2rem; }
+    .admin-page-title { font-family: 'Space Grotesk', sans-serif; font-size: 1.5rem; font-weight: 800; margin: 0; }
+    .admin-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .admin-card-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 1rem; margin-bottom: 1rem; color: var(--fg); }
+    .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.55rem 1.1rem; border-radius: 8px; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 0.8rem; cursor: pointer; border: none; text-decoration: none; transition: background 0.2s, transform 0.1s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #e65500; transform: scale(1.02); }
+    .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.75rem; }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--surface); color: var(--fg); }
+    .btn-edit { background: rgba(255,102,0,0.1); color: var(--accent); border: 1px solid rgba(255,102,0,0.2); }
+    .btn-edit:hover { background: rgba(255,102,0,0.2); }
+    .btn-danger { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+    .btn-danger:hover { background: rgba(239,68,68,0.25); }
+    .tier-table { width: 100%; border-collapse: collapse; }
+    .tier-table th { text-align: left; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
+    .tier-table td { padding: 1rem 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+    .tier-table tr:last-child td { border-bottom: none; }
+    .tier-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .tier-name { font-weight: 700; font-size: 1rem; color: var(--fg); }
+    .tier-name small { display: block; font-size: 0.75rem; color: var(--muted); font-weight: 400; margin-top: 2px; }
+    .price-tag { font-family: 'Space Grotesk', sans-serif; font-weight: 800; font-size: 1.1rem; color: var(--accent); }
+    .price-free { color: #10b981; }
+    .stripe-id { font-family: monospace; font-size: 0.75rem; color: var(--muted); background: rgba(255,255,255,0.04); padding: 2px 6px; border-radius: 4px; word-break: break-all; }
+    .subscriber-count { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 1.1rem; color: var(--fg); }
+    .subscriber-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+    .active-badge { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.78rem; font-weight: 600; padding: 0.2rem 0.65rem; border-radius: 20px; }
+    .badge-active { background: rgba(16,185,56,0.15); color: #10b981; border: 1px solid rgba(16,185,56,0.3); }
+    .badge-inactive { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border); }
+    .actions-cell { display: flex; gap: 0.4rem; align-items: center; }
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; width: 500px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
+    .modal h2 { font-family: 'Space Grotesk', sans-serif; font-weight: 800; font-size: 1.25rem; margin: 0 0 1.5rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    .form-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--fg); font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; padding: 0.65rem 0.85rem; box-sizing: border-box; }
+    .form-input:focus { outline: none; border-color: var(--accent); }
+    .form-input:disabled { opacity: 0.5; cursor: not-allowed; }
+    .form-textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--fg); font-family: 'Space Grotesk', sans-serif; font-size: 0.9rem; padding: 0.65rem 0.85rem; box-sizing: border-box; resize: vertical; min-height: 60px; }
+    .form-textarea:focus { outline: none; border-color: var(--accent); }
+    .modal-actions { display: flex; gap: 0.75rem; margin-top: 1.5rem; justify-content: flex-end; }
+    .toggle-switch { position: relative; width: 40px; height: 22px; cursor: pointer; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 22px; transition: background 0.2s; }
+    .toggle-slider:before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: transform 0.2s; }
+    .toggle-switch input:checked + .toggle-slider { background: #10b981; }
+    .toggle-switch input:checked + .toggle-slider:before { transform: translateX(18px); }
+    .empty-table { text-align: center; padding: 3rem 2rem; color: var(--muted); }
+    .notification { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--surface); border: 1px solid var(--accent); color: var(--fg); padding: 0.85rem 1.25rem; border-radius: 10px; font-size: 0.875rem; font-weight: 600; z-index: 200; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+    .notification.show { display: block; animation: slideUp 0.3s ease-out; }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .notification.error { border-color: #ef4444; color: #ef4444; }
+    .stripe-info { font-size: 0.78rem; color: var(--muted); margin-top: 0.25rem; }
+    .confirm-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; }
+    .confirm-overlay.open { display: flex; }
+    .confirm-box { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; width: 380px; text-align: center; }
+    .confirm-box h3 { font-family: 'Space Grotesk', sans-serif; font-weight: 700; margin: 0 0 0.75rem; }
+    .confirm-box p { color: var(--muted); font-size: 0.9rem; margin: 0 0 1.5rem; }
+    .confirm-box .modal-actions { justify-content: center; }
+    .features-hint { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; }
+    @media (max-width: 768px) { .admin-sidebar { display: none; } .admin-body { padding: 1rem; } }
+  </style>
+</head>
+<body>
+
+<!-- Admin nav -->
+<nav class="admin-nav">
+  <a href="/dashboard" class="admin-nav-logo">W.A.G.E. <span>Admin</span></a>
+  <div class="admin-nav-divider"></div>
+  <span style="font-size:0.75rem;color:var(--muted);">Tiers &amp; Pricing</span>
+  <div class="admin-nav-right">
+    <a href="/admin" class="admin-nav-link">← Overview</a>
+    <a href="/dashboard" class="admin-nav-link">Dashboard</a>
+    <a href="/logout" class="admin-nav-link">Logout</a>
+  </div>
+</nav>
+
+<!-- Body -->
+<div class="admin-body">
+  <!-- Sidebar -->
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Management</div>
+      <a href="/admin" class="admin-sidebar-link"><span class="link-icon">🏠</span> Overview</a>
+      <a href="/admin/users" class="admin-sidebar-link"><span class="link-icon">👥</span> Members</a>
+      <a href="/admin/roles" class="admin-sidebar-link"><span class="link-icon">🔑</span> Roles &amp; Permissions</a>
+    </div>
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Platform</div>
+      <a href="/admin/discord" class="admin-sidebar-link"><span class="link-icon">🤖</span> Discord Bot</a>
+      <a href="/admin/tiers" class="admin-sidebar-link active"><span class="link-icon">⭐</span> Membership Tiers</a>
+      <a href="/admin/point-shop" class="admin-sidebar-link"><span class="link-icon">🏪</span> Point Shop</a>
+    </div>
+    <div class="admin-sidebar-section">
+      <div class="admin-sidebar-label">Tools</div>
+      <a href="/admin/diagnostics" class="admin-sidebar-link"><span class="link-icon">🔧</span> Diagnostics</a>
+      <a href="/admin/shop" class="admin-sidebar-link"><span class="link-icon">🛒</span> Merch Shop</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="admin-main">
+    <div class="admin-page-header" style="margin-bottom:1.5rem;">
+      <span class="admin-page-label">Admin</span>
+      <h1 class="admin-page-title">Tiers &amp; Pricing</h1>
+    </div>
+        <!-- Stats -->
+        <div class="admin-card">
+          <div class="admin-card-title">Tier Overview</div>
+          <div style="display:flex;gap:2rem;flex-wrap:wrap;" id="statsRow">
+            <div><div class="subscriber-label">Total Tiers</div><div id="statTiers" style="font-family:'Space Grotesk',sans-serif;font-size:1.75rem;font-weight:800;color:var(--fg);">—</div></div>
+            <div><div class="subscriber-label">Active Tiers</div><div id="statActive" style="font-family:'Space Grotesk',sans-serif;font-size:1.75rem;font-weight:800;color:#10b981;">—</div></div>
+            <div><div class="subscriber-label">Total Subscribers</div><div id="statSubscribers" style="font-family:'Space Grotesk',sans-serif;font-size:1.75rem;font-weight:800;color:var(--accent);">—</div></div>
+          </div>
+        </div>
+
+        <!-- Tiers table -->
+        <div class="admin-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.75rem;">
+            <div class="admin-card-title" style="margin:0;">Tiers</div>
+            <button class="btn btn-primary" onclick="openCreateModal()">+ New Tier</button>
+          </div>
+          <div id="tiersTableWrap">
+            <table class="tier-table" id="tiersTable">
+              <thead>
+                <tr>
+                  <th>Tier</th>
+                  <th>Price</th>
+                  <th>Subscribers</th>
+                  <th>Status</th>
+                  <th>Sort</th>
+                  <th>Stripe Price ID</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tiersBody"></tbody>
+            </table>
+            <div class="empty-table" id="emptyState" style="display:none;">
+              <p>No tiers yet. Create your first one!</p>
+            </div>
+          </div>
+        </div>
+  </main>
+</div>
+
+<!-- Create/Edit Modal -->
+<div class="modal-overlay" id="tierModal">
+  <div class="modal">
+    <h2 id="modalTitle">New Membership Tier</h2>
+    <input type="hidden" id="tierId">
+
+    <div class="form-group">
+      <label class="form-label">Name *</label>
+      <input type="text" id="tierName" class="form-input" placeholder="Pro" required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Slug *</label>
+      <input type="text" id="tierSlug" class="form-input" placeholder="pro" style="text-transform:lowercase;" maxlength="50">
+      <div class="stripe-info">Lowercase letters, numbers, hyphens only. Cannot be changed after creation.</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea id="tierDescription" class="form-textarea" placeholder="Short description of this tier"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Monthly Price (cents) *</label>
+      <input type="number" id="tierPrice" class="form-input" placeholder="999" min="0" step="1">
+      <div class="stripe-info">Enter 0 for a free tier (no Stripe product created).</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Features (one per line)</label>
+      <textarea id="tierFeatures" class="form-textarea" placeholder="Priority support&#10;Custom profile URL&#10;Advanced analytics" style="min-height:100px;"></textarea>
+      <div class="features-hint">Enter each feature on a new line. Stored as a JSON array.</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Sort Order</label>
+      <input type="number" id="tierSort" class="form-input" placeholder="0" min="0">
+    </div>
+
+    <div class="form-group" style="display:flex;align-items:center;gap:0.75rem;">
+      <label class="toggle-switch">
+        <input type="checkbox" id="tierActive" checked>
+        <span class="toggle-slider"></span>
+      </label>
+      <label style="font-size:0.85rem;font-weight:600;color:var(--fg);cursor:pointer;" for="tierActive">Active (visible on public pricing page)</label>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="modalSaveBtn" onclick="saveTier()">Create Tier</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirm -->
+<div class="confirm-overlay" id="confirmModal">
+  <div class="confirm-box">
+    <h3>Delete Tier?</h3>
+    <p id="confirmText">This will permanently remove this tier.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirmDeleteBtn" onclick="doDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Notification -->
+<div class="notification" id="notification"></div>
+
+<script>
+// ── State ───────────────────────────────────────────────────────────────────
+let tiers = [];
+let deleteTargetId = null;
+
+// ── Load ─────────────────────────────────────────────────────────────────────
+async function loadTiers() {
+  try {
+    const res = await fetch('/api/admin/tiers');
+    const data = await res.json();
+    tiers = data.tiers || [];
+    render();
+    updateStats();
+  } catch (err) {
+    showNotification('Failed to load tiers', true);
+  }
+}
+
+function updateStats() {
+  document.getElementById('statTiers').textContent = tiers.length;
+  document.getElementById('statActive').textContent = tiers.filter(t => t.is_active).length;
+  const totalSubs = tiers.reduce((sum, t) => sum + (parseInt(t.subscriber_count, 10) || 0), 0);
+  document.getElementById('statSubscribers').textContent = totalSubs;
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  const body = document.getElementById('tiersBody');
+  const empty = document.getElementById('emptyState');
+  if (!tiers.length) {
+    body.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  body.innerHTML = tiers.map(tier => `
+    <tr>
+      <td>
+        <div class="tier-name">${escHtml(tier.name)}<small>${escHtml(tier.slug)}</small></div>
+      </td>
+      <td>
+        ${tier.price_cents === 0
+          ? '<span class="price-tag price-free">Free</span>'
+          : `<span class="price-tag">$${(tier.price_cents / 100).toFixed(2)}/mo</span>`}
+      </td>
+      <td>
+        <div class="subscriber-count">${tier.subscriber_count || 0}</div>
+        <div class="subscriber-label">subscribers</div>
+      </td>
+      <td>
+        <span class="active-badge ${tier.is_active ? 'badge-active' : 'badge-inactive'}">
+          ${tier.is_active ? '● Active' : '○ Inactive'}
+        </span>
+      </td>
+      <td style="color:var(--muted);font-size:0.85rem;">${tier.sort_order ?? 0}</td>
+      <td>
+        ${tier.stripe_price_id
+          ? `<span class="stripe-id">${escHtml(tier.stripe_price_id)}</span>`
+          : '<span style="color:var(--muted);font-size:0.75rem;">—</span>'}
+      </td>
+      <td>
+        <div class="actions-cell">
+          <button class="btn btn-sm btn-edit" onclick="openEditModal('${tier.id}')">Edit</button>
+          <label class="toggle-switch" title="Toggle active">
+            <input type="checkbox" ${tier.is_active ? 'checked' : ''} onchange="toggleTier('${tier.id}', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+          <button class="btn btn-sm btn-danger" onclick="confirmDelete('${tier.id}')">Delete</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// ── Modal helpers ─────────────────────────────────────────────────────────────
+function openCreateModal() {
+  document.getElementById('modalTitle').textContent = 'New Membership Tier';
+  document.getElementById('modalSaveBtn').textContent = 'Create Tier';
+  document.getElementById('tierId').value = '';
+  document.getElementById('tierName').value = '';
+  document.getElementById('tierSlug').value = '';
+  document.getElementById('tierSlug').disabled = false;
+  document.getElementById('tierDescription').value = '';
+  document.getElementById('tierPrice').value = '';
+  document.getElementById('tierFeatures').value = '';
+  document.getElementById('tierSort').value = '0';
+  document.getElementById('tierActive').checked = true;
+  document.getElementById('tierModal').classList.add('open');
+}
+
+function openEditModal(id) {
+  const tier = tiers.find(t => t.id === id);
+  if (!tier) return;
+  document.getElementById('modalTitle').textContent = 'Edit Membership Tier';
+  document.getElementById('modalSaveBtn').textContent = 'Save Changes';
+  document.getElementById('tierId').value = tier.id;
+  document.getElementById('tierName').value = tier.name || '';
+  document.getElementById('tierSlug').value = tier.slug || '';
+  document.getElementById('tierSlug').disabled = true; // slug is immutable after creation
+  document.getElementById('tierDescription').value = tier.description || '';
+  document.getElementById('tierPrice').value = tier.price_cents || 0;
+  // Parse features from JSON array
+  let featuresText = '';
+  try {
+    const features = typeof tier.features === 'string' ? JSON.parse(tier.features) : (tier.features || []);
+    featuresText = Array.isArray(features) ? features.join('\n') : '';
+  } catch (_) {}
+  document.getElementById('tierFeatures').value = featuresText;
+  document.getElementById('tierSort').value = tier.sort_order ?? 0;
+  document.getElementById('tierActive').checked = tier.is_active !== false;
+  document.getElementById('tierModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('tierModal').classList.remove('open');
+}
+
+function confirmDelete(id) {
+  deleteTargetId = id;
+  const tier = tiers.find(t => t.id === id);
+  document.getElementById('confirmText').textContent = `Delete "${tier?.name || 'this tier'}"? This cannot be undone.`;
+  document.getElementById('confirmModal').classList.add('open');
+}
+
+function closeConfirm() {
+  document.getElementById('confirmModal').classList.remove('open');
+  deleteTargetId = null;
+}
+
+// ── API actions ───────────────────────────────────────────────────────────────
+function parseFeatures() {
+  const text = document.getElementById('tierFeatures').value;
+  return text.split('\n').map(l => l.trim()).filter(Boolean);
+}
+
+async function saveTier() {
+  const id = document.getElementById('tierId').value;
+  const name = document.getElementById('tierName').value.trim();
+  const slug = document.getElementById('tierSlug').value.trim();
+  const description = document.getElementById('tierDescription').value.trim();
+  const price = parseInt(document.getElementById('tierPrice').value, 10);
+  const sort = parseInt(document.getElementById('tierSort').value || '0', 10);
+  const isActive = document.getElementById('tierActive').checked;
+
+  if (!name || slug === undefined) {
+    showNotification('Name and slug are required', true);
+    return;
+  }
+  if (isNaN(price) || price < 0) {
+    showNotification('Enter a valid price (0 or higher)', true);
+    return;
+  }
+
+  const payload = { name, description, price_cents: price, sort_order: sort, is_active: isActive, features: parseFeatures() };
+  if (!id) payload.slug = slug;
+
+  const url = id ? `/api/admin/tiers/${id}` : '/api/admin/tiers';
+  const method = id ? 'PUT' : 'POST';
+
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Save failed');
+    closeModal();
+    await loadTiers();
+    showNotification(id ? 'Tier updated!' : 'Tier created!');
+  } catch (err) {
+    showNotification(err.message || 'Failed to save tier', true);
+  }
+}
+
+async function toggleTier(id, active) {
+  try {
+    const res = await fetch(`/api/admin/tiers/${id}/toggle`, { method: 'POST' });
+    if (!res.ok) throw new Error('Toggle failed');
+    await loadTiers();
+    showNotification(active ? 'Tier activated' : 'Tier deactivated');
+  } catch (err) {
+    showNotification(err.message || 'Failed to toggle tier', true);
+    render();
+  }
+}
+
+async function doDelete() {
+  if (!deleteTargetId) return;
+  try {
+    const res = await fetch(`/api/admin/tiers/${deleteTargetId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Delete failed');
+    closeConfirm();
+    await loadTiers();
+    showNotification('Tier deleted');
+  } catch (err) {
+    showNotification(err.message || 'Failed to delete tier', true);
+  }
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+function showNotification(msg, isError = false) {
+  const el = document.getElementById('notification');
+  el.textContent = msg;
+  el.className = 'notification show' + (isError ? ' error' : '');
+  setTimeout(() => { el.className = 'notification'; }, 3500);
+}
+
+// ── Utility ───────────────────────────────────────────────────────────────────
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+loadTiers();
+</script>
+</body>
+</html>

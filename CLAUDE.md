@@ -6,132 +6,140 @@ Creator OS for the W.A.G.E. Society community — a platform where creators mana
 
 ## Stack
 
-Express.js + EJS templates + PostgreSQL (Neon) + @supabase/supabase-js + vanilla CSS + Node.js 20. Session auth via `express-session` + `connect-pg-simple`. Login via Supabase — email magic link, Google OAuth, and Discord OAuth (all routed through Supabase `signInWithOAuth`). No custom credential auth.
+Express.js + EJS templates + PostgreSQL (Neon) + vanilla CSS + Node.js 20. Session auth via `express-session` + `connect-pg-simple`. Login via bcrypt email/password + magic link. No Supabase.
 
 ## Directory map
 
 ```
 server.js         — Express entry point; wires routes, sessions, static, view engine
 migrate.js        — DB migration runner (runs on every deploy via npm run build)
-                    supports both .js (module.exports.up) and .sql migration files
+bot/              — discord-bot.js (event handlers), periodic-sync.js (guarded 30-min sync),
+                   rate-limiter.js (10 req/10s queue), periodic-sync-trigger.js (Blaxel cron)
+jobs/             — discord-role-sync.js (15-min drift fix, POLSIA_IN_PROCESS_CRONS_ENABLED guard)
 lib/
   auth.js         — User provisioning helpers (onFirstOAuthLogin, getSessionUser, ensureUser)
-  middleware.js   — Auth/membership middleware (requireAuth, requireMembership)
-  landing-context.js  — builds EJS render context for the landing page
-  discord-sync.js — Discord guild role sync (syncDiscordRole, removeDiscordRoles, syncRolesFromDb via bot API)
-  ensure-discord-roles.js — Auto-creates @member/@WAGE Creator/@WAGE Pro roles on server startup; persists IDs to discord_roles table
+  middleware.js   — Auth/membership/permission middleware (requireAuth, loadUserPermissions,
+                    requirePermission, requireRole, requireAdmin)
+  referral-codes.js — Referral code generation (WAGE-XXXXXX) and tier calculation (bronze/silver/gold/diamond)
+  stripe-sync.js — Sync membership tiers to Stripe via Polsia API (createSubscriptionLink)
+  discord-token.js — Discord OAuth token refresh helper (shared by me.js + discord-servers.js)
+  upload-r2.js   — Image resize (sharp) + R2/S3 upload for avatar uploads. Falls back to base64 if R2 env vars absent.
+  start-bot.js   — Discord bot startup wiring (extracted from server.js for 300-line cap)
+middleware/
+  referral.js     — Captures ?ref= WAGE-XXXXXX from URL into session + cookie (30-day)
+  discord-sync.js — Discord role sync engine: syncRoles(userId) = staff role (non-cumulative) + subscription tier (cumulative, up to Elite/Unlimited bot-created); removeDiscordRoles, syncAllGuildsForUser, syncRolesFromDb
+  ensure-discord-roles.js — Bot startup: @everyone lockdown, creates @member/@WAGE Creator/@WAGE Pro, Elite/Unlimited; sets up #verify channel with embed + link button
   stripe-config.js — Stripe payment/subscription link URLs (NO direct Stripe API)
 db/
   index.js       — Pool singleton (only file that creates new Pool())
-  profiles.js    — Member profile queries (getProfileByEmail, upsertProfile, getPublicDirectory)
-  livestreams.js — Livestream CRUD (getAllStreams, upsertStream)
-  blog.js        — Blog post queries (getPublishedPosts, createPost)
-  merch.js       — Merch item queries (getActiveItems)
-  subscriptions.js — Newsletter subscription (subscribe)
-  autoclipper.js — Clip job queue (getJobs, createJob, updateJobStatus)
-  memberships.js — Paid membership queries (getUserMembership, upsertMembership, cancelMembership)
-  orgAccess.js   — Org roles and permissions (getMemberRole, getMemberAccess, banMember)
-  admin.js       — Admin panel DB utilities: listTables, getTableRows, executeSql, logAdminAction, getRecentAdminLogs
-  diagnostic.js  — Supabase diagnostic counts: countMemberProfiles, countUserMemberships, writeAndRollbackDiagnosticLog
-  faq.js         — FAQ entries (getActiveFaqs)
-  discord.js     — Discord link queries (getUserIdByEmail, getDiscordLinkByUserId, upsertDiscordLink, deleteDiscordLinkByUserId, updateDiscordLink)
-  donations.js   — Donation records: createDonation, completeDonation, getDonationTotal, getRecentDonations, getDonationByStripeSession, getDonationById
+  profiles.js, blog.js, users.js, roles.js, memberships.js, discord.js, discord-servers.js, discord-oauth-states.js, oauth-providers.js, discord-admin.js, discord-structure.js, admin.js — domain query files
+  merch.js, subscriptions.js, autoclipper.js, faq.js, donations.js, adminUsers.js, diagnostic.js, membership_tiers.js, admin-referrals.js — domain queries
 routes/
-  auth.js        — Auth routes: POST /auth/magic-link, POST /auth/signup, POST /auth/signin, GET /auth/verify, GET /auth/callback, GET /auth/v1/callback, POST /auth/session, POST /auth/exchange, POST /auth/token-session, GET /auth/logout
-  discord.js     — Discord OAuth linking + role sync trigger
-  pages.js       — All rendered page routes (/, /login, /join, /dashboard, /memberships, etc.)
+  auth-custom.js       — Custom bcrypt email/password + magic link auth (Neon-only, no Supabase)
+  discord.js           — Discord OAuth linking + role sync trigger (GET /auth/discord/link, /auth/discord/callback, POST /auth/discord/unlink)
+  auth-discord.js      — W.A.G.E. Society bot OAuth flow (GET /auth/discord-bot, /auth/discord-bot/callback)
+  auth-google.js       — Google OAuth login + account linking (GET /auth/google, /auth/google/callback, POST /auth/google/unlink)
+  auth-kick.js        — Kick OAuth login + account linking (GET /auth/kick, /auth/kick/callback, POST /auth/kick/unlink)
+  auth-discord-login.js — Discord OAuth as primary login method (GET /auth/discord-login, /auth/discord-login/callback)
+  points-shop.js — Browse + purchase point shop items (GET /point-shop, POST /point-shop/purchase)
+  pages.js       — All rendered page routes
   admin/
-    discord-resync.js — POST /admin/discord/resync-all (superadmin bulk re-sync)
-    debug.js         — /admin/debug panel: 11 diagnostic sections (Supabase, OAuth, Sessions, DB browser, Stripe, Email, Error Logs, Webhooks, Cache, Route Health, Server Status)
+    discord-resync.js — /admin/discord page + resync + status endpoints
+    debug.js     — /admin/debug panel: 11 diagnostic sections
+    tiers-page.js — /admin/tiers rendered page
   api/
-    auth.js       — Session helpers: POST /api/auth/logout, GET /api/auth/me
+    auth.js       — Session helpers
     live.js       — Livestream list + autoclipper queue
     shop.js       — Merch items
-    news.js       — Blog posts
+    news.js       — Blog posts CRUD (permission-gated)
     public-directory.js — Creator directory
-    me.js         — Profile access + update
+    me.js         — Profile access + update; YouTube channel fetch + selection; Discord server selection;
+                   avatar upload (POST /api/me/avatar, DELETE /api/me/avatar)
     marketing.js  — Newsletter subscription
     check-username.js — Username availability
     collab.js     — Collaboration requests
     chatbot.js    — Chat bot integration
-    donate.js     — Donation payment links and totals via Stripe
-    webhooks.js   — Stripe webhook handler: POST /webhook/stripe for donations and subscription lifecycle (billing_cycle inference from price ID)
-    admin-users.js — Admin user management
+    donate.js     — Donation payment links via Stripe
+    webhooks.js   — Stripe webhook handler (donations + subscription lifecycle)
+    admin-users.js — Admin user management (ban, password reset, suspend)
+    admin-roles.js — Admin roles + permissions management
     admin-shop.js — Admin shop management
-    health-supabase.js — GET /health/supabase connectivity check
-    test-supabase.js  — GET /api/test-supabase full 9-check Supabase diagnostic (JSON)
+    admin-tiers.js — Admin membership tier CRUD with Stripe sync
+    points-shop.js — Admin point shop items CRUD (GET/POST/PUT/DELETE /api/points-shop/items)
+    discord-servers.js — Discord server install: generate bot install URL, list servers,
+                         handle bot-join webhook, DM owner on connect, server config PATCH
+    discord-role-mappings.js — Admin role mapping (tier→Discord role name), guild member list, manual role edit
+    discord-stats.js — Server stats/overview/channels/roles endpoints (bot-required)
+    admin-discord.js — Discord admin API: server info, roles CRUD, channel setup, bot settings, tier map, logs, sync-structure, audit
+    admin-referrals.js — Admin referral attribution: attribute, history, overview, reverse endpoints (users.manage auth)
+    discord-webhook.js — Discord interaction webhook (slash commands, components, member-add)
 views/
-  layout.ejs           — Landing page (hero, manifesto, features, how, closing)
-  partials/            — nav, hero, manifesto, features, how, closing, footer
-  pages/               — faq, directory, live, merch, news, login, join, dashboard,
-                          settings, onboarding, terms, privacy, subscriptions, appeals,
-                          tool, admin-users, admin-shop, profile, profile-not-found,
-                          memberships, supabase-test (diagnostic UI), donate, donate-success
+  layout.ejs     — Landing page (hero, manifesto, features, how, closing)
+  partials/      — nav, hero, manifesto, features, how, closing, footer
+  pages/          — faq, directory, live (→/streams), merch, news, login, join, dashboard, settings,
+                    onboarding, terms, privacy, subscriptions, admin-*, profile, donate, play, 403
+                    streams/ — streams.ejs (stream listing), [id].ejs (individual embed)
   admin/
-    debug.ejs    — /admin/debug full panel (11 sections, JS-powered, DEBUG_PASSWORD-gated)
+    discord.ejs   — /admin/discord 4-tab management page (Main Server, Bot Settings, Other Servers, Logs)
+    debug.ejs     — /admin/debug full panel (11 sections, JS-powered, DEBUG_PASSWORD-gated)
+public/js/
+  wage-three.js  — Three.js particle system + WAGE World portal (camera fly-through, raycaster click detection)
+  admin-discord.js — Discord admin page client JS
 public/css/
-  theme.css      — Full design system (warm cream/editorial palette)
-  pages.css      — Page-specific styles (auth, directory, live, news, merch, faq, dashboard)
+  theme.css      — Full design system (dark theme, #ff6600 orange accents, Space Grotesk)
+  pages.css      — Page-specific styles
 migrations/      — SQL or JS migrations (timestamp_name.sql/js)
-scripts/         — Server-side-only admin scripts (never HTTP-accessible)
-  promote-superadmin.js — Set member_profiles.role=superadmin + external_auth_id via Supabase service role
 reports/         — Diagnostic and audit reports (markdown)
 ```
 
 ## Database
 
 ```
-users               — Subscription table (managed by hosting platform)
-_migrations         — migration tracker
-member_profiles     — Creator profiles (username, display_name, bio, avatar_url, role, permissions)
-newsletter_subscriptions — Email alert subscriptions
-member_livestreams  — Linked stream profiles (youtube/twitch/kick) per member
-blog_posts          — Blog posts with image/video/embed support
-collab_requests     — Collaboration request postings
-collab_applications — Applications to collab requests
-dashboard_tool_entries — Tool bookmarks
-autoclipper_jobs    — Clip job queue for chat bot integration
-merch_items         — Shop items (name, description, price, image_url)
-membership_plans    — Membership tiers (free/creator/pro) with price and features
-org_roles           — Role hierarchy (superadmin/admin/manager/staff/moderator/helper/user/banned)
-org_permissions     — Permission definitions
-org_role_permissions — Role→permission mappings
-org_user_roles      — Per-user role overrides
-org_ban_records     — Ban records by email
-user_memberships    — Paid tier subscriptions (email, plan_slug, stripe fields, period dates, billing_cycle)
-faq_entries         — FAQ questions/answers (question, answer, sort_order, is_active)
-discord_links       — Discord OAuth account links per user (discord_id, username, avatar, tokens, expiry)
-discord_roles        — Discord guild role IDs for tier sync (slug → role_id, created by lib/ensure-discord-roles.js on startup)
-diagnostic_log       — Ephemeral write-path test rows (inserted + deleted during /api/test-supabase; always empty)
-donations            — One-time Stripe donations: amount_cents, donor_name, donor_message, status
+auth_users        — Auth accounts (email, password_hash, display_name, avatar_url, is_suspended, admin_reset_token,
+                   referral_code, referred_by, referral_points, total_referrals, referral_tier)
+_migrations       — migration tracker
+member_profiles   — Creator profiles (username, display_name, bio, avatar_url, role, permissions)
+member_livestreams, blog_posts, collab_requests, collab_applications, dashboard_tool_entries, autoclipper_jobs
+merch_items       — Shop items (name, description, price, image_url)
+membership_plans  — Membership tiers (free/creator/pro) with price and features
+user_memberships  — Paid tier subscriptions (email, plan_slug, stripe fields, period dates, billing_cycle)
+membership_tiers — Admin-manageable tiers (name, slug, price_cents, stripe_price_id, stripe_product_id, features JSONB)
+faq_entries       — FAQ questions/answers (question, answer, sort_order, is_active)
+org_roles/org_permissions/org_role_permissions/org_user_roles/org_ban_records — legacy email-keyed role system
+referrals         — Referral relationships: referrer_id, referred_user_id, status, reward_given
+admin_referral_attributions — Manual referral attributions by admins (referee_id, referrer_id, referral_code_used, attributed_by_admin_id, created_at)
+admin_referral_reversals   — Point reversal log for manual attribution reversals
+point_transactions — Point ledger: user_id, amount, type, description (referral_signup/verified/purchase/retained/shop_purchase/manual_referral_attribution/referral_reversed)
+shop_items        — Redeemable rewards catalog: name, point_cost, item_type (badge/membership_days/profile_frame/username_color/vip_access/role), metadata, active
+shop_purchases    — Point redemptions: user_id, item_id
+discord_links     — Discord OAuth account links per user (discord_id, username, avatar, tokens, expiry, guild_ids, selected_guild_id, selected_guild_name)
+discord_roles, discord_servers, discord_server_configs — Discord bot/guild tracking
+discord_managed_roles — Bot-created roles (Elite, Unlimited) per guild, tracked by role_type
+discord_oauth_states — Short-lived OAuth CSRF states (state, user_id, redirect_path)
+discord_mod_actions — Audit log for bot role changes: guild_id, moderator_id, target_user_id, action, reason
+discord_bot_settings, discord_tier_role_map, discord_bot_logs — Admin Discord management (settings, tier→role map, activity log)
+discord_server_structure — Full snapshot of Discord server roles/channels/categories with permission overwrites (synced from Discord API)
+discord_permission_audit — Inheritance chain audit results: violations, role counts, channel counts, timestamps
+diagnostic_log, donations, newsletter_subscriptions
+roles/permissions/role_permissions/user_roles — auth_users.id-keyed roles + permissions
+oauth_connections — OAuth account links (google/kick/discord) per user
+platform_stats    — Aggregate landing page stats (key/value pairs: earnings, creator count, etc.)
 ```
 
 ## External integrations
 
-- **Stripe**: All payments via Stripe's hosted payment links — NO direct Stripe API calls, NO STRIPE_SECRET_KEY. Both monthly and annual subscription links (annual = monthly×10, 2 months free). Revenue tracked in Stripe Dashboard. Links stored in lib/stripe-config.js as SUBSCRIPTION_LINKS_MONTHLY and SUBSCRIPTION_LINKS_ANNUAL.
-- **Supabase**: Email magic link auth via @supabase/supabase-js (SUPABASE_URL, SUPABASE_ANON_KEY)
-- **Discord**: OAuth linking + guild role sync via bot (DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_BOT_TOKEN, DISCORD_REDIRECT_URI, DISCORD_GUILD_ID, DISCORD_ROLE_FREE_ID, DISCORD_ROLE_CREATOR_ID, DISCORD_ROLE_PRO_ID)
-- **OpenAI**: installed as dependency, not yet used
-- **R2/S3**: not yet configured — file uploads not built
-- **Email**: Zoho SMTP configured (env vars ZOHO_SMTP_*); not yet wired to templates
+- **Stripe**: Hosted payment links (no direct API). Monthly/annual subscription links via lib/stripe-config.js.
+- **Discord**: OAuth linking + guild role sync via bot (DISCORD_CLIENT_ID/SECRET/BOT_TOKEN).
+- **Google + Kick OAuth**: Account linking (Polsia infra env vars).
+- **R2**: Avatar uploads via @aws-sdk/client-s3; falls back to base64 if unconfigured.
+- **Email**: Zoho SMTP (ZOHO_SMTP_*); not yet wired to templates.
 
 ## Recent changes
 
-1. 2026-05-25 — Annual subscription tiers added (billing_cycle: monthly/annual)
-   - Stripe annual links: Creator $290/yr (link 95683), Pro $790/yr (link 95684) — 2 months free vs monthly
-   - Added `billing_cycle` column to `user_memberships` via migration (default 'monthly')
-   - `db/memberships.js`: upsertMembership now accepts `billingCycle` param; routes pass SUBSCRIPTION_LINKS_MONTHLY/ANNUAL
-   - `routes/api/webhooks.js`: handles customer.subscription.created/updated/deleted with billing_cycle inference
-   - `/memberships` page: monthly/annual toggle, JS-driven price updates, "2 months free" badge, annual price display
-2. 2026-05-25 — Auth: magic link now redirects to /auth/callback with token_hash handling
-   - Magic link: Supabase → /auth/callback?token_hash=xxx&type=magiclink → client-side verifyOtp() → POST to /auth/session → Express session → /dashboard
-   - OAuth PKCE: code_verifier from localStorage → POST to /auth/exchange → tokens → session → /dashboard
-   - Fixed /auth/exchange error extraction (was returning generic "PKCE exchange failed" instead of Supabase error msg on HTTP 400)
-3. 2026-05-25 — OAuth PKCE fix: client-side code exchange via Supabase JS SDK
-   - Root cause: manual PKCE stored code_verifier in sessionStorage; server callback couldn't access it
-   - Fix: Supabase JS SDK `signInWithOAuth()` handles PKCE internally (localStorage); new `auth-callback.ejs` does client-side `exchangeCodeForSession()`; tokens posted to `POST /auth/session` for Express session creation
-   - Google, Discord, Kick all use unified PKCE flow; Kick uses direct authorize URL (custom OIDC provider)
-4. 2026-05-25 — Auth broken: SUPABASE_ANON_KEY was `sb_publishable_*` format (wrong)
-   - Fixed: updated SUPABASE_ANON_KEY env var to JWT format (eyJhbGci...) on Render
-5. 2026-05-25 — Security + code quality audit (recurring upkeep)
-   - Fixed Stripe webhook header typo; moved webhook DB update into db/donations.js; removed hardcoded superadmin email
+61. 2026-06-21 — Admin Referral Attribution: new /admin/referrals page with manual referral attribution (admin assigns user→referrer link, awards 100+200pts); new admin_referral_attributions + admin_referral_reversals tables; GET/POST/DELETE API at /api/admin/referrals; autocomplete user search; override + reverse flow; attribution history table; referral overview stats.
+60. 2026-06-21 — Phase 5: memberships.ejs glassmorphism polish (wage-badge on current-plan/trial badges, data-tier on plan cards); profile.ejs avatar bumped to 160px with 4rem placeholder; both pages were already built in prior phases with full Three.js integration.
+59. 2026-06-21 — Phase 3: glassmorphism auth pages (/login) with portal edge glow effect (radial-gradient), gold border on focus inputs, Inter font added; WAGE Creators directory (/creators) with wage-card glassmorphism cards, Now Live horizontal carousel, tier filter tabs (All/Creator/Pro/Elite) with dedicated ?tier= param; scroll-reveal stagger on member cards (50ms increments, up to 12 cards); getPublicDirectory() now accepts tier filter param; pages.css: auth-page styles removed (inline in login.ejs), member-card updated to wage-card glassmorphism.
+58. 2026-06-20 — Phase 6: WAGE World Portal (Three.js camera fly-through, portal ring geometry with raycaster click detection, gold overlay transition→/play), /play page with game container, scroll-reveal system (IntersectionObserver, .scroll-reveal + .scroll-reveal-delay-N classes), WCAG AA accessibility (skip links, :focus-visible gold ring, landmark regions nav/main/footer, aria-labels), skeleton loaders + empty states. theme.css extended with portal-cta, scroll-reveal, skip-link, focus-visible, skeleton, empty-state styles.
+57. 2026-06-20 — Phase 1 Three.js overhaul: WAGE design tokens (--wage-* vars), glassmorphism base (.wage-card, .wage-btn), Three.js canvas + wage-three.js particle system (homepage-only, 60-280 particles, mouse parallax, RAF paused on hidden), mobile nav glassmorphism, Inter + JetBrains Mono fonts loaded.
+55. 2026-06-18 — Memberships + Pricing mobile pass: plans-grid responsive (1→2→3 cols), price amounts clamp(2rem,5vw,2.5rem), plan-card mobile padding, full-width CTAs. New checkout pages /checkout /checkout/annual /checkout/trial with checkout-container/summary/form styles, centered layout, Stripe redirect flow.
+54. 2026-06-16 — Streams mobile pass: streams.ejs platform filter, streams/[id].ejs 16:9 embed, stream embed on profile.ejs, platform filter CSS, live-creators scroll→grid responsive, /streams/:id route, getStreamsByUsername/getStreamById in db/livestreams.js.

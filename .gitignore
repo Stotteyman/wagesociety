@@ -14,3 +14,15 @@ shell-snapshots/
 statsig/
 todos/
 *.jsonl
+
+# Agent scratch/work files
+*.tmp
+*.bak
+*.orig
+*.swp
+scratch-*
+repair-*
+fix-*
+agent-*
+.aider*
+.claude-*

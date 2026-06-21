@@ -2,17 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../../db/index');
-const { getMemberAccess } = require('../../db/orgAccess');
-
-function requireAdmin(req, res, next) {
-  const email = req.session?.userEmail;
-  if (!email) return res.status(401).json({ error: 'Not authenticated' });
-  getMemberAccess(email).then(access => {
-    if (access.role === 'banned') return res.status(403).json({ error: 'Banned' });
-    if (access.role === 'superadmin' || access.role === 'admin') return next();
-    return res.status(403).json({ error: 'Admin access required' });
-  }).catch(() => res.status(500).json({ error: 'Auth check failed' }));
-}
+const { requireAdmin } = require('../../lib/middleware');
 
 // GET /api/admin/shop/items — all merch items
 router.get('/items', requireAdmin, async (_req, res) => {

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  
+
+<%- include('../../partials/head-pwa') %>
+  <title>Referral Dashboard — W.A.G.E. Society</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <style>
+    .referral-dash { max-width: 760px; margin: 0 auto; padding: 4rem 2rem; }
+    .referral-dash h1 { font-family: 'Space Grotesk', sans-serif; font-size: 2.5rem; font-weight: 900; margin-bottom: 0.5rem; letter-spacing: -0.03em; }
+    .referral-dash .page-sub { color: var(--muted); margin-bottom: 2.5rem; font-size: 0.95rem; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2.5rem; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1.25rem; }
+    .stat-card-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.5rem; }
+    .stat-card-value { font-family: 'Space Grotesk', monospace; font-size: 1.8rem; font-weight: 800; color: var(--fg); line-height: 1; }
+    .stat-card-sub { font-size: 0.75rem; color: var(--muted); margin-top: 0.3rem; }
+
+    .your-code-section { background: var(--accent-dim); border: 1px solid rgba(255,102,0,0.2); border-radius: 0.75rem; padding: 1.5rem 2rem; margin-bottom: 2.5rem; text-align: center; }
+    .your-code-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 0.5rem; }
+    .your-code { font-family: 'Space Grotesk', monospace; font-size: 2rem; font-weight: 800; letter-spacing: 0.1em; color: var(--fg); margin-bottom: 1rem; }
+    .copy-code-btn { font-family: 'Space Grotesk', sans-serif; font-size: 0.8rem; font-weight: 600; padding: 0.6rem 1.5rem; border-radius: 999px; background: var(--accent); color: #fff; border: none; cursor: pointer; transition: opacity 0.2s; }
+    .copy-code-btn:hover { opacity: 0.85; }
+    .copy-msg { font-size: 0.75rem; color: var(--muted); margin-top: 0.5rem; }
+
+    .share-row { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem; }
+    .share-btn { font-family: 'Space Grotesk', sans-serif; font-size: 0.8rem; font-weight: 600; padding: 0.6rem 1.25rem; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--fg); text-decoration: none; transition: background 0.2s; }
+    .share-btn:hover { background: var(--border); }
+
+    .tier-section { margin-bottom: 2.5rem; }
+    .tier-section-title { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 700; color: var(--fg); margin-bottom: 1rem; }
+    .tier-tracks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
+    .tier-track { background: var(--surface); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.75rem; text-align: center; }
+    .tier-track.active { border-color: var(--accent); background: var(--accent-dim); }
+    .tier-track-name { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
+    .tier-track-count { font-family: 'Space Grotesk', monospace; font-size: 1rem; font-weight: 800; }
+    .tier-track-threshold { font-size: 0.65rem; color: var(--muted); }
+
+    .bronze .tier-track-name { color: #cd7f32; }
+    .silver .tier-track-name { color: #c0c0c0; }
+    .gold .tier-track-name { color: #ffd700; }
+    .diamond .tier-track-name { color: #b9f2ff; }
+
+    .tier-badge { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.2rem 0.65rem; border-radius: 999px; border: 1px solid; }
+    .tier-badge.bronze { color: #cd7f32; border-color: rgba(205,127,50,0.3); background: rgba(205,127,50,0.08); }
+    .tier-badge.silver { color: #c0c0c0; border-color: rgba(192,192,192,0.3); background: rgba(192,192,192,0.08); }
+    .tier-badge.gold { color: #ffd700; border-color: rgba(255,215,0,0.3); background: rgba(255,215,0,0.08); text-shadow: 0 0 4px rgba(255,215,0,0.3); }
+    .tier-badge.diamond { color: #b9f2ff; border-color: rgba(185,242,255,0.3); background: rgba(185,242,255,0.08); text-shadow: 0 0 6px rgba(185,242,255,0.4); animation: diamond-pulse 2s ease-in-out infinite; }
+    @keyframes diamond-pulse { 0%, 100% { text-shadow: 0 0 4px rgba(185,242,255,0.4); } 50% { text-shadow: 0 0 10px rgba(185,242,255,0.7); } }
+
+    .recent-referrals-title { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
+    .recent-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .recent-entry { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 0.5rem; font-family: 'Space Grotesk', sans-serif; font-size: 0.85rem; }
+    .recent-entry .re-avatar { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; background: var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .recent-entry .re-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .recent-entry .re-avatar-placeholder { font-size: 0.8rem; font-weight: 700; color: var(--accent); }
+    .recent-entry .re-name { flex: 1; color: var(--fg); }
+    .recent-entry .re-date { font-size: 0.7rem; color: var(--muted); }
+    .recent-entry .re-status { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; padding: 0.15rem 0.5rem; border-radius: 999px; }
+    .recent-entry .re-status.pending { background: rgba(255,102,0,0.1); color: var(--accent); }
+    .recent-entry .re-status.verified, .recent-entry .re-status.rewarded { background: rgba(59,130,246,0.1); color: #60a5fa; }
+    .recent-entry .re-status.flagged { background: rgba(239,68,68,0.1); color: #f87171; }
+
+    .rewards-table { margin-bottom: 2.5rem; }
+    .rewards-table-title { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
+    .reward-row { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 0.5rem; margin-bottom: 0.5rem; }
+    .reward-row .rw-label { font-family: 'Space Grotesk', sans-serif; font-size: 0.85rem; color: var(--muted); }
+    .reward-row .rw-done { color: var(--accent); }
+    .reward-row .rw-pending { color: var(--muted); }
+
+    .buy-points-section { margin-top: 2.5rem; margin-bottom: 2.5rem; }
+    .buy-points-title { font-family: 'Space Grotesk', sans-serif; font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; color: var(--fg); }
+    .point-packs-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1rem; }
+    .point-pack { background: var(--surface); border: 1px solid var(--border); border-radius: 0.6rem; padding: 1rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+    .point-pack:hover { border-color: var(--accent); }
+    .point-pack.best { border-color: var(--accent); background: rgba(255,102,0,0.08); position: relative; }
+    .point-pack.best::before { content: 'BEST VALUE'; position: absolute; top: -0.6rem; left: 50%; transform: translateX(-50%); font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); background: var(--bg); padding: 0 0.5rem; border-radius: 999px; }
+    .point-pack .pack-pts { font-family: 'Space Grotesk', monospace; font-size: 1.2rem; font-weight: 800; color: var(--fg); }
+    .point-pack .pack-price { font-size: 0.85rem; color: var(--muted); margin-top: 0.25rem; }
+    .point-pack .pack-cents { font-family: 'Space Grotesk', monospace; font-size: 1rem; font-weight: 700; color: var(--accent); }
+    .buy-points-btn { display: block; width: 100%; padding: 0.75rem; background: var(--accent); color: #fff; border: none; border-radius: 0.5rem; font-family: 'Space Grotesk', sans-serif; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
+    .buy-points-btn:hover { opacity: 0.85; }
+    .buy-points-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .buy-points-note { font-size: 0.75rem; color: var(--muted); text-align: center; margin-top: 0.5rem; }
+
+    .txn-history-title { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
+    .txn-table { width: 100%; border-collapse: collapse; font-family: 'Space Grotesk', sans-serif; font-size: 0.85rem; }
+    .txn-table th { text-align: left; padding: 0.5rem 0.75rem; color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); }
+    .txn-table td { padding: 0.6rem 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .txn-table tr:last-child td { border-bottom: none; }
+    .txn-amount { font-weight: 700; }
+    .txn-amount.pos { color: var(--accent); }
+    .txn-amount.neg { color: #f87171; }
+    .txn-type { font-size: 0.7rem; text-transform: uppercase; padding: 0.15rem 0.5rem; border-radius: 999px; font-weight: 700; display: inline-block; }
+    .txn-type.purchase { background: rgba(59,130,246,0.1); color: #60a5fa; }
+    .txn-type.referral_signup, .txn-type.verified { background: rgba(34,197,94,0.1); color: #4ade80; }
+    .txn-type.shop_purchase { background: rgba(239,68,68,0.1); color: #f87171; }
+    .txn-type.retained { background: rgba(255,102,0,0.1); color: var(--accent); }
+  </style>
+</head>
+<body>
+  <%- include('../../partials/nav') %>
+
+  <main class="referral-dash">
+    <h1>Referral Dashboard</h1>
+    <p class="page-sub">Share your code, earn points, and unlock rewards.</p>
+
+    <% if (stats) { %>
+
+      <div class="your-code-section">
+        <div class="your-code-label">Your referral code</div>
+        <div class="your-code"><%= stats.code %></div>
+        <button class="copy-code-btn" onclick="copyCode(this)">Copy Code</button>
+        <p class="copy-msg" id="copyMsg"></p>
+        <div class="share-row">
+          <a href="https://twitter.com/intent/tweet?text=Join%20me%20on%20W.A.G.E.%20Society%20%E2%80%94%20creator%20tools%20with%20no%20middlemen.%20Use%20my%20code%20<%= stats.code %>%20for%20bonus%20points%3A%20https://wage-society.polsia.app/join" target="_blank" rel="noopener" class="share-btn">Share on X</a>
+          <a href="/leaderboard" class="share-btn">View Leaderboard</a>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-card-label">Points Earned</div>
+          <div class="stat-card-value"><%= stats.points %></div>
+          <div class="stat-card-sub">total points</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Monthly Referrals</div>
+          <div class="stat-card-value"><%= stats.monthlyReferrals %></div>
+          <div class="stat-card-sub">this month</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">All-Time Referrals</div>
+          <div class="stat-card-value"><%= stats.totalReferrals %></div>
+          <div class="stat-card-sub">total</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Monthly Rank</div>
+          <div class="stat-card-value"><%= stats.monthlyRank || '—' %></div>
+          <div class="stat-card-sub"><%= stats.monthlyRank ? '#' + stats.monthlyRank + ' this month' : 'unranked' %></div>
+        </div>
+      </div>
+
+      <div class="tier-section">
+        <div class="tier-section-title">
+          Referral Tier — <span class="tier-badge <%= stats.tier %>"><%= stats.tier %></span>
+        </div>
+        <div class="tier-tracks">
+          <div class="tier-track bronze <%= stats.tier === 'bronze' ? 'active' : '' %>">
+            <div class="tier-track-name">Bronze</div>
+            <div class="tier-track-count">0–9</div>
+            <div class="tier-track-threshold">referrals</div>
+          </div>
+          <div class="tier-track silver <%= stats.tier === 'silver' ? 'active' : '' %>">
+            <div class="tier-track-name">Silver</div>
+            <div class="tier-track-count">10–49</div>
+            <div class="tier-track-threshold">referrals</div>
+          </div>
+          <div class="tier-track gold <%= stats.tier === 'gold' ? 'active' : '' %>">
+            <div class="tier-track-name">Gold</div>
+            <div class="tier-track-count">50–249</div>
+            <div class="tier-track-threshold">referrals</div>
+          </div>
+          <div class="tier-track diamond <%= stats.tier === 'diamond' ? 'active' : '' %>">
+            <div class="tier-track-name">Diamond</div>
+            <div class="tier-track-count">250+</div>
+            <div class="tier-track-threshold">referrals</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rewards-table">
+        <div class="rewards-table-title">Reward Escalation</div>
+        <div class="reward-row">
+          <span class="rw-label">Sign up (record created)</span>
+          <span class="rw-done">✓ 0 pts — pending</span>
+        </div>
+        <div class="reward-row">
+          <span class="rw-label">Email verified by referred user</span>
+          <span class="rw-done">✓ 150 pts to referrer, 200 pts to new user</span>
+        </div>
+        <div class="reward-row">
+          <span class="rw-label">Referred user buys membership</span>
+          <span class="rw-pending">⏳ +500 pts to referrer (coming soon)</span>
+        </div>
+        <div class="reward-row">
+          <span class="rw-label">Referred user retained 30 days</span>
+          <span class="rw-pending">⏳ +300 pts to referrer (coming soon)</span>
+        </div>
+      </div>
+
+      <% if (recentReferrals.length > 0) { %>
+        <div class="recent-referrals-title">Recent Referrals</div>
+        <div class="recent-list">
+          <% recentReferrals.forEach(function(r) { %>
+            <div class="recent-entry">
+              <div class="re-avatar">
+                <% if (r.avatar_url) { %>
+                  <img src="<%= r.avatar_url %>" alt="<%= r.display_name || r.username %>">
+                <% } else { %>
+                  <span class="re-avatar-placeholder"><%= (r.display_name || r.username || '?').charAt(0).toUpperCase() %></span>
+                <% } %>
+              </div>
+              <span class="re-name">@<%= r.username %></span>
+              <span class="re-date"><%= new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %></span>
+              <span class="re-status <%= r.flagged ? 'flagged' : r.status %>"><%= r.flagged ? 'flagged' : r.status %></span>
+            </div>
+          <% }); %>
+        </div>
+      <% } else { %>
+        <div style="text-align:center; padding: 2rem; color: var(--muted); font-family: 'Space Grotesk', sans-serif;">
+          No referrals yet. Share your code above!
+        </div>
+      <% } %>
+
+      <%# ── Buy Points Section ────────────────────────────────────────────── %>
+      <div class="buy-points-section">
+        <div class="buy-points-title">🪙 Buy Points — Current Balance: <%= pointBalance.toLocaleString() %> pts</div>
+        <% if (typeof pointsPurchased !== 'undefined' && pointsPurchased) { %>
+          <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);color:#4ade80;padding:0.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:0.9rem;font-family:'Space Grotesk',sans-serif;">
+            ✓ Points credited! Check your balance above.
+          </div>
+        <% } %>
+        <% if (typeof purchaseCanceled !== 'undefined' && purchaseCanceled) { %>
+          <div style="background:rgba(255,102,0,0.1);border:1px solid rgba(255,102,0,0.3);color:var(--accent);padding:0.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:0.9rem;font-family:'Space Grotesk',sans-serif;">
+            Payment canceled — no points were charged.
+          </div>
+        <% } %>
+        <div class="point-packs-grid">
+          <% pointPacks.forEach(function(pack, idx) { %>
+            <div class="point-pack<%= pack.best ? ' best' : '' %><%= idx === 1 ? ' selected' : '' %>"
+                 onclick="selectPack(this, '<%= pack.id %>', <%= pack.points %>, <%= pack.cents %>)"
+                 style="<%= idx === 1 ? 'border-color:var(--accent);background:rgba(255,102,0,0.08);' : '' %>"
+                 data-pack-id="<%= pack.id %>" data-points="<%= pack.points %>" data-cents="<%= pack.cents %>">
+              <div class="pack-pts"><%= pack.label %></div>
+              <div class="pack-price">only</div>
+              <div class="pack-cents">$<%= (pack.cents / 100).toFixed(2) %></div>
+            </div>
+          <% }); %>
+        </div>
+        <button class="buy-points-btn" id="buyPointsBtn" onclick="buyPoints()">Buy Points →</button>
+        <p class="buy-points-note">Powered by Stripe. Secure checkout.</p>
+      </div>
+
+      <%# ── Transaction History ────────────────────────────────────────────── %>
+      <% if (typeof pointTransactions !== 'undefined' && pointTransactions.length > 0) { %>
+        <div style="margin-bottom:2rem;">
+          <div class="txn-history-title">Point History</div>
+          <table class="txn-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% pointTransactions.forEach(function(tx) { %>
+                <tr>
+                  <td style="color:var(--muted);"><%= new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %></td>
+                  <td><span class="txn-type <%= tx.type %>"><%= tx.type.replace('_', ' ') %></span></td>
+                  <td style="color:var(--muted);"><%= tx.description %></td>
+                  <td><span class="txn-amount <%= tx.amount >= 0 ? 'pos' : 'neg' %>"><%= tx.amount >= 0 ? '+' : '' %><%= tx.amount %></span></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+
+    <% } else { %>
+      <div style="text-align:center; padding: 3rem; color: var(--muted); font-family: 'Space Grotesk', sans-serif;">
+        <p>Unable to load your referral stats.</p>
+        <a href="/dashboard" class="btn-primary" style="margin-top:1rem; display:inline-block;">Back to Dashboard</a>
+      </div>
+    <% } %>
+  </main>
+
+  <script>
+    function copyCode(btn) {
+      const code = '<%= stats ? stats.code : '' %>';
+      navigator.clipboard.writeText(code).then(() => {
+        btn.textContent = 'Copied!';
+        document.getElementById('copyMsg').textContent = 'Code copied to clipboard';
+        setTimeout(() => { btn.textContent = 'Copy Code'; }, 2000);
+      }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = code;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy Code'; }, 2000);
+      });
+    }
+
+    async function buyPoints() {
+      const selected = document.querySelector('.point-pack.selected');
+      const packId = selected ? selected.dataset.packId : null;
+      if (!packId) return;
+
+      const btn = document.getElementById('buyPointsBtn');
+      btn.disabled = true;
+      btn.textContent = 'Redirecting to checkout...';
+
+      try {
+        const res = await fetch('/api/points/buy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ packId }),
+        });
+        const data = await res.json();
+        if (data.error) {
+          alert('Error: ' + data.error);
+          btn.disabled = false;
+          btn.textContent = 'Buy Points →';
+          return;
+        }
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          alert('Unable to create checkout session. Please try again.');
+          btn.disabled = false;
+          btn.textContent = 'Buy Points →';
+        }
+      } catch (err) {
+        alert('Something went wrong. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Buy Points →';
+      }
+    }
+
+    function selectPack(el, packId, points, cents) {
+      document.querySelectorAll('.point-pack').forEach(p => {
+        p.classList.remove('selected');
+        p.style.borderColor = '';
+        p.style.background = '';
+      });
+      el.classList.add('selected');
+      el.style.borderColor = 'var(--accent)';
+      el.style.background = 'rgba(255,102,0,0.08)';
+    }
+  </script>
+</body>
+</html>

@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">WAGE Society Android</string>
-    <string name="title_activity_main">WAGE Society Android</string>
-    <string name="package_name">com.wagesociety.android</string>
-    <string name="custom_url_scheme">com.wagesociety.android</string>
-</resources>

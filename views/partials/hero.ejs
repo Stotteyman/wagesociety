@@ -1,12 +1,112 @@
-<section class="hero">
-  <div class="hero-bg-text" aria-hidden="true">WAGE</div>
-  <div class="hero-content">
-    <p class="hero-eyebrow">EST. 2023 — LOS ANGELES, CA</p>
-    <h1 class="hero-title">We All<br>Gonna Eat.</h1>
-    <p class="hero-sub">The creator operating system for those who are done feeding the algorithm. Own your audience. Sell what you make. Get your share.</p>
+<section class="hero-v2 scroll-reveal" aria-labelledby="hero-title">
+  <div class="hero-v2-inner">
+    <!-- Left column: headline + CTAs + social proof -->
+    <div class="hero-v2-left">
+      <!-- WAGE World Portal callout -->
+      <div class="portal-cta-wrapper">
+        <a href="/play" class="portal-callout" aria-label="Enter WAGE World — play the game">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 2a7 7 0 0 1 0 14M2 12h14"/>
+          </svg>
+          Enter WAGE World
+        </a>
+      </div>
+      <div class="hero-badge">
+        <span class="hero-badge-dot"></span>
+        THE CREATOR OPERATING SYSTEM
+      </div>
+      <h1 class="hero-v2-title" id="hero-title">
+        WE ALL<br>
+        <span class="hero-v2-accent">GOTTA EAT.</span>
+      </h1>
+      <p class="hero-v2-sub">
+        WAGE Society is the home for creators, hustlers, and innovators.
+        Build your brand. Monetize your audience. Own your future.
+      </p>
+      <div class="hero-v2-actions">
+        <a href="/memberships" class="btn-hero-primary" aria-label="Join WAGE Society — start free membership">Join WAGE</a>
+        <a href="/creators" class="btn-hero-secondary" aria-label="Explore the WAGE Society creator directory">Explore Creators</a>
+      </div>
+      <div class="hero-social-proof">
+        <div class="hero-avatars">
+          <% const creators = typeof heroCreators !== 'undefined' ? heroCreators : []; %>
+          <% if (creators.length > 0) { %>
+            <% creators.slice(0, 5).forEach(function(c) { %>
+              <% if (c.avatar_url) { %>
+                <img src="<%= c.avatar_url %>" alt="<%= c.display_name || c.username %>" class="hero-avatar" loading="lazy" />
+              <% } else { %>
+                <div class="hero-avatar hero-avatar-placeholder"><%= (c.display_name || c.username || '?').charAt(0).toUpperCase() %></div>
+              <% } %>
+            <% }); %>
+          <% } else { %>
+            <div class="hero-avatar hero-avatar-placeholder">W</div>
+            <div class="hero-avatar hero-avatar-placeholder">A</div>
+            <div class="hero-avatar hero-avatar-placeholder">G</div>
+            <div class="hero-avatar hero-avatar-placeholder">E</div>
+            <div class="hero-avatar hero-avatar-placeholder">S</div>
+          <% } %>
+        </div>
+        <span class="hero-proof-text">
+          <% const count = typeof creatorCount !== 'undefined' ? creatorCount : 0; %>
+          <% if (count > 0) { %>
+            +<%= count.toLocaleString() %> creators already building
+          <% } else { %>
+            +12k creators already building
+          <% } %>
+        </span>
+      </div>
+    </div>
+
+  <% /* HUD cards — overlaid on canvas, top-right */ %>
+  <div class="hud-panel hud-panel--top-right">
+    <div class="hud-card wage-card">
+      <div class="hud-card-label">Creators Live</div>
+      <div class="hud-card-value" id="hud-creators-live"><%= typeof live_now !== 'undefined' ? live_now : '—' %></div>
+    </div>
+    <div class="hud-card wage-card">
+      <div class="hud-card-label">Network Size</div>
+      <div class="hud-card-value" id="hud-network-size"><%= typeof member_count !== 'undefined' ? (member_count >= 1000 ? Math.round(member_count/1000*10)/10+'k' : member_count) : '—' %></div>
+    </div>
+    <div class="hud-card wage-card">
+      <div class="hud-card-label">Streams Active</div>
+      <div class="hud-card-value" id="hud-streams-active"><%= typeof active_streams !== 'undefined' ? active_streams : '—' %></div>
+    </div>
   </div>
-  <div class="hero-decoration">
-    <div class="hero-circle"></div>
-    <div class="hero-line"></div>
+
+  <% /* Center: CTA below portal */ %>
+  <div class="portal-cta">
+    <p class="portal-tagline">Enter the network. Build your empire.</p>
+    <a href="/play" class="wage-btn wage-btn-primary portal-enter-btn" id="portal-enter-btn">
+      Enter WAGE World
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+    <p class="portal-disclaimer">W.A.G.E. = We All Gonna Eat</p>
   </div>
+
+  <% /* Portal hover hint */ %>
+  <div class="portal-hint" id="portal-hint">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+    Click the portal to enter
+  </div>
+
+  <% /* Scroll indicator */ %>
+  <a href="#feast-headline" class="scroll-indicator" aria-label="Scroll to explore">
+    <span class="scroll-indicator-label">Scroll to explore</span>
+    <span class="scroll-indicator-arrow" aria-hidden="true">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+    </span>
+  </a>
 </section>
+
+<script>
+/* Portal hover hint — shows briefly, then hides */
+(function() {
+  var hint = document.getElementById('portal-hint');
+  if (!hint) return;
+  setTimeout(function() {
+    hint.style.opacity = '0';
+    setTimeout(function() { hint.style.display = 'none'; }, 400);
+  }, 4000);
+})();
+</script>

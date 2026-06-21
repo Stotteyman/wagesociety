@@ -6,8 +6,6 @@ const express = require('express');
 const router = express.Router();
 const http = require('http');
 const https = require('https');
-const { createClient } = require('@supabase/supabase-js');
-const ws = require('ws');
 
 const {
   listTables,
@@ -55,9 +53,10 @@ router.get('/', requireDebugPassword, async (req, res) => {
 });
 
 // ── POST /admin/debug/api/supabase ──────────────────────────────────────────
-// Runs the full 9-point Supabase diagnostic (same logic as /api/test-supabase).
+// Direct Neon Postgres health checks. Route name kept for backward compat.
 router.post('/api/supabase', requireDebugPassword, async (_req, res) => {
-  const results = [];
+  const { pool } = require('../../db/index');
+  const { countMemberProfiles, countUserMemberships, writeAndRollbackDiagnosticLog } = require('../../db/diagnostic');
 
   async function runCheck(name, fn) {
     const start = Date.now();
@@ -69,39 +68,21 @@ router.post('/api/supabase', requireDebugPassword, async (_req, res) => {
     }
   }
 
-  const SUPABASE_URL     = process.env.SUPABASE_URL;
-  const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-  const SERVICE_ROLE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const results = [];
 
-  let anonClient = null;
-  results.push(await runCheck('client_init', async () => {
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) throw new Error('SUPABASE_URL or SUPABASE_ANON_KEY not set');
-    anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { transport: ws } });
-    return { ok: true };
-  }));
-
-  let serviceClient = null;
-  results.push(await runCheck('service_role_init', async () => {
-    if (!SERVICE_ROLE_KEY) return { ok: false, note: 'not set — admin user mgmt not available' };
-    if (!SUPABASE_URL) throw new Error('SUPABASE_URL not set');
-    serviceClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { realtime: { transport: ws } });
-    return { ok: true };
+  results.push(await runCheck('db_ping', async () => {
+    const { rows } = await pool.query('SELECT 1 AS ok');
+    return { ok: rows[0].ok === 1 };
   }));
 
   results.push(await runCheck('db_read_member_profiles', async () => {
-    if (!anonClient) throw new Error('no anon client');
-    const { error } = await anonClient.from('member_profiles').select('*', { count: 'exact', head: true });
-    if (error) throw new Error(error.message);
     const count = await countMemberProfiles();
-    return { count_via_postgres: count };
+    return { count };
   }));
 
   results.push(await runCheck('db_read_user_memberships', async () => {
-    if (!anonClient) throw new Error('no anon client');
-    const { error } = await anonClient.from('user_memberships').select('*', { count: 'exact', head: true });
-    if (error) throw new Error(error.message);
     const count = await countUserMemberships();
-    return { count_via_postgres: count };
+    return { count };
   }));
 
   results.push(await runCheck('db_write_rollback', async () => {
@@ -109,41 +90,18 @@ router.post('/api/supabase', requireDebugPassword, async (_req, res) => {
     return { inserted_id: id, deleted: true };
   }));
 
-  results.push(await runCheck('auth_signup_dry_run', async () => {
-    if (!anonClient) throw new Error('no anon client');
-    const throwaway = `debug+${Date.now()}@wagesociety.test`;
-    const { data, error } = await anonClient.auth.signUp({ email: throwaway, password: `Debug_${Date.now()}_!` });
-    if (error) return { email: throwaway, signup_error: error.message, user_created: false };
-    const userId = data?.user?.id;
-    if (userId && serviceClient) {
-      try { await serviceClient.auth.admin.deleteUser(userId); } catch (_) {}
-    }
-    return { email: throwaway, user_created: !!userId };
+  results.push(await runCheck('db_read_auth_users', async () => {
+    const { rows } = await pool.query('SELECT COUNT(*) AS count FROM auth_users');
+    return { count: parseInt(rows[0].count, 10) };
   }));
 
-  results.push(await runCheck('auth_get_session', async () => {
-    if (!anonClient) throw new Error('no anon client');
-    const { data, error } = await anonClient.auth.getSession();
-    if (error) throw new Error(error.message);
-    return { session_present: !!data?.session };
-  }));
-
-  results.push(await runCheck('storage_list_buckets', async () => {
-    if (!anonClient) throw new Error('no anon client');
-    const { data, error } = await anonClient.storage.listBuckets();
-    if (error) throw new Error(error.message);
-    return { buckets: (data || []).map(b => b.name) };
-  }));
-
-  results.push(await runCheck('rls_protected_query', async () => {
-    if (!anonClient) throw new Error('no anon client');
-    const { data, error } = await anonClient.from('user_memberships').select('id').limit(1);
-    if (error) return { rls_enforced: true, error_message: error.message };
-    return { rls_enforced: false, rows_returned: (data || []).length };
+  results.push(await runCheck('db_read_membership_plans', async () => {
+    const { rows } = await pool.query('SELECT COUNT(*) AS count FROM membership_plans');
+    return { count: parseInt(rows[0].count, 10) };
   }));
 
   const allPass = results.every(r => r.status === 'pass');
-  res.json({ all_pass: allPass, checks: results });
+  res.json({ all_pass: allPass, checks: results, note: 'Supabase removed — direct Neon Postgres health checks' });
 });
 
 // ── POST /admin/debug/api/tables ────────────────────────────────────────────
@@ -260,7 +218,6 @@ router.post('/api/row-delete', requireDebugPassword, async (req, res) => {
 router.post('/api/env', requireDebugPassword, async (_req, res) => {
   const keys = [
     'NODE_ENV', 'PORT', 'DATABASE_URL', 'SESSION_SECRET',
-    'SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY',
     'DISCORD_CLIENT_ID', 'DISCORD_CLIENT_SECRET', 'DISCORD_BOT_TOKEN',
     'DISCORD_REDIRECT_URI', 'DISCORD_GUILD_ID',
     'DISCORD_ROLE_FREE_ID', 'DISCORD_ROLE_CREATOR_ID', 'DISCORD_ROLE_PRO_ID',
@@ -442,29 +399,23 @@ router.post('/api/webhooks', requireDebugPassword, async (_req, res) => {
 
 // ── POST /admin/debug/api/oauth-status ─────────────────────────────────────
 router.post('/api/oauth-status', requireDebugPassword, async (_req, res) => {
-  const GOOGLE  = !!(process.env.SUPABASE_URL);
+  // Auth is now custom: bcrypt passwords in auth_users table + Discord account linking.
+  // No Supabase, no Google OAuth (was via Supabase).
   const DISCORD = !!(process.env.DISCORD_CLIENT_ID && process.env.DISCORD_CLIENT_SECRET);
-  const KICK    = false; // not configured in current stack
 
   const configured = [];
-  if (GOOGLE)  configured.push('Google (via Supabase)');
-  if (DISCORD) configured.push('Discord (direct bot)');
-  if (KICK)    configured.push('Kick');
-
-  const redirectUris = [
-    { provider: 'Google',  url: `${process.env.SUPABASE_URL || ''}/auth/v1/callback` },
-    { provider: 'Discord', url: process.env.DISCORD_REDIRECT_URI || '' },
-  ];
+  if (DISCORD) configured.push('Discord (account linking via bot)');
 
   res.json({
     providers: {
-      google:  { configured: GOOGLE },
+      custom_email_password: { configured: true, note: 'bcrypt in auth_users table' },
       discord: { configured: DISCORD, client_id_set: !!process.env.DISCORD_CLIENT_ID },
-      kick:    { configured: KICK },
     },
     configuredProviders: configured,
-    redirectUris,
-    supabaseUrl: process.env.SUPABASE_URL || null,
+    redirectUris: [
+      { provider: 'Discord', url: process.env.DISCORD_REDIRECT_URI || '' },
+    ],
+    note: 'Supabase removed — auth is custom bcrypt + Discord account linking',
   });
 });
 

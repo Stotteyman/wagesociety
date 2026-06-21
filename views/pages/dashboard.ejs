@@ -2,16 +2,30 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <%- include('../partials/head-pwa') %>
   <title>Dashboard — W.A.G.E. Society</title>
+  <meta name="description" content="Your W.A.G.E. Society creator dashboard. Manage your profile, memberships, referrals, and creator tools.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Dashboard — W.A.G.E. Society">
+  <meta property="og:description" content="Your W.A.G.E. Society creator dashboard. Manage your profile, memberships, referrals, and creator tools.">
+  <meta property="og:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
+  <meta property="og:url" content="https://wagesociety.com/dashboard">
+  <meta property="og:site_name" content="WAGE Society">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Dashboard — W.A.G.E. Society">
+  <meta name="twitter:description" content="Your W.A.G.E. Society creator dashboard. Manage your profile, memberships, referrals, and creator tools.">
+  <meta name="twitter:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/theme.css">
   <link rel="stylesheet" href="/css/pages.css">
 </head>
 <body>
-<%- include('../partials/nav') %>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+  <nav aria-label="Site navigation"><%- include('../partials/nav') %></nav>
+  <main id="main-content" role="main">
 
 <section class="dashboard-page">
   <div class="dashboard-inner">
@@ -22,94 +36,383 @@
       <p class="section-sub">Welcome back, <strong><%= displayName %></strong>.</p>
     </div>
 
+    <% if (showTrialBanner) { %>
+    <div id="trial-banner" class="trial-banner-glow">
+      <div class="trial-banner-left">
+        <div class="trial-banner-title">
+          <% if (membership && membership.status === 'trialing' && typeof trialDaysRemaining !== 'undefined' && trialDaysRemaining !== null) { %>
+            🔥 You're on a 7-day trial — <strong><%= trialDaysRemaining %> day<%= trialDaysRemaining === 1 ? '' : 's' %></strong> remaining
+          <% } else { %>
+            🔥 Try Creator for free — 7-day trial
+          <% } %>
+        </div>
+        <div class="trial-banner-sub">
+          <% if (membership && membership.status === 'trialing') { %>
+            <a href="#" onclick="cancelTrial();return false;" class="trial-cancel-link">Cancel trial</a> anytime — no charge.
+          <% } else { %>
+            Cancel anytime. No charge until Day 8.
+          <% } %>
+        </div>
+      </div>
+      <div class="trial-banner-actions">
+        <a href="/memberships" class="btn-primary">Start 7-Day Free Trial →</a>
+        <button onclick="dismissTrialBanner()" class="trial-dismiss-btn">Dismiss</button>
+      </div>
+    </div>
+    <% } %>
+
+    <% if (showTrialModal) { %>
+    <div id="trial-modal" class="trial-modal-overlay">
+      <div class="trial-modal-box">
+        <div class="trial-modal-fire">🔥</div>
+        <h2 class="trial-modal-title">UNLOCK YOUR FULL POTENTIAL</h2>
+        <p class="trial-modal-sub">Try any paid tier free for 7 days. No charge until Day 8.</p>
+        <div class="trial-modal-grid">
+          <% [{ slug: 'creator', name: 'Creator', price: '$29', feat: 'Creator tools + collaboration hub', highlight: false }, { slug: 'pro', name: 'Pro', price: '$79', feat: 'Knowledge vault + priority support', highlight: true }, { slug: 'elite', name: 'ELITE', price: '$199', feat: 'VIP access + onboarding calls', highlight: false }].forEach(tier => { %>
+            <div class="trial-tier-card<%= tier.highlight ? ' trial-tier-popular' : '' %>">
+              <% if (tier.highlight) { %><div class="trial-popular-badge">POPULAR</div><% } %>
+              <div class="trial-tier-name"><%= tier.name %></div>
+              <div class="trial-tier-price"><%= tier.price %><span class="trial-tier-period">/mo</span></div>
+              <div class="trial-tier-trial">7-day free trial</div>
+              <div class="trial-tier-feat"><%= tier.feat %></div>
+              <a href="#" onclick="startTrial('<%= tier.slug %>');return false;" class="trial-tier-btn">Try Free</a>
+            </div>
+          <% }) %>
+        </div>
+        <div class="trial-modal-extra">
+          <% [{ slug: 'unlimited', name: 'UNLIMITED', price: '$499', feat: 'Everything + 1-on-1 strategy calls' }].forEach(tier => { %>
+            <div class="trial-tier-card">
+              <div class="trial-tier-name"><%= tier.name %></div>
+              <div class="trial-tier-price"><%= tier.price %><span class="trial-tier-period">/mo</span></div>
+              <div class="trial-tier-trial">7-day free trial</div>
+              <div class="trial-tier-feat"><%= tier.feat %></div>
+              <a href="#" onclick="startTrial('<%= tier.slug %>');return false;" class="trial-tier-btn">Try Free</a>
+            </div>
+          <% }) %>
+        </div>
+        <button onclick="dismissTrialModal()" class="trial-skip-btn">I'll stick with Free for now →</button>
+      </div>
+    </div>
+    <% } %>
+
     <% if (role === 'banned') { %>
-    <div style="background:#2d1111;border:1px solid #7f1d1d;border-radius:12px;padding:2rem;margin-bottom:2rem;">
-      <h2 style="color:#fca5a5;font-size:1.5rem;margin-bottom:0.75rem;">Account Restricted</h2>
-      <p style="color:#fca5a5;">Your account is currently restricted. <a href="/appeals" style="color:#fca5a5;text-decoration:underline;">Submit an appeal</a>.</p>
+    <div class="banned-banner">
+      <h2>Account Restricted</h2>
+      <p>Your account is currently restricted. <a href="/appeals">Submit an appeal</a>.</p>
     </div>
     <% } else { %>
 
+    <!-- ── Stats Row ──────────────────────────────────────────────────────────── -->
+    <div class="dashboard-stats-row scroll-reveal">
+      <div class="wage-card stat-card">
+        <div class="stat-icon">🎁</div>
+        <div class="stat-value"><%= referralStats.totalReferrals %></div>
+        <div class="stat-label">Total Referrals</div>
+      </div>
+      <div class="wage-card stat-card">
+        <div class="stat-icon">✨</div>
+        <div class="stat-value gold-num"><%= referralStats.referralPoints.toLocaleString() %></div>
+        <div class="stat-label">Referral Points</div>
+      </div>
+      <div class="wage-card stat-card">
+        <div class="stat-icon">🏆</div>
+        <div class="stat-value"><%= referralStats.referralTier %></div>
+        <div class="stat-label">Referral Tier</div>
+      </div>
+      <div class="wage-card stat-card">
+        <div class="stat-icon">⭐</div>
+        <div class="stat-value gold-num"><%= plan %></div>
+        <div class="stat-label">Membership</div>
+      </div>
+    </div>
+
+    <!-- ── Main Grid ───────────────────────────────────────────────────────────── -->
     <div class="dashboard-grid">
 
-      <div class="dash-card">
-        <h3 class="dash-card-title">Profile</h3>
-        <div style="display:flex;gap:1.25rem;align-items:center;margin-bottom:1.5rem;">
-          <% if (avatarUrl) { %>
-            <img src="<%= avatarUrl %>" alt="Avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover;">
-          <% } else { %>
-            <div style="width:72px;height:72px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:1.75rem;font-family:'Playfair Display',serif;font-weight:900;color:var(--muted);"><%= (displayName || '?')[0].toUpperCase() %></div>
-          <% } %>
-          <div>
-            <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;"><%= displayName %></div>
-            <div style="font-size:0.85rem;color:var(--accent);">@<%= username %></div>
+      <!-- Profile Card -->
+      <div class="wage-card dash-card scroll-reveal">
+        <div class="dash-card-header">
+          <h3 class="dash-card-title">Profile</h3>
+        </div>
+        <div class="dash-profile-body">
+          <div class="dash-avatar-wrap">
+            <% if (avatarUrl) { %>
+              <img src="<%= avatarUrl %>" alt="Avatar" class="dash-avatar wage-avatar-glow">
+            <% } else { %>
+              <div class="dash-avatar-placeholder wage-avatar-glow">
+                <%= (displayName || '?')[0].toUpperCase() %>
+              </div>
+            <% } %>
+          </div>
+          <div class="dash-profile-info">
+            <div class="dash-name"><%= displayName %></div>
+            <div class="dash-username">@<%= username %></div>
+            <span class="wage-badge tier-<%= plan %>"><%= plan %></span>
           </div>
         </div>
-        <div class="dash-meta"><strong>Email:</strong> <%= email %></div>
-        <div class="dash-meta"><strong>Plan:</strong> <%= plan || 'free' %></div>
-        <div class="dash-meta"><strong>Role:</strong> <%= role %></div>
-        <% if (bio) { %>
-          <div class="dash-meta" style="margin-top:0.75rem;"><%= bio %></div>
-        <% } %>
-        <div class="dash-links" style="margin-top:1rem;">
-          <a href="/settings" class="dash-link">⚙️ Settings</a>
-          <a href="/<%= username %>" class="dash-link">👤 View Public Profile</a>
+        <div class="dash-meta-list">
+          <div class="dash-meta-row"><strong>Email:</strong> <span class="dash-meta-val"><%= email %></span></div>
+          <div class="dash-meta-row"><strong>Plan:</strong> <span class="dash-meta-val"><%= plan %></span></div>
+          <div class="dash-meta-row"><strong>Role:</strong> <span class="dash-meta-val"><%= role %></span></div>
+          <% if (bio) { %>
+            <div class="dash-meta-row dash-bio-row"><%= bio %></div>
+          <% } %>
+        </div>
+        <div class="dash-link-list">
+          <a href="/settings" class="wage-btn wage-btn-outline wage-btn-sm">⚙️ Settings</a>
+          <a href="/<%= username %>" class="wage-btn wage-btn-outline wage-btn-sm">👤 View Profile</a>
         </div>
       </div>
 
-      <div class="dash-card">
-        <h3 class="dash-card-title">Workspace</h3>
-        <p class="dash-profile-info">Your organization tools and quick links.</p>
-        <div style="display:flex;flex-direction:column;gap:0.75rem;">
-          <a href="/news" class="dash-link">📰 Organization News</a>
-          <a href="/directory" class="dash-link">👥 Creator Directory</a>
-          <a href="/live" class="dash-link">📡 Livestreams</a>
-          <a href="/merch" class="dash-link">🛍️ Merch</a>
+      <!-- Workspace Card -->
+      <div class="wage-card dash-card scroll-reveal">
+        <div class="dash-card-header">
+          <h3 class="dash-card-title">Workspace</h3>
+        </div>
+        <div class="dash-link-grid">
+          <a href="/news" class="dash-nav-link">📰 Organization News</a>
+          <a href="/creators" class="dash-nav-link">👥 Creator Directory</a>
+          <a href="/streams" class="dash-nav-link">📡 Livestreams</a>
+          <a href="/merch" class="dash-nav-link">🛍️ Merch</a>
+          <a href="/dashboard/discord/servers" class="dash-nav-link">🤖 Discord Servers</a>
+          <a href="/dashboard/referrals" class="dash-nav-link">🎁 Referral Dashboard</a>
         </div>
 
         <% if (hasCreatorTools) { %>
-        <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border);">
-          <div style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.75rem;">Creator Tools</div>
-          <div style="display:flex;flex-direction:column;gap:0.75rem;">
-            <a href="/dashboard/tools/bulletin-board" class="dash-link">📌 Bulletin Board</a>
-            <a href="/dashboard/tools/collaboration-hub" class="dash-link">🤝 Collaboration Hub</a>
-            <a href="/dashboard/tools/knowledge-vault" class="dash-link">📚 Knowledge Vault</a>
-            <a href="/dashboard/tools/creator-growth-system" class="dash-link">🚀 Creator Growth System</a>
+        <div class="dash-section-divider">
+          <div class="dash-section-label">Creator Tools</div>
+          <div class="dash-link-grid">
+            <a href="/dashboard/tools/bulletin-board" class="dash-nav-link">📌 Bulletin Board</a>
+            <a href="/dashboard/tools/collaboration-hub" class="dash-nav-link">🤝 Collaboration Hub</a>
+            <a href="/dashboard/tools/knowledge-vault" class="dash-nav-link">📚 Knowledge Vault</a>
+            <a href="/dashboard/tools/creator-growth-system" class="dash-nav-link">🚀 Growth System</a>
           </div>
         </div>
         <% } %>
 
         <% if (role === 'superadmin' || role === 'admin') { %>
-        <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border);">
-          <div style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--accent);margin-bottom:0.75rem;">Admin</div>
-          <div style="display:flex;flex-direction:column;gap:0.75rem;">
-            <a href="/admin/users" class="dash-link">👥 Manage Members</a>
-            <a href="/admin/shop" class="dash-link">🛍️ Manage Shop</a>
+        <div class="dash-section-divider">
+          <div class="dash-section-label dash-section-admin">Admin</div>
+          <div class="dash-link-grid">
+            <a href="/admin/users" class="dash-nav-link">👥 Manage Members</a>
+            <a href="/admin/shop" class="dash-nav-link">🛍️ Manage Shop</a>
           </div>
         </div>
         <% } %>
       </div>
 
-      <div class="dash-card">
-        <h3 class="dash-card-title">Account</h3>
-        <p class="dash-meta">Signed in as <strong><%= email %></strong></p>
-        <p class="dash-meta">Plan: <strong><%= plan || 'free' %></strong></p>
-        <p class="dash-meta">Role: <strong><%= role %></strong></p>
-        <div style="margin-top:1rem;display:flex;flex-direction:column;gap:0.5rem;">
-          <a href="/subscriptions" class="dash-link">💳 View Plans</a>
-          <a href="/terms" class="dash-link">📄 Terms</a>
-          <a href="/privacy" class="dash-link">🔒 Privacy</a>
+      <!-- Account Card -->
+      <div class="wage-card dash-card scroll-reveal">
+        <div class="dash-card-header">
+          <h3 class="dash-card-title">Account</h3>
         </div>
-        <form action="/logout" method="POST" style="margin-top:1.5rem;">
-          <button type="submit" style="background:none;border:1px solid var(--border);padding:0.625rem 1.25rem;border-radius:6px;font-size:0.875rem;font-weight:600;color:var(--muted);cursor:pointer;width:100%;">Sign Out</button>
+        <% if (role === 'banned') { %>
+          <div class="dash-meta-row" style="color:#fca5a5;">Account Restricted</div>
+        <% } else { %>
+          <div class="dash-meta-row"><strong>Status:</strong> <span class="status-active">Active</span></div>
+        <% } %>
+        <div class="dash-account-links">
+          <% if (role !== 'banned') { %>
+            <a href="/memberships" class="wage-btn wage-btn-outline wage-btn-sm">💳 Subscription</a>
+          <% } %>
+          <a href="/terms" class="wage-btn wage-btn-outline wage-btn-sm">📄 Terms</a>
+          <a href="/privacy" class="wage-btn wage-btn-outline wage-btn-sm">🔒 Privacy</a>
+        </div>
+        <form action="/logout" method="POST" class="dash-logout-form">
+          <button type="submit" class="wage-btn wage-btn-danger wage-btn-sm" style="width:100%;margin-top:0.5rem;">Sign Out</button>
         </form>
       </div>
 
     </div>
+
+    <!-- ── 3D Referral Network Graph ───────────────────────────────────────────── -->
+    <div class="wage-card network-card scroll-reveal">
+      <div class="dash-card-header">
+        <h3 class="dash-card-title">Your Referral Network</h3>
+        <div class="network-legend">
+          <span class="legend-dot" style="background:#F59E0B;"></span><span class="legend-label">You</span>
+          <span class="legend-dot" style="background:#06B6D4;"></span><span class="legend-label">Direct</span>
+          <span class="legend-dot" style="background:#8B5CF6;"></span><span class="legend-label">2nd Degree</span>
+        </div>
+      </div>
+      <div class="network-canvas-wrap">
+        <canvas id="network-canvas" width="800" height="400"></canvas>
+        <div id="network-tooltip" class="network-tooltip" style="display:none;"></div>
+        <div id="network-loading" class="network-loading">
+          <div class="network-loading-text">Loading network…</div>
+        </div>
+      </div>
+      <div class="network-stats-bar">
+        <div class="network-stat">
+          <span class="network-stat-val gold-num"><%= referralStats.totalReferrals %></span>
+          <span class="network-stat-lbl">Connections</span>
+        </div>
+        <div class="network-stat-divider"></div>
+        <div class="network-stat">
+          <span class="network-stat-val gold-num"><%= referralStats.referralTier %></span>
+          <span class="network-stat-lbl">Tier</span>
+        </div>
+        <div class="network-stat-divider"></div>
+        <div class="network-stat">
+          <span class="network-stat-val gold-num"><%= referralStats.referralPoints.toLocaleString() %></span>
+          <span class="network-stat-lbl">Points</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Referral Link + Copy Button ────────────────────────────────────────── -->
+    <div class="wage-card referral-link-card scroll-reveal">
+      <div class="referral-link-header">
+        <h3 class="dash-card-title">Share & Earn</h3>
+        <span class="wage-badge tier-<%= referralStats.referralTier %>"><%= referralStats.referralTier %></span>
+      </div>
+      <p class="referral-link-desc">Copy your referral link — earn points for every creator who joins through it.</p>
+      <div class="referral-link-row">
+        <div class="referral-link-display" id="referral-link-text">
+          <code><%= referralLink %></code>
+        </div>
+        <button class="wage-btn wage-btn-copy" onclick="copyReferralLink()" id="copy-btn">
+          <span id="copy-icon">📋</span>
+          <span id="copy-label">Copy Link</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Activity Feed ───────────────────────────────────────────────────────── -->
+    <% if (activityFeed && activityFeed.length > 0) { %>
+    <div class="wage-card activity-card scroll-reveal">
+      <div class="dash-card-header">
+        <h3 class="dash-card-title">Activity</h3>
+        <span class="activity-count"><%= activityFeed.length %> events</span>
+      </div>
+      <div class="activity-feed">
+        <% activityFeed.forEach((event, idx) => { %>
+          <div class="activity-item<%= idx >= 8 ? ' activity-item-hidden' : '' %>" data-kind="<%= event.kind %>">
+            <span class="activity-icon"><%= event.icon %></span>
+            <div class="activity-body">
+              <div class="activity-desc"><%= event.description %></div>
+              <div class="activity-date"><%= new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %></div>
+            </div>
+            <span class="activity-kind-dot" style="background:<%= event.kind === 'referral' ? '#06B6D4' : event.kind === 'stream' ? '#F59E0B' : '#8B5CF6' %>;"></span>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+    <% } %>
+
     <% } %>
 
   </div>
 </section>
 
-<%- include('../partials/footer') %>
+<footer role="contentinfo"><%- include('../partials/footer') %></footer>
+  </main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/js/wage-network.js"></script>
+<script>
+(function () {
+  var e = document.querySelectorAll('.scroll-reveal');
+  if (!e.length) return;
+  var o = new IntersectionObserver(function (s) {
+    s.forEach(function (t) {
+      if (t.isIntersecting) {
+        t.target.classList.add('revealed');
+        o.unobserve(t.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+  e.forEach(function (el) { o.observe(el); });
+})();
+
+async function copyReferralLink() {
+  var link = document.getElementById('referral-link-text').textContent.trim();
+  try {
+    await navigator.clipboard.writeText(link);
+    var btn = document.getElementById('copy-btn');
+    var icon = document.getElementById('copy-icon');
+    var label = document.getElementById('copy-label');
+    icon.textContent = '✅';
+    label.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(function () {
+      icon.textContent = '📋';
+      label.textContent = 'Copy Link';
+      btn.classList.remove('copied');
+    }, 2000);
+  } catch (e) {
+    var text = document.createElement('textarea');
+    text.value = link;
+    document.body.appendChild(text);
+    text.select();
+    document.execCommand('copy');
+    document.body.removeChild(text);
+    var icon = document.getElementById('copy-icon');
+    var label = document.getElementById('copy-label');
+    icon.textContent = '✅';
+    label.textContent = 'Copied!';
+    setTimeout(function () {
+      icon.textContent = '📋';
+      label.textContent = 'Copy Link';
+    }, 2000);
+  }
+}
+
+async function startTrial(planSlug) {
+  try {
+    var res = await fetch('/api/checkout/redirect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planSlug: planSlug, cycle: 'monthly' }),
+    });
+    var data = await res.json();
+    if (data.redirectUrl) window.location.href = data.redirectUrl;
+    else alert('Could not start trial. Please try again.');
+  } catch (_) { alert('Checkout error. Please try again.'); }
+}
+
+async function dismissTrialBanner() {
+  var banner = document.getElementById('trial-banner');
+  if (banner) banner.style.display = 'none';
+  try { await fetch('/api/trial/dismiss', { method: 'POST' }); } catch (_) {}
+}
+
+function dismissTrialModal() {
+  var modal = document.getElementById('trial-modal');
+  if (modal) modal.style.display = 'none';
+  fetch('/api/trial/dismiss', { method: 'POST' }).catch(function () {});
+}
+
+async function cancelTrial() {
+  if (!confirm('Are you sure? Your trial will end immediately and you will lose access to paid features.')) return;
+  try {
+    var res = await fetch('/api/subscriptions/trial', { method: 'DELETE' });
+    if (res.ok) window.location.reload();
+    else alert('Could not cancel trial. Please try again or contact support.');
+  } catch (_) { alert('Error canceling trial. Please try again.'); }
+}
+
+// Init 3D network graph
+(function () {
+  var canvas = document.getElementById('network-canvas');
+  var nodes = <%- JSON.stringify(networkNodes || []) %>;
+  var userName = <%- JSON.stringify(displayName || '') %>;
+
+  if (canvas && typeof WAGENetwork !== 'undefined') {
+    var loading = document.getElementById('network-loading');
+    if (loading) loading.style.display = 'none';
+    WAGENetwork.init(canvas, nodes, userName);
+  } else if (canvas) {
+    // Fallback: CSS network
+    var wrap = canvas.parentElement;
+    canvas.style.display = 'none';
+    var fallback = document.createElement('div');
+    fallback.className = 'css-network-fallback';
+    fallback.innerHTML = '<div class="css-network-empty"><div class="css-network-empty-title">🎁 ' + (nodes.length > 0 ? nodes.length + ' referrals in your network' : 'No referrals yet — share your link above!') + '</div></div>';
+    wrap.appendChild(fallback);
+    if (loading) loading.style.display = 'none';
+  }
+})();
+</script>
 </body>
 </html>

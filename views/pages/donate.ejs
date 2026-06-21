@@ -2,8 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+
+<%- include('../partials/head-pwa') %>
   <title>Donate — W.A.G.E. Society</title>
+  <meta name="description" content="Support W.A.G.E. Society creators directly. Your donation goes straight to the people doing the work — no platform cut.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Donate — W.A.G.E. Society">
+  <meta property="og:description" content="Support W.A.G.E. Society creators directly. Your donation goes straight to the people — no platform cut.">
+  <meta property="og:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
+  <meta property="og:url" content="https://wagesociety.com/donate">
+  <meta property="og:site_name" content="WAGE Society">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Donate — W.A.G.E. Society">
+  <meta name="twitter:description" content="Support W.A.G.E. Society creators directly. Your donation goes straight to the people — no platform cut.">
+  <meta name="twitter:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -117,7 +130,7 @@
       cursor: pointer;
       transition: all 0.2s;
     }
-    .btn-donate:hover { background: var(--accent-hover); box-shadow: 0 4px 20px rgba(249,115,22,0.35); }
+    .btn-donate:hover { background: var(--accent-hover); box-shadow: 0 4px 20px rgba(255,102,0,0.35); }
     .btn-donate:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .error-msg { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); border-radius: var(--radius-sm); padding: 0.75rem 1rem; color: #fca5a5; font-size: 0.875rem; margin-bottom: 1rem; display: none; }

@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  
+
+<%- include('../partials/head-pwa') %>
+  <title>Referral Dashboard — W.A.G.E. Society</title>
+  <meta name="description" content="Share your referral link, earn points, and unlock rewards on W.A.G.E. Society. Bronze, Silver, Gold, and Diamond tiers.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Referral Dashboard — W.A.G.E. Society">
+  <meta property="og:description" content="Share your referral link, earn points, and unlock rewards on W.A.G.E. Society.">
+  <meta property="og:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
+  <meta property="og:url" content="https://wagesociety.com/dashboard/referrals">
+  <meta property="og:site_name" content="WAGE Society">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Referral Dashboard — W.A.G.E. Society">
+  <meta name="twitter:description" content="Share your referral link, earn points, and unlock rewards on W.A.G.E. Society.">
+  <meta name="twitter:image" content="https://pub-629428d185ca4960a0a73c850d32294b.r2.dev/generated-images/company_142957/eb47d638-137a-4907-b6c0-3bf099c5be80.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body>
+<%- include('../partials/nav') %>
+
+<section class="dashboard-page">
+  <div class="dashboard-inner">
+
+    <div class="page-header">
+      <span class="section-label">Earn Rewards</span>
+      <h1 class="section-title">Referral Dashboard</h1>
+      <p class="section-sub">Share your link, earn points, unlock rewards. Every creator who joins through you levels you up.</p>
+    </div>
+
+    <% if (referrerName) { %>
+    <div style="background:rgba(255,102,0,0.08);border:1px solid rgba(255,102,0,0.25);border-radius:10px;padding:1.25rem 1.5rem;margin-bottom:2rem;display:flex;align-items:center;gap:0.75rem;">
+      <span style="font-size:1.25rem;">🎁</span>
+      <div>
+        <div style="font-weight:700;color:var(--accent);">You joined through <%= referrerName %></div>
+        <div style="font-size:0.875rem;color:var(--muted);">Thanks for being part of the W.A.G.E. Society community!</div>
+      </div>
+    </div>
+    <% } %>
+
+    <% const appUrl = 'https://wage-society.polsia.app'; const referralLink = appUrl + '/join?ref=' + referralCode; %>
+
+    <!-- Referral Code Card -->
+    <div style="background:var(--surface);border:1px solid rgba(255,102,0,0.35);border-radius:16px;padding:2.5rem;margin-bottom:2rem;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(255,102,0,0.08) 0%,transparent 70%);pointer-events:none;"></div>
+      <div style="position:absolute;bottom:-30px;left:-30px;width:140px;height:140px;background:radial-gradient(circle,rgba(255,102,0,0.06) 0%,transparent 70%);pointer-events:none;"></div>
+
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1.5rem;position:relative;">
+        <div>
+          <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent);margin-bottom:0.5rem;">Your Referral Code</div>
+          <div style="font-family:'Space Grotesk',monospace;font-size:clamp(1.5rem,4vw,2.5rem);font-weight:800;letter-spacing:0.08em;color:#fff;margin-bottom:0.75rem;"><%= referralCode %></div>
+          <div style="font-size:0.8rem;color:var(--muted);margin-bottom:1.5rem;">Share this link to earn points for every signup</div>
+          <div style="display:flex;align-items:center;gap:0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;max-width:480px;">
+            <code id="referral-link" style="font-size:0.8rem;color:var(--accent);word-break:break-all;flex:1;"><%= referralLink %></code>
+            <button id="copy-btn" onclick="copyLink()" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:0.5rem 1rem;font-size:0.8rem;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;">Copy Link</button>
+          </div>
+          <div id="copy-feedback" style="font-size:0.8rem;color:#22c55e;margin-top:0.5rem;display:none;">✓ Copied!</div>
+        </div>
+
+        <!-- Share buttons -->
+        <div style="display:flex;flex-direction:column;gap:0.75rem;min-width:160px;">
+          <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:0.25rem;">Share</div>
+          <a id="share-discord" href="#" onclick="shareDiscord()" style="display:flex;align-items:center;gap:0.5rem;background:#5865F2;color:#fff;padding:0.625rem 1rem;border-radius:8px;font-size:0.875rem;font-weight:700;text-decoration:none;transition:opacity 0.2s;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.08.11 18.1.12 18.11a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+            Discord
+          </a>
+          <a id="share-twitter" href="#" onclick="shareTwitter()" style="display:flex;align-items:center;gap:0.5rem;background:#000;color:#fff;padding:0.625rem 1rem;border-radius:8px;font-size:0.875rem;font-weight:700;text-decoration:none;transition:opacity 0.2s;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            Share on X
+          </a>
+          <button onclick="copyForTikTok()" style="display:flex;align-items:center;gap:0.5rem;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.625rem 1rem;border-radius:8px;font-size:0.875rem;font-weight:700;cursor:pointer;width:100%;text-align:left;transition:all 0.2s;">
+            📋 Copy for TikTok Bio
+          </button>
+          <div id="tiktok-feedback" style="font-size:0.75rem;color:var(--muted);display:none;">Link copied! Paste in your TikTok bio.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.25rem;margin-bottom:2rem;">
+      <div class="dash-card" style="text-align:center;">
+        <div style="font-size:2.25rem;font-weight:800;color:var(--accent);margin-bottom:0.25rem;"><%= stats.totalReferrals %></div>
+        <div style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);">Total Referrals</div>
+      </div>
+      <div class="dash-card" style="text-align:center;">
+        <div style="font-size:2.25rem;font-weight:800;color:#22c55e;margin-bottom:0.25rem;"><%= stats.pointsBalance.toLocaleString() %></div>
+        <div style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);">Points Balance</div>
+      </div>
+      <div class="dash-card" style="text-align:center;">
+        <div style="font-size:2.25rem;font-weight:800;color:#fff;margin-bottom:0.25rem;">
+          <span style="font-size:1.25rem;">#</span><%= stats.monthlyRank %>
+        </div>
+        <div style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);">Monthly Rank</div>
+      </div>
+      <div class="dash-card" style="text-align:center;">
+        <div style="font-size:2.25rem;font-weight:800;color:#a855f7;margin-bottom:0.25rem;"><%= conversionRate %>%</div>
+        <div style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);">Conversion Rate</div>
+      </div>
+    </div>
+
+    <!-- Tier Progress Bar -->
+    <div class="dash-card" style="margin-bottom:2rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+        <div>
+          <h3 class="dash-card-title" style="margin-bottom:0.25rem;">Referral Tier</h3>
+          <div style="font-size:0.875rem;color:var(--muted);">Move up tiers to unlock bigger rewards</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.5rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:0.5rem 1rem;">
+          <% const tierColors = { bronze: '#cd7f32', silver: '#c0c0c0', gold: '#ffd700', diamond: '#b9f2ff' }; %>
+          <span style="font-size:1.25rem;"><%= { bronze: '🥉', silver: '🥈', gold: '🥇', diamond: '💎' }[tier] %></span>
+          <span style="font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:0.95rem;text-transform:capitalize;color:<%= tierColors[tier] %>;"><%= tier %></span>
+        </div>
+      </div>
+
+      <div style="position:relative;margin-bottom:1.5rem;">
+        <% const tiers = ['bronze', 'silver', 'gold', 'diamond']; const thresholds = [0, 10, 50, 250]; const nextThreshold = tiers.indexOf(tier) < tiers.length - 1 ? thresholds[tiers.indexOf(tier) + 1] : null; const progress = nextThreshold ? Math.min(100, Math.round((stats.totalReferrals / nextThreshold) * 100)) : 100; %>
+        <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+          <% tiers.forEach((t, i) => { %>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:0.35rem;">
+              <div style="width:36px;height:36px;border-radius:50%;background:<%= t === tier ? tierColors[t] : 'var(--surface)' %>;border:2px solid <%= t === tier ? tierColors[t] : 'var(--border)' %>;display:flex;align-items:center;justify-content:center;font-size:1.1rem;"><%= { bronze: '🥉', silver: '🥈', gold: '🥇', diamond: '💎' }[t] %></div>
+              <div style="font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:<%= t === tier ? tierColors[t] : 'var(--muted)' %>;"><%= t %></div>
+              <div style="font-size:0.6rem;color:var(--muted);"><%= i === 0 ? '0' : thresholds[i] + '+' %></div>
+            </div>
+          <% }); %>
+        </div>
+        <% if (nextThreshold) { %>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;height:8px;overflow:hidden;margin-top:0.5rem;">
+            <div style="height:100%;width:<%= progress %>%;background:linear-gradient(90deg,var(--accent),#ff8533);border-radius:8px;transition:width 0.5s;"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:0.35rem;">
+            <span style="font-size:0.75rem;color:var(--muted);"><%= stats.totalReferrals %> referrals</span>
+            <span style="font-size:0.75rem;color:var(--accent);"><%= nextThreshold - stats.totalReferrals %> more to <%= tiers[tiers.indexOf(tier) + 1] %></span>
+          </div>
+        <% } else { %>
+          <div style="background:var(--accent);border-radius:8px;height:8px;overflow:hidden;margin-top:0.5rem;">
+            <div style="height:100%;width:100%;background:linear-gradient(90deg,#b9f2ff,#a855f7);border-radius:8px;"></div>
+          </div>
+          <div style="text-align:center;margin-top:0.35rem;font-size:0.8rem;font-weight:700;color:#b9f2ff;">🌟 Diamond — Maximum tier reached!</div>
+        <% } %>
+      </div>
+
+      <!-- Tier perks -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;margin-top:1rem;">
+        <% const perks = { bronze: ['Points on signup', 'Profile badge', 'Leaderboard entry'], silver: ['+50 bonus points', 'Priority support', 'Silver badge'], gold: ['+100 bonus points', 'Featured creator', 'Gold badge', 'Monthly bonus'], diamond: ['+250 bonus points', 'Homepage spotlight', 'Diamond badge', 'VIP perks', 'Revenue share'] }; %>
+        <% (perks[tier] || []).forEach(perk => { %>
+          <div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:0.8rem;">
+            <span style="color:#22c55e;">✓</span> <%= perk %>
+          </div>
+        <% }); %>
+      </div>
+    </div>
+
+    <% if (flash) { %>
+    <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.35);border-radius:10px;padding:1rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:0.75rem;">
+      <span style="font-size:1rem;">✅</span>
+      <div style="font-weight:600;font-size:0.9rem;color:#22c55e;"><%= flash %></div>
+    </div>
+    <% } %>
+
+    <!-- Buy Points Section -->
+    <div class="dash-card" style="margin-bottom:2rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+        <div>
+          <h3 class="dash-card-title" style="margin-bottom:0.25rem;">Buy Points</h3>
+          <div style="font-size:0.8rem;color:var(--muted);">Boost your balance instantly — no referrals needed</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:0.5rem 1rem;text-align:center;">
+          <div style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.15rem;">Balance</div>
+          <div style="font-size:1.25rem;font-weight:800;color:var(--accent);"><%= stats.pointsBalance.toLocaleString() %></div>
+        </div>
+      </div>
+      <div id="buy-points-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.875rem;">
+        <% const packs = [{ id:'pts_500', label:'500 Points', points:500, cents:5, best:false }, { id:'pts_1200', label:'1,200 Points', points:1200, cents:10, best:false }, { id:'pts_3500', label:'3,500 Points', points:3500, cents:25, best:false }, { id:'pts_10000', label:'10,000 Points', points:10000, cents:50, best:true }]; %>
+        <% packs.forEach(pack => { %>
+          <div onclick="buyPoints('<%= pack.id %>')" style="background:<%= pack.best ? 'rgba(255,102,0,0.1)' : 'var(--bg)' %>;border:1px solid <%= pack.best ? 'rgba(255,102,0,0.5)' : 'var(--border)' %>;border-radius:10px;padding:1rem;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden;">
+            <% if (pack.best) { %><div style="position:absolute;top:0;right:0;background:var(--accent);color:#fff;font-size:0.6rem;font-weight:800;padding:0.2rem 0.5rem;border-radius:0 8px 0 8px;">BEST VALUE</div><% } %>
+            <div style="font-size:1.1rem;font-weight:800;color:#fff;margin-bottom:0.25rem;"><%= pack.label.replace(' Points','') %></div>
+            <div style="font-size:0.75rem;font-weight:600;color:var(--accent);">$<%= pack.cents %></div>
+            <div style="font-size:0.65rem;color:var(--muted);margin-top:0.25rem;"><%= (pack.points / pack.cents).toFixed(0) %> pts/$</div>
+          </div>
+        <% }); %>
+      </div>
+      <div id="buy-points-loading" style="display:none;text-align:center;padding:0.75rem;font-size:0.875rem;color:var(--muted);">Redirecting to checkout...</div>
+      <div id="buy-points-error" style="display:none;padding:0.75rem;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;color:#ef4444;font-size:0.85rem;margin-top:0.75rem;"></div>
+    </div>
+
+    <!-- Two-column layout -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;@media(max-width:700px){grid-template-columns:1fr;}}">
+
+      <!-- Recent Transactions -->
+      <div class="dash-card">
+        <h3 class="dash-card-title" style="margin-bottom:1rem;">Point History</h3>
+        <% if (transactions.length === 0) { %>
+          <p style="color:var(--muted);font-size:0.875rem;">No transactions yet. Share your link to start earning!</p>
+        <% } else { %>
+          <div style="display:flex;flex-direction:column;gap:0.5rem;max-height:400px;overflow-y:auto;">
+            <% transactions.forEach(tx => { %>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:0.625rem 0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
+                <div style="display:flex;align-items:center;gap:0.75rem;">
+                  <span style="font-size:1rem;"><%= tx.amount > 0 ? '💰' : '🛒' %></span>
+                  <div>
+                    <div style="font-size:0.8rem;font-weight:600;"><%= tx.description %></div>
+                    <div style="font-size:0.7rem;color:var(--muted);"><%= new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %></div>
+                  </div>
+                </div>
+                <div style="font-weight:800;font-size:0.95rem;color:<%= tx.amount > 0 ? '#22c55e' : '#ef4444' %>;"><%= tx.amount > 0 ? '+' : '' %><%= tx.amount %></div>
+              </div>
+            <% }); %>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Recent Referrals -->
+      <div class="dash-card">
+        <h3 class="dash-card-title" style="margin-bottom:1rem;">Recent Referrals</h3>
+        <% if (referrals.length === 0) { %>
+          <p style="color:var(--muted);font-size:0.875rem;">No referrals yet. Share your link to get started!</p>
+        <% } else { %>
+          <div style="display:flex;flex-direction:column;gap:0.5rem;max-height:400px;overflow-y:auto;">
+            <% referrals.forEach(ref => { %>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:0.625rem 0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
+                <div style="display:flex;align-items:center;gap:0.75rem;">
+                  <div style="width:32px;height:32px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;color:var(--muted);"><%= (ref.display_name || '?')[0].toUpperCase() %></div>
+                  <div>
+                    <div style="font-size:0.8rem;font-weight:600;"><%= ref.display_name || ref.email %></div>
+                    <div style="font-size:0.7rem;color:var(--muted);"><%= new Date(ref.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) %></div>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.4rem;">
+                  <span style="font-size:0.7rem;padding:0.25rem 0.6rem;border-radius:4px;font-weight:700;text-transform:capitalize;<% if (ref.status === 'verified' || ref.status === 'rewarded') { %>background:rgba(34,197,94,0.15);color:#22c55e;<% } else if (ref.status === 'pending') { %>background:rgba(255,200,0,0.15);color:#eab308;<% } else { %>background:var(--surface);color:var(--muted);<% } %>"><%= ref.status %></span>
+                </div>
+              </div>
+            <% }); %>
+          </div>
+        <% } %>
+      </div>
+    </div>
+
+    <div style="margin-top:2rem;text-align:center;">
+      <a href="/dashboard" class="btn-primary" style="display:inline-flex;">← Back to Dashboard</a>
+    </div>
+
+  </div>
+</section>
+
+<%- include('../partials/footer') %>
+
+<script>
+const referralLink = '<%= referralLink %>';
+
+function copyLink() {
+  navigator.clipboard.writeText(referralLink).then(() => {
+    const btn = document.getElementById('copy-btn');
+    const feedback = document.getElementById('copy-feedback');
+    btn.textContent = 'Copied!';
+    btn.style.background = '#22c55e';
+    feedback.style.display = 'block';
+    setTimeout(() => {
+      btn.textContent = 'Copy Link';
+      btn.style.background = '';
+      feedback.style.display = 'none';
+    }, 2000);
+  });
+}
+
+function shareDiscord() {
+  const msg = encodeURIComponent('Join me on W.A.G.E. Society — the creator platform where we keep what we earn! ' + referralLink);
+  window.open('https://discord.com/channels/@me?message=' + msg, '_blank');
+}
+
+function shareTwitter() {
+  const text = encodeURIComponent('Just joined W.A.G.E. Society — a creator platform where we keep what we earn. Check it out: ' + referralLink);
+  window.open('https://twitter.com/intent/tweet?text=' + text, '_blank');
+}
+
+function copyForTikTok() {
+  navigator.clipboard.writeText(referralLink).then(() => {
+    const feedback = document.getElementById('tiktok-feedback');
+    feedback.style.display = 'block';
+    setTimeout(() => { feedback.style.display = 'none'; }, 3000);
+  });
+}
+
+async function buyPoints(packId) {
+  const errEl = document.getElementById('buy-points-error');
+  const loadingEl = document.getElementById('buy-points-loading');
+  const gridEl = document.getElementById('buy-points-grid');
+  errEl.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/points/buy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ packId }),
+    });
+    const data = await res.json();
+    if (data.error) {
+      errEl.textContent = data.error;
+      errEl.style.display = 'block';
+      return;
+    }
+    if (data.url) {
+      gridEl.style.opacity = '0.4';
+      loadingEl.style.display = 'block';
+      window.location.href = data.url;
+    }
+  } catch (_) {
+    errEl.textContent = 'Something went wrong. Please try again.';
+    errEl.style.display = 'block';
+  }
+}
+</script>
+
+<style>
+@media (max-width: 700px) {
+  .dashboard-grid > div[style*="grid"] { grid-template-columns: 1fr !important; }
+}
+</style>
+
+</body>
+</html>
