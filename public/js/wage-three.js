@@ -74,6 +74,38 @@
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(dpr);
   renderer.setClearColor(0x000000, 0);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+
+  // Generated artwork uses black edges so additive blending preserves the
+  // transparent canvas while retaining luminous texture detail.
+  var textureLoader = new THREE.TextureLoader();
+  function loadSceneTexture(url) {
+    return textureLoader.load(url, function (texture) {
+      texture.encoding = THREE.sRGBEncoding;
+      texture.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 4);
+    });
+  }
+
+  var portalTexture = loadSceneTexture('/images/three/portal-energy-core.png');
+  var backdropTexture = !isMobile
+    ? loadSceneTexture('/images/three/creator-network-nebula.png')
+    : null;
+
+  var networkBackdrop = null;
+  if (backdropTexture) {
+    var backdropMaterial = new THREE.MeshBasicMaterial({
+      map: backdropTexture,
+      transparent: true,
+      opacity: 0.2,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: false,
+    });
+    networkBackdrop = new THREE.Mesh(new THREE.PlaneGeometry(190, 190), backdropMaterial);
+    networkBackdrop.position.set(12, 0, -75);
+    networkBackdrop.renderOrder = -10;
+    scene.add(networkBackdrop);
+  }
 
   // ── Lighting ─────────────────────────────────────────────────────────────────
   var ambientLight = new THREE.AmbientLight(0x111111, 1);
@@ -162,14 +194,27 @@
   var ringMat = new THREE.MeshBasicMaterial({ color: GOLD, transparent: true, opacity: 0.9 });
   var ring = new THREE.Mesh(ringGeo, ringMat);
   ring.position.z = PORTAL_Z;
-  ring.rotation.x = Math.PI / 2.4;
 
   // Inner glow ring
   var innerRingGeo = new THREE.TorusGeometry(PORTAL_RADIUS * 0.88, 0.08, 8, 48);
   var innerRingMat = new THREE.MeshBasicMaterial({ color: 0xFCD34D, transparent: true, opacity: 0.5 });
   var innerRing = new THREE.Mesh(innerRingGeo, innerRingMat);
   innerRing.position.z = PORTAL_Z + 0.05;
-  innerRing.rotation.x = Math.PI / 2.4;
+
+  // Textured energy core behind the procedural torus geometry.
+  var portalCoreMat = new THREE.MeshBasicMaterial({
+    map: portalTexture,
+    transparent: true,
+    opacity: 0.72,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  var portalCore = new THREE.Mesh(
+    new THREE.PlaneGeometry(PORTAL_RADIUS * 2.35, PORTAL_RADIUS * 2.35),
+    portalCoreMat
+  );
+  portalCore.position.z = PORTAL_Z - 0.08;
 
   // Orbiting particle ring
   var ringParticles = null;
@@ -191,7 +236,7 @@
 
   // Portal group
   var portalGroup = new THREE.Group();
-  portalGroup.add(ring, innerRing);
+  portalGroup.add(portalCore, ring, innerRing);
   if (ringParticles) portalGroup.add(ringParticles);
   portalGroup.position.set(0, 0, PORTAL_Z);
   scene.add(portalGroup);
@@ -361,6 +406,8 @@
       var pulse = 0.7 + 0.3 * Math.sin(now * 3);
       ringMat.opacity = pulse;
       innerRingMat.opacity = pulse * 0.6;
+      portalCoreMat.opacity = 0.62 + pulse * 0.18;
+      portalCore.rotation.z -= 0.0015;
       portalGroup.rotation.z += 0.004;
       // Scale pulse: ease in-out between 1.0 and 1.02
       var scalePulse = 1 + 0.02 * (0.5 * (1 + Math.sin(now * (Math.PI * 2 / 3) - Math.PI / 2)));
@@ -389,6 +436,10 @@
     // Scene rotation
     particles.rotation.y += 0.0003;
     stars.rotation.y      += 0.00005;
+    if (networkBackdrop) {
+      networkBackdrop.rotation.z += 0.00004;
+      networkBackdrop.material.opacity = 0.17 + 0.035 * Math.sin(now * 0.18);
+    }
 
     renderer.render(scene, camera);
   }

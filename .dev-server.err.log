@@ -1,0 +1,39 @@
+[livestreams] getLiveViewerCount error: connect ECONNREFUSED 127.0.0.1:1
+[/api/stats] connect ECONNREFUSED 127.0.0.1:1
+[/api/stats] connect ECONNREFUSED 127.0.0.1:1
+[startup] Migration error: connect ECONNREFUSED 127.0.0.1:1 Error Error: connect ECONNREFUSED 127.0.0.1:1
+Error: connect ECONNREFUSED 127.0.0.1:1
+    at F:\Work\wagesociety2.0\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async runMigrations (F:\Work\wagesociety2.0\migrate.js:16:18)
+    at async migrateWithRetry (F:\Work\wagesociety2.0\server.js:261:9)
+[livestreams] getLiveViewerCount error: connect ECONNREFUSED 127.0.0.1:1
+[/api/stats] connect ECONNREFUSED 127.0.0.1:1
+[referrals/leaderboard] Error: connect ECONNREFUSED 127.0.0.1:1
+    at F:\Work\wagesociety2.0\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async getMonthlyLeaderboard (F:\Work\wagesociety2.0\db\referrals.js:88:20)
+    at async Promise.all (index 0)
+    at async F:\Work\wagesociety2.0\routes\referrals.js:25:69 {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 1
+}
+[memberships] Query error: connect ECONNREFUSED 127.0.0.1:1
+[/api/stats] connect ECONNREFUSED 127.0.0.1:1
+[/api/stats] connect ECONNREFUSED 127.0.0.1:1
+[/api/stats] connect ECONNREFUSED 127.0.0.1:1
+[/api/stats] connect ECONNREFUSED 127.0.0.1:1
+[/api/stats] connect ECONNREFUSED 127.0.0.1:1
+[/api/stats] connect ECONNREFUSED 127.0.0.1:1
+[/api/stats] connect ECONNREFUSED 127.0.0.1:1
+[/api/stats] connect ECONNREFUSED 127.0.0.1:1
+[/api/stats] connect ECONNREFUSED 127.0.0.1:1
+[/api/stats] connect ECONNREFUSED 127.0.0.1:1
+[/api/stats] connect ECONNREFUSED 127.0.0.1:1
+[/api/stats] connect ECONNREFUSED 127.0.0.1:1
+[/api/stats] connect ECONNREFUSED 127.0.0.1:1
+[/api/stats] connect ECONNREFUSED 127.0.0.1:1
+[/api/stats] connect ECONNREFUSED 127.0.0.1:1
