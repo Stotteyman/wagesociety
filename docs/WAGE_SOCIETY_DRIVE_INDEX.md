@@ -6,7 +6,7 @@ Updated: 2026-06-21
 
 - `01 Business Strategy` — company direction, positioning, plans, and business decisions.
 - `02 Product & Technology` — product specifications and current technical documentation.
-  - `Discord Bot Control Center` — bot product specs, data model, UX, security guidance, backlog, and setup.
+  - `Discord Bot Control Center` — bot product specs, data model, UX, security guidance, backlog, setup, and resource sync audit.
   - `Website Platform` — current repository overview and engineering notes.
 - `03 Operations & Admin` — operational procedures and project-status records.
   - `Project Status` — dated status reports; historical files are labeled explicitly.
@@ -22,3 +22,15 @@ Updated: 2026-06-21
 - Files prefixed with `Current` describe the active application.
 - Files prefixed with `Historical` are retained for context and should not be treated as current implementation guidance.
 - New graphics should be named by brand, purpose, orientation, and version when applicable.
+
+## GitHub implementation docs for Discord bot build
+
+The repo now includes the implementation-facing Discord bot resources needed to build the full multi-server control system:
+
+- `docs/discord-bot-setup.md` — complete setup and implementation reference.
+- `docs/discord-admin-control-center.md` — `/admin/discord` product and implementation spec.
+- `docs/discord-multi-server-architecture.md` — official server, connected servers, members, role sync, bot worker, and website integration architecture.
+- `docs/discord-database-and-api-contract.md` — database table plan, API response contracts, mutation rules, audit logging, and safety rules.
+- `docs/discord-implementation-checklist.md` — phase-by-phase build checklist for database, bot worker, API, UI, member linking, testing, and optional Three.js visualization.
+- `docs/AGENT_NOTES.md` — active project stack and mandatory builder guidance.
+- `README.md` — top-level project summary and Discord control center scope.
