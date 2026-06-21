@@ -394,7 +394,9 @@
         </div>
         <div class="setting-row">
           <div><div class="setting-label">Auto-role on join</div><div class="setting-desc">Role to assign when a new member joins the server</div></div>
-          <input type="text" class="input-sm" id="set-auto-role" placeholder="Member">
+          <select class="input-sm" id="set-auto-role">
+            <option value="">Loading live Discord roles...</option>
+          </select>
         </div>
         <div style="margin-top:1rem;text-align:right;">
           <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
@@ -422,6 +424,20 @@
         <div class="card-desc">Re-run role sync for all linked users. Updates Discord roles based on their WAGE Society tier.</div>
         <button class="btn btn-primary" id="sync-all-btn" onclick="syncAllRoles()">Sync All Roles Now</button>
         <div class="log-box" id="sync-log"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Health &amp; Repair Tools</div>
+        <div class="card-desc">Run live checks and safe repair actions. Every action is written to the Discord audit log.</div>
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1rem;">
+          <button class="btn btn-primary" onclick="runHealthAction('connection')">Test Bot Connection</button>
+          <button class="btn btn-ghost" onclick="runHealthAction('permissions')">Test Permissions</button>
+          <button class="btn btn-ghost" onclick="syncServerStructure()">Resync Roles &amp; Channels</button>
+          <button class="btn btn-ghost" onclick="syncAllRoles()">Re-run Role Assignments</button>
+          <button class="btn btn-ghost" onclick="viewLastBotError()">View Last Error</button>
+          <button class="btn btn-ghost" disabled title="Worker restart must be configured through the hosting platform.">Restart Worker — unavailable</button>
+        </div>
+        <div class="log-box" id="health-result" style="display:none;margin-top:1rem;"></div>
       </div>
     </div>
 

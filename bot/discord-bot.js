@@ -139,6 +139,22 @@ function createBot(token, { pool, upsertServer, markServerConnected, createDefau
       // Increment cached member count
       await updateServerMemberCount(member.guild.id, 1);
 
+      // The official-server auto-role is configured from a live Discord role
+      // dropdown in /admin/discord and stored by role ID, never by role name.
+      if (member.guild.id === process.env.DISCORD_GUILD_ID) {
+        const setting = await pool.query(
+          `SELECT value FROM discord_bot_settings WHERE key = 'auto_role_on_join' LIMIT 1`
+        ).catch(() => ({ rows: [] }));
+        const configuredRoleId = setting.rows[0]?.value;
+        if (configuredRoleId && /^\d{16,22}$/.test(String(configuredRoleId))) {
+          const role = await rl.exec(() => member.guild.roles.fetch(String(configuredRoleId)).catch(() => null));
+          if (role && !role.managed && role.editable && !member.roles.cache.has(role.id)) {
+            await rl.exec(() => member.roles.add(role, 'WAGE Society configured auto-role on join'));
+            console.log(JSON.stringify({ event: 'configured_auto_role_assigned', guild_id: member.guild.id, role_id: role.id, discord_id: member.id }));
+          }
+        }
+      }
+
       // Fetch auto-role config + wage_role_id for this server
       const configRows = await pool.query(
         `SELECT ds.wage_role_id, dsc.auto_role_free, dsc.auto_role_creator, dsc.auto_role_pro, dr.role_id, dr.slug

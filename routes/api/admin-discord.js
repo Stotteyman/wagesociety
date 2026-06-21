@@ -158,6 +158,12 @@ router.delete('/roles/:id', requireAdmin, async (req, res) => {
   const guildId = process.env.DISCORD_GUILD_ID;
   if (!guildId) return res.status(400).json({ error: 'DISCORD_GUILD_ID not set' });
 
+  const rolesResult = await discordReq('GET', `/guilds/${guildId}/roles`);
+  const role = (rolesResult.body || []).find(item => item.id === req.params.id);
+  if (!role) return res.status(404).json({ error: 'Discord role no longer exists.' });
+  if (req.body?.confirmName !== role.name) {
+    return res.status(409).json({ error: 'Role name confirmation does not match.', requiresConfirmation: true });
+  }
   const result = await discordReq('DELETE', `/guilds/${guildId}/roles/${req.params.id}`);
   if (result.status === 204 || result.status === 200) {
     await db.insertLog('role_deleted', { serverId: guildId, details: { roleId: req.params.id } });
@@ -607,7 +613,7 @@ router.patch('/channels/:id', requireAdmin, async (req, res) => {
   const guildId = process.env.DISCORD_GUILD_ID;
   if (!guildId) return res.status(400).json({ error: 'DISCORD_GUILD_ID not set' });
 
-  const { name, parentId, position, topic, nsfw, slowmode, permission_overwrites } = req.body;
+  const { name, parentId, position, topic, nsfw, slowmode } = req.body;
   const patch = {};
   if (name) patch.name = name;
   if (parentId !== undefined) patch.parent_id = parentId || null;
@@ -615,7 +621,6 @@ router.patch('/channels/:id', requireAdmin, async (req, res) => {
   if (topic !== undefined) patch.topic = topic || null;
   if (nsfw !== undefined) patch.nsfw = !!nsfw;
   if (slowmode !== undefined) patch.rate_limit_per_user = Math.max(0, Math.min(Number(slowmode) || 0, 21600));
-  if (Array.isArray(permission_overwrites)) patch.permission_overwrites = permission_overwrites;
 
   if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'No changes provided' });
 
@@ -633,6 +638,11 @@ router.delete('/channels/:id', requireAdmin, async (req, res) => {
   const guildId = process.env.DISCORD_GUILD_ID;
   if (!guildId) return res.status(400).json({ error: 'DISCORD_GUILD_ID not set' });
 
+  const current = await discordReq('GET', `/channels/${req.params.id}`);
+  if (current.status !== 200) return res.status(404).json({ error: 'Discord channel no longer exists.' });
+  if (req.body?.confirmName !== current.body?.name) {
+    return res.status(409).json({ error: 'Channel name confirmation does not match.', requiresConfirmation: true });
+  }
   const result = await discordReq('DELETE', `/channels/${req.params.id}`);
   if (result.status === 204 || result.status === 200) {
     await db.insertLog('discord_channel', { serverId: guildId, details: { action: 'delete', channelId: req.params.id } });
@@ -763,6 +773,13 @@ router.delete('/categories/:id', requireAdmin, async (req, res) => {
   const guildId = process.env.DISCORD_GUILD_ID;
   if (!guildId) return res.status(400).json({ error: 'DISCORD_GUILD_ID not set' });
 
+  const current = await discordReq('GET', `/channels/${req.params.id}`);
+  if (current.status !== 200 || current.body?.type !== 4) {
+    return res.status(404).json({ error: 'Discord category no longer exists.' });
+  }
+  if (req.body?.confirmName !== current.body?.name) {
+    return res.status(409).json({ error: 'Category name confirmation does not match.', requiresConfirmation: true });
+  }
   const result = await discordReq('DELETE', `/channels/${req.params.id}`);
   if (result.status === 204 || result.status === 200) {
     await db.insertLog('discord_category', { serverId: guildId, details: { action: 'delete', categoryId: req.params.id } });

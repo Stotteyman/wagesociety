@@ -5,7 +5,7 @@
   'use strict';
 
   var API = '/api/admin/discord';
-  var state = { server: null, settings: null, tierMap: null, logs: [], logsPage: 1 };
+  var state = { server: null, settings: null, tierMap: null, botOptions: { roles: [], tiers: [] }, logs: [], logsPage: 1 };
 
   // ── Discord permission bit flags ─────────────────────────────────────
   var PF = {
@@ -21,7 +21,7 @@
     CONNECT:              2097152,
     SPEAK:                 65536,
     STREAM:                262144,
-    MANAGE_CHANNELS:     16777216,
+    MANAGE_CHANNELS:           16,
     CREATE_INSTANT_INVITE:   1,
     ADD_REACTIONS:          64,
   };
@@ -36,8 +36,28 @@
   function api(method, path, body) {
     var opts = { method: method, headers: { 'Content-Type': 'application/json' } };
     if (body) opts.body = JSON.stringify(body);
-    return fetch(API + path, opts).then(function(r) { return r.json(); });
+    return fetch(API + path, opts).then(function(r) {
+      return r.text().then(function(text) {
+        var data;
+        try { data = text ? JSON.parse(text) : {}; }
+        catch (_) { data = { error: 'The server returned an invalid response.' }; }
+        if (!r.ok) {
+          var err = new Error(data.error || ('Request failed with status ' + r.status));
+          err.status = r.status;
+          err.payload = data;
+          throw err;
+        }
+        return data;
+      });
+    });
   }
+
+  function toBits(value) {
+    try { return BigInt(String(value || '0')); }
+    catch (_) { return 0n; }
+  }
+
+  function hasBit(value, flag) { return (toBits(value) & BigInt(flag)) !== 0n; }
 
   function escHtml(s) {
     var d = document.createElement('div');
@@ -218,7 +238,7 @@
   window.deleteRole = function(roleId, roleName, btn) {
     if (!confirm('Delete role "' + roleName + '" from Discord? This cannot be undone.')) return;
     btn.disabled = true;
-    api('DELETE', '/roles/' + roleId).then(function(data) {
+    api('DELETE', '/roles/' + roleId, { confirmName: roleName }).then(function(data) {
       if (data.ok) {
         btn.closest('.cleanup-row').remove();
         showToast('Role deleted from Discord');
@@ -258,7 +278,12 @@
 
   // ── Tab 2: Bot Settings ───────────────────────────────────────────────
   function loadBotSettings() {
-    api('GET', '/bot/status').then(function(data) {
+    Promise.all([
+      api('GET', '/bot/status'),
+      api('GET', '/bot/tier-map'),
+      api('GET', '/bot/options'),
+    ]).then(function(results) {
+      var data = results[0];
       if (data.connected && data.bot) {
         setText('bot-username', data.bot.username || '—');
         setText('bot-id', data.bot.id || '—');
@@ -270,11 +295,12 @@
         $('bot-conn-status').className = 'status-pill error';
       }
       state.settings = data.settings || {};
+      state.tierMap = results[1].map || [];
+      state.botOptions = results[2] || { roles: [], tiers: [] };
       renderSettingsForm(state.settings);
-    });
-    api('GET', '/bot/tier-map').then(function(data) {
-      state.tierMap = data.map || [];
       renderTierMap(state.tierMap);
+    }).catch(function(err) {
+      showToast(err.message || 'Failed to load bot settings', 'error');
     });
   }
 
@@ -287,7 +313,15 @@
     setVal('set-sync-freq', s.role_sync_frequency || 'on_demand');
     setVal('set-welcome-text', s.welcome_message_text || '');
     setVal('set-verify-text', s.verify_embed_text || '');
-    setVal('set-auto-role', s.auto_role_on_join || 'Member');
+    var roleSelect = $('set-auto-role');
+    if (roleSelect) {
+      var options = '<option value="">Do not auto-assign a role</option>';
+      (state.botOptions.roles || []).forEach(function(role) {
+        options += '<option value="' + role.id + '">' + escHtml(role.name) + '</option>';
+      });
+      roleSelect.innerHTML = options;
+      roleSelect.value = s.auto_role_on_join || '';
+    }
   }
 
   function setChecked(id, val) { var el = $(id); if (el) el.checked = val; }
@@ -308,15 +342,23 @@
     api('PUT', '/bot/settings', settings).then(function(data) {
       if (data.ok) { state.settings = data.settings; showToast('Settings saved'); }
       else showToast('Failed: ' + (data.error || 'Unknown'), 'error');
-    });
+    }).catch(function(err) { showToast(err.message, 'error'); });
   };
 
   function renderTierMap(map) {
     var html = '';
-    map.forEach(function(m) {
+    var mapByTier = {};
+    map.forEach(function(m) { mapByTier[m.tier] = m; });
+    (state.botOptions.tiers || []).forEach(function(tier) {
+      var m = mapByTier[tier.slug] || {};
+      var roleOptions = '<option value="">Select a Discord role</option>';
+      (state.botOptions.roles || []).forEach(function(role) {
+        roleOptions += '<option value="' + role.id + '" ' +
+          (String(m.discord_role_id || '') === String(role.id) ? 'selected' : '') + '>' + escHtml(role.name) + '</option>';
+      });
       html += '<tr>' +
-        '<td><strong>' + escHtml(m.tier) + '</strong></td>' +
-        '<td><input type="text" class="input-sm tier-role-input" data-tier="' + escHtml(m.tier) + '" value="' + escHtml(m.discord_role_name) + '"></td>' +
+        '<td><strong>' + escHtml(tier.name) + '</strong><br><span style="color:var(--muted);font-size:0.7rem;">' + escHtml(tier.slug) + '</span></td>' +
+        '<td><select class="input-sm tier-role-input" data-tier="' + escHtml(tier.slug) + '">' + roleOptions + '</select></td>' +
         '<td style="color:var(--muted);font-size:0.75rem;">' + (m.discord_role_id || '—') + '</td>' +
         '</tr>';
     });
@@ -326,11 +368,18 @@
   window.saveTierMap = function() {
     var inputs = document.querySelectorAll('.tier-role-input');
     var mappings = [];
-    inputs.forEach(function(inp) { mappings.push({ tier: inp.dataset.tier, discord_role_name: inp.value }); });
+    inputs.forEach(function(inp) {
+      var selected = inp.options[inp.selectedIndex];
+      if (inp.value) mappings.push({
+        tier: inp.dataset.tier,
+        discord_role_id: inp.value,
+        discord_role_name: selected ? selected.textContent : '',
+      });
+    });
     api('PUT', '/bot/tier-map', { mappings: mappings }).then(function(data) {
       if (data.ok) { state.tierMap = data.map; renderTierMap(data.map); showToast('Tier map saved'); }
       else showToast('Failed: ' + (data.error || 'Unknown'), 'error');
-    });
+    }).catch(function(err) { showToast(err.message, 'error'); });
   };
 
   window.syncAllRoles = function() {
@@ -354,6 +403,45 @@
     });
   };
 
+  window.runHealthAction = function(action) {
+    var endpoint = action === 'permissions' ? '/bot/test-permissions' : '/bot/test-connection';
+    var result = $('health-result');
+    if (result) {
+      result.style.display = '';
+      result.textContent = 'Running live Discord check...';
+    }
+    api('POST', endpoint).then(function(data) {
+      var detail = data.message || 'Check completed.';
+      if (data.permissions) {
+        detail += '\n' + data.permissions.map(function(p) { return (p.granted ? '✓ ' : '✗ ') + p.name; }).join('\n');
+      }
+      if (result) result.textContent = detail;
+      showToast(detail.split('\n')[0], data.ok ? 'success' : 'error');
+    }).catch(function(err) {
+      var detail = err.payload && err.payload.permissions
+        ? err.message + '\n' + err.payload.permissions.map(function(p) { return (p.granted ? '✓ ' : '✗ ') + p.name; }).join('\n')
+        : err.message;
+      if (result) result.textContent = detail;
+      showToast(err.message, 'error');
+    });
+  };
+
+  window.viewLastBotError = function() {
+    var result = $('health-result');
+    if (result) { result.style.display = ''; result.textContent = 'Loading last safe error...'; }
+    api('GET', '/bot/last-error').then(function(data) {
+      if (!data.failure) {
+        if (result) result.textContent = 'No Discord bot failures are recorded.';
+        return;
+      }
+      var details = data.failure.details || {};
+      var message = details.message || details.reason || details.status || 'Failure recorded; inspect the Logs tab for context.';
+      if (result) result.textContent = data.failure.event + ' — ' + message + ' (' + timeAgo(data.failure.created_at) + ')';
+    }).catch(function(err) {
+      if (result) result.textContent = err.message;
+    });
+  };
+
   // ── Tab 3: Other Servers ──────────────────────────────────────────────
   function loadServers() {
     api('GET', '/servers').then(function(data) {
@@ -364,9 +452,14 @@
       var html = '';
       data.servers.forEach(function(s) {
         if (s.primary) return;
+        var memberLabel = s.memberCount != null ? Number(s.memberCount).toLocaleString() + ' members' : 'Member count unavailable';
+        var statusLabel = s.connected ? 'Connected' : 'Disconnected';
+        var heartbeatLabel = s.lastHeartbeat ? 'Last update ' + timeAgo(s.lastHeartbeat) : 'No heartbeat recorded';
         html += '<div class="server-card">' +
           (s.icon ? '<img src="' + s.icon + '" class="server-icon-sm">' : '') +
-          '<div><strong>' + escHtml(s.name) + '</strong><br><span style="color:var(--muted);font-size:0.8rem;">' + (s.memberCount || '?') + ' members</span></div>' +
+          '<div><strong>' + escHtml(s.name) + '</strong><br>' +
+          '<span style="color:var(--muted);font-size:0.8rem;">' + escHtml(statusLabel) + ' · ' + escHtml(memberLabel) + ' · ' + escHtml(heartbeatLabel) + '</span><br>' +
+          '<span style="color:var(--muted);font-size:0.75rem;">Guild ' + escHtml(s.id) + (s.ownerDiscordId ? ' · Owner ' + escHtml(s.ownerDiscordId) : '') + '</span></div>' +
           '</div>';
       });
       setHtml('other-servers-list', html || '<div style="color:var(--muted);text-align:center;padding:3rem;">No additional servers.</div>');
@@ -583,8 +676,8 @@
       var row = '<tr data-role-id="' + role.id + '"><td style="padding:0.4rem 0.5rem;font-weight:600;font-size:0.78rem;">@everyone <span style="font-size:0.65rem;color:var(--muted);font-weight:400;">(all members)</span></td>';
       cols.forEach(function(c) {
         if (c.voiceOnly && !isVoice) return;
-        var granted = (allow & c.flag) !== 0;
-        var revoked = (deny & c.flag) !== 0;
+        var granted = hasBit(allow, c.flag);
+        var revoked = hasBit(deny, c.flag);
         var checked = granted && !revoked;
         var cls = revoked ? 'perm-denied' : granted ? 'perm-allowed' : '';
         row += '<td style="text-align:center;"><input type="checkbox" class="perm-cb" data-role="' + role.id + '" data-perm="' + c.key + '" data-flag="' + c.flag + '" ' + (checked ? 'checked' : '') + '></td>';
@@ -605,8 +698,8 @@
       var row = '<tr data-role-id="' + role.id + '"><td style="padding:0.4rem 0.5rem;font-size:0.78rem;">' + colorSwatch + escHtml(role.name) + '</td>';
       cols.forEach(function(c) {
         if (c.voiceOnly && !isVoice) return;
-        var granted = (allow & c.flag) !== 0;
-        var revoked = (deny & c.flag) !== 0;
+        var granted = hasBit(allow, c.flag);
+        var revoked = hasBit(deny, c.flag);
         var checked = granted && !revoked;
         row += '<td style="text-align:center;"><input type="checkbox" class="perm-cb" data-role="' + role.id + '" data-perm="' + c.key + '" data-flag="' + c.flag + '" ' + (checked ? 'checked' : '') + '></td>';
       });
@@ -642,17 +735,43 @@
     rows.forEach(function(row) {
       var roleId = row.dataset.roleId;
       var cbs = row.querySelectorAll('.perm-cb');
-      var allow = 0, deny = 0;
+      var allow = 0n, deny = 0n;
       cbs.forEach(function(cb) {
-        var flag = parseInt(cb.dataset.flag);
+        var flag = BigInt(cb.dataset.flag);
         if (cb.checked) allow |= flag;
         else deny |= flag;
       });
       // Only send if there's actually a permission state to record
-      if (allow !== 0 || deny !== 0) {
-        overwrites.push({ id: roleId, type: 0, allow: allow, deny: deny });
+      if (allow !== 0n || deny !== 0n) {
+        overwrites.push({ id: roleId, type: 0, allow: allow.toString(), deny: deny.toString() });
       }
     });
+
+    function submit(confirmDangerous) {
+      return api('PUT', '/channels/' + cpSelectedChannelId + '/permissions', {
+        overwrites: overwrites,
+        confirmDangerous: confirmDangerous === true,
+      });
+    }
+
+    submit(false).catch(function(err) {
+      if (err.status === 409 && err.payload && err.payload.requiresConfirmation &&
+          confirm(err.message + '\n\nContinue?')) return submit(true);
+      throw err;
+    }).then(function() {
+      btn.disabled = false;
+      btn.textContent = 'Save Changes';
+      showToast('Permissions saved to Discord');
+      return api('GET', '/channels/' + cpSelectedChannelId + '/permissions');
+    }).then(function(data) {
+      cpCurrentOverwrites = data.overwrites || [];
+      renderFullPermissionTable(cpSelectedChannelId, data.channelName);
+    }).catch(function(err) {
+      btn.disabled = false;
+      btn.textContent = 'Save Changes';
+      showToast(err.message, 'error');
+    });
+    return;
 
     // Critical: read current overwrites first, merge, then save each role individually
     api('GET', '/channels/' + cpSelectedChannelId + '/permissions').then(function(data) {
@@ -709,8 +828,23 @@
 
   // Apply permissions to all channels in a category
   window.applyToCategory = function(sourceChannelId, categoryId) {
-    if (!confirm('Apply this channel\u2019s permissions to all channels in this category?')) return;
+    if (!confirm('Apply this channel\u2019s permissions to all channels in this category? This can change channel visibility for @everyone.')) return;
     var catChannels = cpChannels.filter(function(c) { return c.parentId === categoryId && c.type !== 4; });
+    var targets = catChannels.filter(function(ch) { return ch.id !== sourceChannelId; });
+    var sourceOverwrites = cpCurrentOverwrites.map(function(ow) {
+      return { id: ow.id, type: ow.type, allow: String(ow.allow || '0'), deny: String(ow.deny || '0') };
+    });
+    Promise.all(targets.map(function(ch) {
+      return api('PUT', '/channels/' + ch.id + '/permissions', {
+        overwrites: sourceOverwrites,
+        confirmDangerous: true,
+      });
+    })).then(function() {
+      showToast('Permissions applied to ' + targets.length + ' channels');
+    }).catch(function(err) {
+      showToast(err.message, 'error');
+    });
+    return;
     var count = 0;
     var errors = 0;
     catChannels.forEach(function(ch) {
@@ -833,7 +967,7 @@
       $('dc-confirm-warning').style.display = '';
       return;
     }
-    api('DELETE', '/categories/' + categoryId).then(function(data) {
+    api('DELETE', '/categories/' + categoryId, { confirmName: confirmName }).then(function(data) {
       if (data.ok) {
         showToast('Category deleted');
         closeModal('delete-category-modal');
@@ -993,7 +1127,7 @@
       $('dm-confirm-warning').style.display = '';
       return;
     }
-    api('DELETE', '/channels/' + channelId).then(function(data) {
+    api('DELETE', '/channels/' + channelId, { confirmName: confirmName }).then(function(data) {
       if (data.ok) {
         showToast('Channel deleted');
         closeModal('delete-channel-modal');
