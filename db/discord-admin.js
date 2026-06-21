@@ -102,6 +102,30 @@ async function getLogCount(event) {
   return rows[0]?.count || 0;
 }
 
+async function getLatestFailure() {
+  const { rows } = await pool.query(
+    `SELECT id, event, server_id, details, created_at
+     FROM discord_bot_logs
+     WHERE event ILIKE '%error%'
+        OR event ILIKE '%fail%'
+        OR COALESCE(details->>'status', '') = 'failed'
+     ORDER BY created_at DESC
+     LIMIT 1`
+  );
+  return rows[0] || null;
+}
+
+async function listAllServers() {
+  const { rows } = await pool.query(
+    `SELECT guild_id, name, icon_url, owner_discord_id, member_count,
+            wage_role_id, connected_at, updated_at
+     FROM discord_servers
+     ORDER BY (guild_id = $1) DESC, connected_at DESC NULLS LAST, updated_at DESC`,
+    [process.env.DISCORD_GUILD_ID || '']
+  );
+  return rows;
+}
+
 // ── Linked user count ──────────────────────────────────────────────────────
 
 async function getLinkedUserCount() {
@@ -120,5 +144,7 @@ module.exports = {
   insertLog,
   getLogs,
   getLogCount,
+  getLatestFailure,
+  listAllServers,
   getLinkedUserCount,
 };

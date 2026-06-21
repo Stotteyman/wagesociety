@@ -32,10 +32,31 @@ function discordReq(method, path, body) {
         catch { resolve({ status: res.statusCode, body: data }); }
       });
     });
+    req.setTimeout(15000, () => req.destroy(new Error('Discord API request timed out')));
     req.on('error', (err) => resolve({ status: 0, body: null, error: err.message }));
     if (payload) req.write(payload);
     req.end();
   });
+}
+
+function actorId(req) {
+  return req.session?.userId || null;
+}
+
+function discordError(result, fallback = 'Discord API request failed') {
+  if (result?.error === 'no_bot_token' || result?.status === 0) {
+    return 'Discord bot is not configured or the Discord API is unreachable.';
+  }
+  if (result?.status === 401) return 'Discord rejected the bot token. Rotate or update DISCORD_BOT_TOKEN.';
+  if (result?.status === 403) return 'The bot lacks the required Discord permission for this action.';
+  if (result?.status === 404) return 'The Discord server, role, or channel no longer exists.';
+  if (result?.status === 429) return 'Discord rate-limited the request. Wait briefly and retry.';
+  return fallback;
+}
+
+function parsePermission(value) {
+  try { return BigInt(String(value || '0')); }
+  catch { return 0n; }
 }
 
 // ── GET /server — main server info from Discord API ────────────────────────
@@ -291,6 +312,100 @@ router.get('/bot/status', requireAdmin, async (_req, res) => {
   });
 });
 
+// POST /bot/test-connection — validate token, identity, and official guild access.
+router.post('/bot/test-connection', requireAdmin, async (req, res) => {
+  const guildId = process.env.DISCORD_GUILD_ID;
+  const [userResult, guildResult] = await Promise.all([
+    discordReq('GET', '/users/@me'),
+    guildId ? discordReq('GET', `/guilds/${guildId}?with_counts=true`) : Promise.resolve({ status: 0 }),
+  ]);
+  const ok = userResult.status === 200 && guildResult.status === 200;
+  const result = {
+    ok,
+    tokenValid: userResult.status === 200,
+    officialGuildConfigured: !!guildId,
+    officialGuildReachable: guildResult.status === 200,
+    bot: userResult.status === 200 ? { id: userResult.body.id, username: userResult.body.username } : null,
+    message: ok ? 'Bot token is valid and the official server is reachable.' : discordError(
+      userResult.status !== 200 ? userResult : guildResult,
+      'The bot token is valid, but the official server is not reachable.'
+    ),
+  };
+  await db.insertLog(ok ? 'connection_test_succeeded' : 'connection_test_failed', {
+    userId: actorId(req), serverId: guildId, details: { status: ok ? 'succeeded' : 'failed', checks: result },
+  });
+  res.status(ok ? 200 : 503).json(result);
+});
+
+// POST /bot/test-permissions — calculate effective bot permissions from live roles.
+router.post('/bot/test-permissions', requireAdmin, async (req, res) => {
+  const guildId = process.env.DISCORD_GUILD_ID;
+  if (!guildId) return res.status(400).json({ error: 'Official Discord server is not configured.' });
+
+  const [memberResult, rolesResult] = await Promise.all([
+    discordReq('GET', `/guilds/${guildId}/members/@me`),
+    discordReq('GET', `/guilds/${guildId}/roles`),
+  ]);
+  if (memberResult.status !== 200 || rolesResult.status !== 200) {
+    const failed = memberResult.status !== 200 ? memberResult : rolesResult;
+    await db.insertLog('permission_test_failed', {
+      userId: actorId(req), serverId: guildId, details: { status: 'failed', discordStatus: failed.status },
+    });
+    return res.status(503).json({ ok: false, error: discordError(failed) });
+  }
+
+  const memberRoleIds = new Set([guildId, ...(memberResult.body?.roles || [])]);
+  let effective = 0n;
+  for (const role of rolesResult.body || []) {
+    if (memberRoleIds.has(role.id)) effective |= parsePermission(role.permissions);
+  }
+  const ADMINISTRATOR = 8n;
+  const admin = (effective & ADMINISTRATOR) !== 0n;
+  const required = [
+    ['Manage Roles', 268435456n],
+    ['Manage Channels', 16n],
+    ['View Audit Log', 128n],
+    ['View Channels', 1024n],
+    ['Send Messages', 2048n],
+    ['Read Message History', 65536n],
+  ].map(([name, bit]) => ({ name, granted: admin || (effective & bit) !== 0n }));
+  const ok = required.every(check => check.granted);
+  await db.insertLog(ok ? 'permission_test_succeeded' : 'permission_test_failed', {
+    userId: actorId(req), serverId: guildId,
+    details: { status: ok ? 'succeeded' : 'failed', required },
+  });
+  res.status(ok ? 200 : 409).json({
+    ok,
+    administrator: admin,
+    permissions: required,
+    message: ok ? 'Required Discord permissions are available.' : 'One or more required Discord permissions are missing.',
+  });
+});
+
+router.get('/bot/options', requireAdmin, async (_req, res) => {
+  const guildId = process.env.DISCORD_GUILD_ID;
+  const [rolesResult, tiers] = await Promise.all([
+    guildId ? discordReq('GET', `/guilds/${guildId}/roles`) : Promise.resolve({ status: 0, body: [] }),
+    require('../../db/membership_tiers').getAllTiers({ activeOnly: true }),
+  ]);
+  const roles = rolesResult.status === 200
+    ? (rolesResult.body || []).filter(role => role.name !== '@everyone' && !role.managed).map(role => ({
+        id: role.id, name: role.name, position: role.position, color: role.color || 0,
+      })).sort((a, b) => b.position - a.position)
+    : [];
+  res.json({
+    roles,
+    tiers: tiers.map(tier => ({ id: tier.id, slug: tier.slug, name: tier.name })),
+    rolesAvailable: rolesResult.status === 200,
+    rolesUnavailableReason: rolesResult.status === 200 ? null : discordError(rolesResult),
+  });
+});
+
+router.get('/bot/last-error', requireAdmin, async (_req, res) => {
+  const failure = await db.getLatestFailure();
+  res.json({ failure });
+});
+
 // ── GET /bot/settings — bot settings ──────────────────────────────────────
 router.get('/bot/settings', requireAdmin, async (_req, res) => {
   const settings = await db.getAllSettings();
@@ -311,9 +426,12 @@ router.put('/bot/settings', requireAdmin, async (req, res) => {
   if (Object.keys(updates).length === 0) {
     return res.status(400).json({ error: 'No valid settings provided' });
   }
+  if (updates.auto_role_on_join && !/^\d{16,22}$/.test(String(updates.auto_role_on_join))) {
+    return res.status(400).json({ error: 'Auto-role must be selected from the live Discord role list.' });
+  }
 
   await db.setSettingsBulk(updates);
-  await db.insertLog('settings_updated', { details: updates });
+  await db.insertLog('settings_updated', { userId: actorId(req), details: updates });
   const settings = await db.getAllSettings();
   res.json({ ok: true, settings });
 });
@@ -329,11 +447,17 @@ router.put('/bot/tier-map', requireAdmin, async (req, res) => {
   const { mappings } = req.body; // [{ tier, discord_role_name, discord_role_id }]
   if (!Array.isArray(mappings)) return res.status(400).json({ error: 'mappings array required' });
 
+  const { getAllTiers } = require('../../db/membership_tiers');
+  const activeTiers = new Set((await getAllTiers({ activeOnly: true })).map(t => t.slug));
   for (const m of mappings) {
-    if (!m.tier || !m.discord_role_name) continue;
+    if (!activeTiers.has(m.tier)) return res.status(400).json({ error: `Unknown or inactive tier: ${m.tier}` });
+    if (!m.discord_role_id || !/^\d{16,22}$/.test(String(m.discord_role_id))) {
+      return res.status(400).json({ error: `Select a live Discord role for tier: ${m.tier}` });
+    }
+    if (!m.discord_role_name) return res.status(400).json({ error: `Discord role name missing for tier: ${m.tier}` });
     await db.upsertTierRole(m.tier, m.discord_role_name, m.discord_role_id);
   }
-  await db.insertLog('tier_map_updated', { details: { count: mappings.length } });
+  await db.insertLog('tier_map_updated', { userId: actorId(req), details: { count: mappings.length } });
   const map = await db.getTierRoleMap();
   res.json({ ok: true, map });
 });
@@ -362,24 +486,20 @@ router.post('/bot/sync-all', requireAdmin, async (req, res) => {
 
 // ── GET /servers — list all servers bot is in ─────────────────────────────
 router.get('/servers', requireAdmin, async (_req, res) => {
-  // We only track the main guild; future expansion would list all
-  const guildId = process.env.DISCORD_GUILD_ID;
-  if (!guildId) return res.json({ servers: [] });
-
-  const guildRes = await discordReq('GET', `/guilds/${guildId}?with_counts=true`);
-  if (guildRes.status !== 200) return res.json({ servers: [] });
-
-  res.json({
-    servers: [{
-      id: guildId,
-      name: guildRes.body?.name,
-      memberCount: guildRes.body?.approximate_member_count ?? null,
-      icon: guildRes.body?.icon
-        ? `https://cdn.discordapp.com/icons/${guildId}/${guildRes.body.icon}.png?size=64`
-        : null,
-      primary: true,
-    }],
-  });
+  const officialGuildId = process.env.DISCORD_GUILD_ID || null;
+  const rows = await db.listAllServers();
+  res.json({ servers: rows.map(server => ({
+    id: server.guild_id,
+    name: server.name || 'Unavailable',
+    icon: server.icon_url || null,
+    memberCount: server.member_count ?? null,
+    ownerDiscordId: server.owner_discord_id || null,
+    connected: !!server.connected_at,
+    connectedAt: server.connected_at || null,
+    lastHeartbeat: server.updated_at || null,
+    wageRoleId: server.wage_role_id || null,
+    primary: server.guild_id === officialGuildId,
+  })) });
 });
 
 // ── GET /channels/:id/permissions — get permission overwrites for a channel ─
@@ -409,32 +529,56 @@ router.put('/channels/:id/permissions', requireAdmin, async (req, res) => {
   const guildId = process.env.DISCORD_GUILD_ID;
   if (!guildId) return res.status(400).json({ error: 'DISCORD_GUILD_ID not set' });
 
-  const { overwrites } = req.body;
+  const { overwrites, confirmDangerous } = req.body;
   if (!Array.isArray(overwrites)) return res.status(400).json({ error: 'overwrites array required' });
 
   const channelId = req.params.id;
-  const errors = [];
+  const currentResult = await discordReq('GET', `/channels/${channelId}`);
+  if (currentResult.status !== 200) {
+    return res.status(502).json({ error: discordError(currentResult, 'Failed to load the current channel permissions.') });
+  }
 
+  const submitted = new Map();
   for (const ow of overwrites) {
-    if (!ow.id) continue;
-    const allow = parseInt(ow.allow) || 0;
-    const deny = parseInt(ow.deny) || 0;
-
-    const result = await discordReq('PATCH', `/channels/${channelId}`, {
-      permission_overwrites: [{ id: ow.id, type: ow.type, allow, deny }],
-    });
-
-    if (result.status < 200 || result.status >= 300) {
-      errors.push({ id: ow.id, error: result.body?.message || 'Discord API error' });
+    if (!/^\d{16,22}$/.test(String(ow.id)) || ![0, 1].includes(Number(ow.type))) {
+      return res.status(400).json({ error: 'Invalid Discord permission overwrite target.' });
     }
+    submitted.set(String(ow.id), {
+      id: String(ow.id),
+      type: Number(ow.type),
+      allow: parsePermission(ow.allow).toString(),
+      deny: parsePermission(ow.deny).toString(),
+    });
   }
 
-  await db.insertLog('discord_permission', { serverId: guildId, details: { channelId, changes: overwrites.length } });
-  if (errors.length > 0) {
-    res.json({ ok: false, partial: true, errors, channelId });
-  } else {
-    res.json({ ok: true, channelId });
+  const everyone = submitted.get(guildId);
+  const deniesViewForEveryone = everyone && (parsePermission(everyone.deny) & 1024n) !== 0n;
+  if (deniesViewForEveryone && confirmDangerous !== true) {
+    return res.status(409).json({
+      error: 'This change denies View Channel to @everyone. Confirm the dangerous change before saving.',
+      requiresConfirmation: true,
+    });
   }
+
+  const merged = [];
+  for (const existing of currentResult.body?.permission_overwrites || []) {
+    const replacement = submitted.get(String(existing.id));
+    merged.push(replacement || {
+      id: String(existing.id), type: Number(existing.type),
+      allow: String(existing.allow || '0'), deny: String(existing.deny || '0'),
+    });
+    submitted.delete(String(existing.id));
+  }
+  for (const replacement of submitted.values()) merged.push(replacement);
+
+  const result = await discordReq('PATCH', `/channels/${channelId}`, { permission_overwrites: merged });
+  const ok = result.status >= 200 && result.status < 300;
+  await db.insertLog(ok ? 'permission_update_succeeded' : 'permission_update_failed', {
+    userId: actorId(req), serverId: guildId,
+    details: { status: ok ? 'succeeded' : 'failed', channelId, changes: overwrites.length },
+  });
+  if (!ok) return res.status(502).json({ error: discordError(result) });
+  res.json({ ok: true, channelId, overwrites: merged });
 });
 
 // ── POST /channels — create a new channel ──────────────────────────────────
@@ -463,17 +607,21 @@ router.patch('/channels/:id', requireAdmin, async (req, res) => {
   const guildId = process.env.DISCORD_GUILD_ID;
   if (!guildId) return res.status(400).json({ error: 'DISCORD_GUILD_ID not set' });
 
-  const { name, parentId, position } = req.body;
+  const { name, parentId, position, topic, nsfw, slowmode, permission_overwrites } = req.body;
   const patch = {};
   if (name) patch.name = name;
   if (parentId !== undefined) patch.parent_id = parentId || null;
   if (position !== undefined) patch.position = position;
+  if (topic !== undefined) patch.topic = topic || null;
+  if (nsfw !== undefined) patch.nsfw = !!nsfw;
+  if (slowmode !== undefined) patch.rate_limit_per_user = Math.max(0, Math.min(Number(slowmode) || 0, 21600));
+  if (Array.isArray(permission_overwrites)) patch.permission_overwrites = permission_overwrites;
 
   if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'No changes provided' });
 
   const result = await discordReq('PATCH', `/channels/${req.params.id}`, patch);
   if (result.status >= 200 && result.status < 300) {
-    await db.insertLog('discord_channel', { serverId: guildId, details: { action: 'update', channelId: req.params.id, ...patch } });
+    await db.insertLog('discord_channel', { userId: actorId(req), serverId: guildId, details: { action: 'update', channelId: req.params.id, ...patch } });
     res.json({ ok: true, channel: result.body });
   } else {
     res.status(502).json({ error: result.body?.message || 'Discord API error' });
