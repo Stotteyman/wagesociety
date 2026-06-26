@@ -38,4 +38,4 @@ The repo now includes the implementation-facing Discord bot resources needed to 
 
 ## GitHub implementation docs for WageWorld
 
-- `docs/wageworld-technical-breakdown.md` - playable 3D village architecture, controls, settings, character creation, verification, and next steps.
+- `docs/wageworld-technical-breakdown.md` - playable 3D WageWorld architecture, first-person controls, POV settings, home/hub map structure, character creation, verification, and next steps.

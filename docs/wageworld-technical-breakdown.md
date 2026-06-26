@@ -6,7 +6,7 @@ WageWorld is the browser-based 3D creator world mounted at `/wageworld` and `/pl
 
 - `routes/pages.js`: renders `views/pages/play.ejs` for `/play` and `/wageworld`.
 - `views/pages/play.ejs`: full-screen HTML shell, HUD, district buttons, settings menu, character creator menu, mobile movement controls, and import map.
-- `public/js/wageworld.js`: Three.js scene, world generation, avatar movement, camera controls, controller support, NPCs, collectibles, settings behavior, and character customization.
+- `public/js/wageworld.js`: Three.js scene, map groups, world generation, avatar movement, camera controls, controller support, NPCs, collectibles, settings behavior, and character customization.
 - `server.js`: serves selected local packages from `node_modules` through `/vendor/...`.
 
 ## Runtime Dependencies
@@ -19,22 +19,25 @@ WageWorld is the browser-based 3D creator world mounted at `/wageworld` and `/pl
 
 ## Current Experience
 
-WageWorld is a playable third-person prototype intended to become many connected maps rather than one large world:
+WageWorld is a playable first-person prototype built around many connected maps rather than one large world:
 
 - User-controlled character starts in a personal spawn house.
+- The default camera mode is first person, with third-person behind and third-person front available from settings or the `V` key.
 - Guests can explore the world without signing in.
 - Guests are still prompted at the in-house computer to log in for saved progress, subscriptions, private spaces, and creator tools.
-- The spawn house contains a bed, computer, and wardrobe/mirror.
+- The spawn house is a larger full home interior with bedroom, computer room, wardrobe/mirror area, entry area, roof, windows, furniture, and an operable front door.
+- The front door transitions from the home map into the Creator Plaza hub map.
 - Beds with appropriate permissions can become future spawn points.
 - Computers are planned as the in-world access point for WAGE Society tools.
 - Wardrobes, mirrors, and closets with appropriate permissions open character editing.
 - Character faces away from the camera by default.
-- WASD/arrow keys move relative to the character:
+- WASD/arrow keys move relative to the camera/player facing direction:
   - `W`: forward
   - `S`: backward
   - `A`: strafe left
   - `D`: strafe right
   - `Shift`: sprint
+- `V`: cycle POV mode.
 - Right mouse drag rotates the camera on desktop.
 - Touch drag rotates the camera on touchscreens.
 - Gamepad support reads:
@@ -42,7 +45,7 @@ WageWorld is a playable third-person prototype intended to become many connected
   - right stick for camera rotation
   - left stick press or primary face button for sprint
 - Mobile users get on-screen directional controls.
-- District buttons currently prototype travel between planned maps: Spawn House, Creator Plaza, Market Row, Live Arena, Guild Tower, and Reward Works.
+- District buttons travel between the current home map and the Creator Plaza hub prototype districts: Market Row, Live Arena, Guild Tower, and Reward Works.
 - Coins can be collected to increment the rewards HUD.
 - NPCs are guide characters that explain systems instead of random walkers.
 - Players collide with major world objects, furniture, trees, stations, and guide NPCs.
@@ -69,6 +72,7 @@ Cosmetics are planned as unlockable or purchasable assets. The current color edi
 The settings menu is hidden by default and opened from the cog button. It exposes user-facing controls only:
 
 - walk speed
+- POV mode
 - camera sensitivity
 - camera distance
 - camera height
@@ -83,15 +87,17 @@ Developer tuning controls from `lil-gui` were removed from the player-facing UI.
 
 The scene is generated procedurally in `public/js/wageworld.js`:
 
+- `mapGroups.home` / `mapGroups.hub`: separate Three.js groups for currently implemented maps.
+- `switchMap()`: toggles active map visibility, updates player map state, moves the player to the map spawn, and refreshes the HUD.
 - `makeTerrain()`: creates vertex-colored rolling grass terrain from simplex noise.
 - `makePath()`: creates village paths.
 - `makeRiver()`: creates simple water tiles.
 - `makeTree()`, `makeFence()`, `makeHouse()`, `makeStall()`, `makeStage()`, `makeTower()`, `makeRewardMachine()`: build world props and district landmarks.
-- `makeSpawnHouse()`: builds the initial home map with bed, computer, wardrobe/mirror, and login prompt zone.
+- `makeSpawnHouse()`: builds the initial home map with bedroom, bed, computer room, wardrobe/mirror, entry area, operable front door, and login prompt zone.
 - `makePlayer()`: builds the avatar as procedural meshes at roughly human scale.
 - `makeGuideNpc()`: builds stationary guide NPCs with explanatory labels.
 - `makePickup()`: builds collectible reward coins.
-- `addCollider()` / `resolveCollisions()`: prevent players from walking through registered objects.
+- `addCollider()` / `resolveCollisions()`: prevent players from walking through registered objects on the active map.
 - `animate()`: owns the main loop and calls movement, camera, NPC, pickup, world animation, HUD updates, and rendering.
 
 ## Input Architecture
@@ -101,9 +107,10 @@ Input is normalized into per-frame movement:
 - Keyboard and touch buttons set boolean movement state.
 - Keyboard movement is ignored while typing in inputs, textareas, selects, contenteditable fields, settings, or character creation.
 - Gamepad axes are read each frame through `navigator.getGamepads()`.
-- Movement is character-relative, not camera-relative.
+- Movement is relative to the active facing direction. In first person, `W` moves where the player is looking, `S` backs up, `A` strafes left, and `D` strafes right.
 - Camera yaw/pitch is controlled separately through right mouse drag, touch drag, and gamepad right stick.
-- The camera follows the player using smoothed interpolation.
+- Camera modes are `firstPerson`, `thirdPersonBack`, and `thirdPersonFront`.
+- First-person mode hides the local avatar mesh to avoid clipping; third-person modes show the avatar.
 
 ## Verification
 
@@ -120,18 +127,20 @@ Local checks have used Playwright to verify:
 - character-name typing does not trigger movement.
 - guide NPCs are stationary explanatory objects.
 - the loader says `Loading WageWorld` and rotates short loading quotes.
+- default POV is first person, `V` cycles to third person, and the settings menu exposes POV selection.
+- the larger spawn house starts as the active map and the front door transitions into the Creator Plaza hub.
 
 ## Known Limitations
 
 - Character customization is local-only and not yet tied to authenticated user accounts.
 - Collision is prototype-level radius collision, not yet full mesh/navmesh collision.
-- Map travel is currently represented by teleport buttons and shared scene content; future work should split maps into explicit loaded instances.
-- No multiplayer/session sync exists yet.
+- Map travel now has separate home and hub scene groups, but future maps still need explicit loading, unloading, and persistence contracts.
+- Proximity chat and WebRTC voice signaling exist, but there is no durable multiplayer world-state persistence yet.
 - Gamepad support uses the browser Gamepad API and depends on browser/controller mapping.
 
 ## Suggested Next Steps
 
-- Replace the shared prototype scene with explicit map instances and transition/loading flow.
+- Expand the explicit map system beyond `home` and `hub` into Market Row, Live Arena, Guild Tower, Reward Works, private spaces, and event maps.
 - Expand collision to a real navigation/collision system.
 - Persist character customization to a database for logged-in users.
 - Add an interaction prompt system for NPCs, doors, shops, and reward machines.

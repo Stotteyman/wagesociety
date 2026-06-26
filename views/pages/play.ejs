@@ -825,7 +825,7 @@
 
     <section class="ww-panel" aria-label="District controls">
       <h2>Walk through WAGE World</h2>
-      <p>Use WASD or arrow keys to move relative to your character. Hold Shift to sprint. Right-drag with a mouse, drag on touchscreens, or use a controller stick to rotate the camera.</p>
+      <p>Use WASD or arrow keys to move in first-person. Hold Shift to sprint. Right-drag with a mouse, drag on touchscreens, or use a controller stick to rotate the camera. Press V to change POV.</p>
       <div class="ww-districts">
         <button class="ww-district is-active" type="button" data-district="Spawn House">Spawn House</button>
         <button class="ww-district" type="button" data-district="Creator Plaza">Creator Plaza</button>
@@ -838,7 +838,7 @@
 
     <section class="ww-login-prompt" data-login-prompt hidden aria-label="WAGE Society login prompt">
       <h2>Log in at the computer</h2>
-      <p>You are in your spawn house. Use the computer to log in before leaving for other WageWorld maps.</p>
+      <p>You are in your spawn house. Use the computer to log in for saved progress, subscriptions, private spaces, and creator tools. Guests can explore.</p>
       <a class="ww-login-btn" href="/login?next=/wageworld" data-login-link>Log in to WAGE Society</a>
     </section>
 
@@ -864,6 +864,14 @@
       </div>
       <div class="ww-settings-section">
         <h3>Camera</h3>
+        <label class="ww-setting">
+          POV
+          <select data-setting="cameraMode">
+            <option value="firstPerson" selected>First person</option>
+            <option value="thirdPersonBack">Third person behind</option>
+            <option value="thirdPersonFront">Third person front</option>
+          </select>
+        </label>
         <label class="ww-setting">
           Mouse / touch sensitivity
           <input type="range" min="0.002" max="0.014" step="0.001" value="0.006" data-setting="cameraSensitivity">

@@ -44,7 +44,7 @@ node server.js
 
 ## WageWorld
 
-`/wageworld` and `/play` render a Three.js-powered playable creator village. The current prototype includes a controllable avatar, character creation, a cog-opened settings menu, keyboard/touch/gamepad controls, NPCs, collectibles, and district teleport buttons. See `docs/wageworld-technical-breakdown.md` for implementation details and next steps.
+`/wageworld` and `/play` render a Three.js-powered playable creator world. The current prototype starts players in a larger first-person spawn house, includes POV switching, character creation through wardrobe/mirror interactables, a cog-opened settings menu, keyboard/touch/gamepad controls, proximity chat/voice foundations, guide NPCs, collectibles, and a separate Creator Plaza hub map. See `docs/wageworld-technical-breakdown.md` for implementation details and next steps.
 
 ## Auth
 

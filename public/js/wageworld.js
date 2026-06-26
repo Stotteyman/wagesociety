@@ -263,8 +263,12 @@ function terrainHeight(x, z) {
   return (softHills + detail) * (1 - plaza * 0.9);
 }
 
+function groundHeight(x, z, mapId = activeMapId) {
+  return mapId === 'home' ? 0.12 : terrainHeight(x, z);
+}
+
 function setGroundY(object, lift = 0) {
-  object.position.y = terrainHeight(object.position.x, object.position.z) + lift;
+  object.position.y = groundHeight(object.position.x, object.position.z, object.userData?.mapId || activeMapId) + lift;
 }
 
 function makeTerrain() {
@@ -491,72 +495,84 @@ function makeRewardMachine(x, z) {
 
 function makeSpawnHouse() {
   const house = new THREE.Group();
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(16, 0.22, 12), mat.floor);
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(26, 0.22, 24), mat.floor);
   floor.position.y = 0.03;
   floor.receiveShadow = true;
   house.add(floor);
 
-  const wallBack = new THREE.Mesh(new THREE.BoxGeometry(16, 3.2, 0.28), mat.wall);
-  wallBack.position.set(0, 1.65, -6);
-  const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.28, 3.2, 12), mat.wall);
-  wallLeft.position.set(-8, 1.65, 0);
+  const wallBack = new THREE.Mesh(new THREE.BoxGeometry(26, 3.8, 0.3), mat.wall);
+  wallBack.position.set(0, 1.95, -12);
+  const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.8, 24), mat.wall);
+  wallLeft.position.set(-13, 1.95, 0);
   const wallRight = wallLeft.clone();
-  wallRight.position.x = 8;
-  const wallFrontLeft = new THREE.Mesh(new THREE.BoxGeometry(5.9, 3.2, 0.28), mat.wall);
-  wallFrontLeft.position.set(-5.05, 1.65, 6);
+  wallRight.position.x = 13;
+  const wallFrontLeft = new THREE.Mesh(new THREE.BoxGeometry(10.1, 3.8, 0.3), mat.wall);
+  wallFrontLeft.position.set(-7.95, 1.95, 12);
   const wallFrontRight = wallFrontLeft.clone();
-  wallFrontRight.position.x = 5.05;
-  const wallFrontTop = new THREE.Mesh(new THREE.BoxGeometry(3.9, 1.05, 0.28), mat.wall);
-  wallFrontTop.position.set(0, 2.72, 6);
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(10.4, 3.4, 4), mat.roofGold);
-  roof.position.set(0, 4.28, 0);
+  wallFrontRight.position.x = 7.95;
+  const wallFrontTop = new THREE.Mesh(new THREE.BoxGeometry(5, 1.35, 0.3), mat.wall);
+  wallFrontTop.position.set(0, 3.23, 12);
+  const dividerA = new THREE.Mesh(new THREE.BoxGeometry(0.24, 2.7, 10.5), mat.wall);
+  dividerA.position.set(-2.6, 1.43, -6.4);
+  const dividerB = new THREE.Mesh(new THREE.BoxGeometry(9.9, 2.7, 0.24), mat.wall);
+  dividerB.position.set(7.95, 1.43, -1.7);
+  const dividerC = new THREE.Mesh(new THREE.BoxGeometry(7.7, 2.7, 0.24), mat.wall);
+  dividerC.position.set(-6.45, 1.43, 1.6);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(17.8, 4.6, 4), mat.roofGold);
+  roof.position.set(0, 5.32, 0);
   roof.rotation.y = Math.PI / 4;
   roof.castShadow = true;
-  const windowA = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.95, 0.08), mat.water);
-  windowA.position.set(-4.2, 1.8, 6.16);
+  const windowA = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.05, 0.08), mat.water);
+  windowA.position.set(-8.4, 2.0, 12.18);
   const windowB = windowA.clone();
-  windowB.position.x = 4.2;
-  house.add(wallBack, wallLeft, wallRight, wallFrontLeft, wallFrontRight, wallFrontTop, roof, windowA, windowB);
+  windowB.position.x = 8.4;
+  const windowC = windowA.clone();
+  windowC.position.set(13.18, 2.0, -5.4);
+  windowC.rotation.y = Math.PI / 2;
+  const windowD = windowC.clone();
+  windowD.position.z = 5.2;
+  house.add(wallBack, wallLeft, wallRight, wallFrontLeft, wallFrontRight, wallFrontTop, dividerA, dividerB, dividerC, roof, windowA, windowB, windowC, windowD);
 
   const doorPivot = new THREE.Group();
-  doorPivot.position.set(-0.65, 0.1, 6.18);
-  const door = new THREE.Mesh(new THREE.BoxGeometry(1.3, 2.18, 0.16), mat.darkWood);
-  door.position.set(0.65, 1.09, 0);
+  doorPivot.position.set(-1.05, 0.1, 12.2);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(2.1, 2.7, 0.16), mat.darkWood);
+  door.position.set(1.05, 1.35, 0);
   door.castShadow = true;
   doorPivot.add(door);
   doorPivot.userData.kind = 'door';
-  doorPivot.userData.prompt = 'Door: open or close the front door.';
+  doorPivot.userData.prompt = 'Front door: open it and step into the WageWorld hub.';
   doorPivot.userData.action = 'Use door';
   doorPivot.userData.isOpen = false;
+  doorPivot.userData.destinationMapId = 'hub';
   house.add(doorPivot);
 
-  const rug = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.06, 3.2), mat.path);
-  rug.position.set(0, 0.18, 1.2);
+  const rug = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.06, 4.2), mat.path);
+  rug.position.set(0, 0.18, 6.5);
   house.add(rug);
 
   const bed = new THREE.Group();
-  const frame = new THREE.Mesh(new THREE.BoxGeometry(3.7, 0.48, 2.2), mat.bed);
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.55, 2.55), mat.bed);
   frame.position.y = 0.42;
-  const blanket = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.24, 1.45), mat.blanket);
+  const blanket = new THREE.Mesh(new THREE.BoxGeometry(4.15, 0.25, 1.62), mat.blanket);
   blanket.position.set(0, 0.82, 0.22);
-  const pillow = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.22, 0.52), mat.cream);
+  const pillow = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.24, 0.58), mat.cream);
   pillow.position.set(0, 0.95, -0.72);
   bed.add(frame, blanket, pillow);
-  bed.position.set(-4.7, 0.15, -2.8);
+  bed.position.set(-8.2, 0.15, -7.0);
   bed.userData.kind = 'bed';
   bed.userData.prompt = 'Bed: this is your current spawn point. Later, permitted beds can become your respawn location.';
   bed.userData.action = 'Set spawn point';
   house.add(bed);
 
   const desk = new THREE.Group();
-  const table = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.24, 1.35), mat.wood);
+  const table = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.24, 1.65), mat.wood);
   table.position.y = 1.05;
-  const monitor = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.92, 0.12), mat.screen);
+  const monitor = new THREE.Mesh(new THREE.BoxGeometry(1.9, 1.05, 0.12), mat.screen);
   monitor.position.set(0, 1.72, -0.52);
   const keyboard = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.08, 0.38), mat.black);
   keyboard.position.set(0, 1.22, 0.18);
   desk.add(table, monitor, keyboard);
-  desk.position.set(4.4, 0.15, -3.5);
+  desk.position.set(7.8, 0.15, -7.2);
   desk.userData.kind = 'computer';
   desk.userData.prompt = worldState.isAuthenticated
     ? 'Computer: WAGE Society tools will open here inside WageWorld.'
@@ -565,12 +581,12 @@ function makeSpawnHouse() {
   house.add(desk);
 
   const wardrobe = new THREE.Group();
-  const closet = new THREE.Mesh(new THREE.BoxGeometry(1.65, 3.1, 0.9), mat.darkWood);
+  const closet = new THREE.Mesh(new THREE.BoxGeometry(2.2, 3.35, 1.05), mat.darkWood);
   closet.position.y = 1.58;
-  const mirror = new THREE.Mesh(new THREE.BoxGeometry(1.05, 2.15, 0.08), mat.water);
+  const mirror = new THREE.Mesh(new THREE.BoxGeometry(1.42, 2.36, 0.08), mat.water);
   mirror.position.set(0, 1.72, 0.48);
   wardrobe.add(closet, mirror);
-  wardrobe.position.set(-6.3, 0.15, 2.6);
+  wardrobe.position.set(-9.7, 0.15, 5.8);
   wardrobe.userData.kind = 'character';
   wardrobe.userData.prompt = 'Wardrobe: change your character here. Future cosmetics can unlock paid looks and avatars.';
   wardrobe.userData.action = 'Edit character';
@@ -581,20 +597,36 @@ function makeSpawnHouse() {
     new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.62, side: THREE.DoubleSide })
   );
   loginZone.rotation.x = -Math.PI / 2;
-  loginZone.position.set(4.4, 0.22, -2.1);
+  loginZone.position.set(7.8, 0.22, -5.8);
   house.add(loginZone);
 
+  const sofa = new THREE.Group();
+  const sofaBase = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.72, 1.45), mat.roofGreen);
+  sofaBase.position.y = 0.55;
+  const sofaBack = new THREE.Mesh(new THREE.BoxGeometry(4.8, 1.05, 0.28), mat.roofGreen);
+  sofaBack.position.set(0, 1.02, -0.72);
+  sofa.add(sofaBase, sofaBack);
+  sofa.position.set(4.5, 0.15, 4.6);
+  house.add(sofa);
+
   house.position.set(0, 0, 0);
-  scene.add(house);
+  addToActiveMap(house);
   interactables.push(bed, desk, wardrobe, doorPivot);
-  addObjectCollider(bed, 1.8, 'bed');
-  addObjectCollider(desk, 1.7, 'computer');
-  addObjectCollider(wardrobe, 1.35, 'wardrobe');
-  addCollider(-8.15, 0, 0.8, 'left wall');
-  addCollider(8.15, 0, 0.8, 'right wall');
-  addCollider(0, -6.15, 0.8, 'back wall');
-  addCollider(-5.05, 6.15, 2.9, 'front wall');
-  addCollider(5.05, 6.15, 2.9, 'front wall');
+  [bed, desk, wardrobe, doorPivot].forEach((item) => {
+    item.userData.mapId = activeMapId;
+  });
+  addObjectCollider(bed, 2.2, 'bed');
+  addObjectCollider(desk, 2.05, 'computer');
+  addObjectCollider(wardrobe, 1.65, 'wardrobe');
+  addCollider(-13.15, 0, 0.9, 'left wall');
+  addCollider(13.15, 0, 0.9, 'right wall');
+  addCollider(0, -12.15, 0.9, 'back wall');
+  addCollider(-7.95, 12.15, 4.7, 'front wall');
+  addCollider(7.95, 12.15, 4.7, 'front wall');
+  addCollider(-2.6, -6.4, 0.8, 'room divider');
+  addCollider(7.95, -1.7, 0.8, 'room divider');
+  addCollider(-6.45, 1.6, 0.8, 'room divider');
+  addCollider(4.5, 4.6, 2.3, 'sofa');
   return { house, bed, computer: desk, wardrobe };
 }
 
@@ -640,7 +672,7 @@ function makePlayer() {
     player.userData.limbs.push(limb);
   });
 
-  player.position.copy(districts.get('Creator Plaza').position);
+  player.position.copy(mapConfig.home.spawn);
   player.rotation.y = 0;
   player.userData.materials = playerMaterials;
   player.userData.parts = { body, head, cap, backpack };
@@ -669,7 +701,7 @@ function makeGuideNpc(name, x, z, color, message) {
     action: 'Talk',
     phase: Math.random() * Math.PI * 2,
   };
-  scene.add(npc);
+  addToActiveMap(npc);
   interactables.push(npc);
   return npc;
 }
@@ -685,7 +717,7 @@ function makePickup(x, z) {
   pickup.position.set(x, 0, z);
   setGroundY(pickup, 1.1);
   pickup.userData.coin = coin;
-  scene.add(pickup);
+  addToActiveMap(pickup);
   return pickup;
 }
 
@@ -698,14 +730,17 @@ function makeCloud(x, y, z, scale = 1) {
     cloud.add(puff);
   }
   cloud.position.set(x, y, z);
-  scene.add(cloud);
+  addToActiveMap(cloud);
   return cloud;
 }
 
 function buildWorld() {
+  activeMapId = 'home';
+  const spawnHouse = makeSpawnHouse();
+
+  activeMapId = 'hub';
   makeTerrain();
   makeRiver();
-  const spawnHouse = makeSpawnHouse();
   makePath(2.2, 50, 0, 0, 0);
   makePath(2.2, 50, 0, 0, Math.PI / 2);
   makePath(1.45, 48, 0, 0, Math.PI / 4);
@@ -757,13 +792,16 @@ function buildWorld() {
     makeCloud(28, 19, 15, 1.1),
   ];
 
+  activeMapId = 'home';
+  mapGroups.home.visible = true;
+  mapGroups.hub.visible = false;
   return { guides, pickups, clouds, rewardMachine, spawnHouse };
 }
 
 const worldObjects = buildWorld();
 const player = makePlayer();
 applyCharacterToPlayer();
-updateHud('Creator Plaza');
+switchMap('home', mapConfig.home.spawn, false);
 
 window.WageWorldDebug = {
   getPlayer() {
@@ -774,6 +812,10 @@ window.WageWorldDebug = {
       rotationY: player.rotation.y,
       cameraYaw: cameraRig.yaw,
       cameraPitch: cameraRig.pitch,
+      cameraMode: worldState.cameraMode,
+      currentMap: worldState.currentMap,
+      currentMapId: worldState.currentMapId,
+      visibleMaps: Object.fromEntries(Object.entries(mapGroups).map(([id, group]) => [id, group.visible])),
       character: { ...characterState },
     };
   },
@@ -797,7 +839,7 @@ function syncCharacterInputs() {
 }
 
 function updateHud(name = worldState.focus) {
-  const district = districts.get(name);
+  const district = districts.get(name) || Array.from(districts.values()).find((item) => item.status === mapConfig[worldState.currentMapId]?.status);
   worldState.focus = name;
   if (focusLabel) focusLabel.textContent = name;
   if (focusValue) focusValue.textContent = district?.status || 'Exploring';
@@ -811,9 +853,11 @@ function updateLoginPrompt() {
 }
 
 function nearestDistrict() {
+  if (worldState.currentMapId === 'home') return 'Spawn House';
   let bestName = 'Creator Plaza';
   let bestDistance = Infinity;
   districts.forEach((district, name) => {
+    if (name === 'Spawn House') return;
     const distance = player.position.distanceTo(district.position);
     if (distance < bestDistance) {
       bestDistance = distance;
@@ -823,9 +867,47 @@ function nearestDistrict() {
   return bestName;
 }
 
+function switchMap(mapId, destination = mapConfig[mapId]?.spawn, animate = true) {
+  const map = mapConfig[mapId];
+  if (!map) return;
+  worldState.currentMapId = mapId;
+  worldState.currentMap = map.label;
+  Object.entries(mapGroups).forEach(([id, group]) => {
+    group.visible = id === mapId;
+  });
+  const target = (destination || map.spawn).clone();
+  const complete = () => {
+    player.userData.mapId = mapId;
+    player.position.copy(target);
+    setGroundY(player);
+    updateHud(map.label);
+  };
+  if (animate) {
+    gsap.to(player.position, {
+      x: target.x,
+      y: target.y,
+      z: target.z,
+      duration: 0.35,
+      ease: 'power2.inOut',
+      onUpdate: () => setGroundY(player),
+      onComplete: complete,
+    });
+  } else {
+    complete();
+  }
+}
+
 function teleportToDistrict(name) {
   const district = districts.get(name);
   if (!district) return;
+  if (name === 'Spawn House') {
+    switchMap('home', mapConfig.home.spawn);
+    return;
+  }
+  if (worldState.currentMapId !== 'hub') {
+    switchMap('hub', districts.get(name)?.position.clone().add(new THREE.Vector3(0, 0, 4.8)) || mapConfig.hub.spawn);
+    return;
+  }
   const destination = district.position.clone().add(new THREE.Vector3(0, 0, 4.8));
   const start = player.position.clone();
   gsap.to(player.position, {
@@ -837,6 +919,7 @@ function teleportToDistrict(name) {
     onComplete: () => {
       player.position.copy(destination);
       setGroundY(player);
+      worldState.currentMap = name;
       updateHud(name);
     },
   });
@@ -926,6 +1009,10 @@ settingsInputs.forEach((input) => {
       worldState[key] = input.checked;
       return;
     }
+    if (input.tagName === 'SELECT') {
+      worldState[key] = input.value;
+      return;
+    }
     worldState[key] = Number(input.value);
     if (key === 'voiceVolume' || key === 'masterVolume') {
       comms.peers.forEach((peer) => {
@@ -938,7 +1025,7 @@ settingsInputs.forEach((input) => {
 });
 
 resetPlayerButton?.addEventListener('click', () => {
-  teleportToDistrict('Creator Plaza');
+  switchMap(worldState.currentMapId, mapConfig[worldState.currentMapId]?.spawn || mapConfig.home.spawn);
   closeSettings();
 });
 
@@ -1224,6 +1311,10 @@ window.addEventListener('keyup', (event) => {
 window.addEventListener('keydown', (event) => {
   if (event.code === 'Escape') closeSettings();
   if (event.code === 'Escape') closeCharacterMenu();
+  if (event.code === 'KeyV' && !isTypingTarget(event.target)) {
+    cycleCameraMode();
+    event.preventDefault();
+  }
   if (event.code === 'KeyE' && !isTypingTarget(event.target)) {
     activateInteractable();
   }
@@ -1254,7 +1345,7 @@ moveButtons.forEach((button) => {
 function rotateCamera(deltaX, deltaY) {
   cameraRig.yaw -= deltaX * worldState.cameraSensitivity;
   cameraRig.pitch += deltaY * worldState.cameraSensitivity * (worldState.invertY ? 1 : -1);
-  cameraRig.pitch = THREE.MathUtils.clamp(cameraRig.pitch, -0.82, -0.08);
+  cameraRig.pitch = THREE.MathUtils.clamp(cameraRig.pitch, -1.15, 0.95);
 }
 
 canvas.addEventListener('contextmenu', (event) => event.preventDefault());
@@ -1302,7 +1393,7 @@ function readGamepad() {
   if (lookX || lookY) {
     cameraRig.yaw -= lookX * worldState.gamepadSensitivity * 0.016;
     cameraRig.pitch += lookY * worldState.gamepadSensitivity * 0.012 * (worldState.invertY ? 1 : -1);
-    cameraRig.pitch = THREE.MathUtils.clamp(cameraRig.pitch, -0.82, -0.08);
+    cameraRig.pitch = THREE.MathUtils.clamp(cameraRig.pitch, -1.15, 0.95);
   }
   return {
     x: moveX,
@@ -1311,9 +1402,22 @@ function readGamepad() {
   };
 }
 
+function setCameraMode(mode) {
+  const modes = ['firstPerson', 'thirdPersonBack', 'thirdPersonFront'];
+  worldState.cameraMode = modes.includes(mode) ? mode : 'firstPerson';
+  const cameraModeInput = settingsInputs.find((input) => input.dataset.setting === 'cameraMode');
+  if (cameraModeInput && cameraModeInput.value !== worldState.cameraMode) cameraModeInput.value = worldState.cameraMode;
+}
+
+function cycleCameraMode() {
+  const modes = ['firstPerson', 'thirdPersonBack', 'thirdPersonFront'];
+  const nextIndex = (modes.indexOf(worldState.cameraMode) + 1) % modes.length;
+  setCameraMode(modes[nextIndex]);
+}
+
 function resolveCollisions(previousPosition) {
   const playerRadius = 0.42;
-  for (const collider of colliders) {
+  for (const collider of colliders.filter((item) => item.mapId === worldState.currentMapId)) {
     const dx = player.position.x - collider.x;
     const dz = player.position.z - collider.z;
     const distance = Math.hypot(dx, dz);
@@ -1331,7 +1435,7 @@ function updateInteractionPrompt() {
   if (performance.now() < dialogueUntil) return;
   let nearest = null;
   let best = Infinity;
-  interactables.forEach((item) => {
+  interactables.filter((item) => item.userData.mapId === worldState.currentMapId).forEach((item) => {
     const distance = player.position.distanceTo(item.getWorldPosition(new THREE.Vector3()));
     if (distance < best && distance < 3.1) {
       best = distance;
@@ -1374,6 +1478,11 @@ function activateInteractable() {
       y: activeInteractable.userData.isOpen ? -Math.PI * 0.55 : 0,
       duration: 0.35,
       ease: 'power2.out',
+      onComplete: () => {
+        if (activeInteractable.userData.destinationMapId && activeInteractable.userData.isOpen) {
+          switchMap(activeInteractable.userData.destinationMapId, mapConfig[activeInteractable.userData.destinationMapId]?.spawn);
+        }
+      },
     });
   } else if (kind === 'guide') {
     if (interactPrompt) {
@@ -1385,6 +1494,7 @@ function activateInteractable() {
 }
 
 function movePlayer(delta) {
+  player.rotation.y = cameraRig.yaw + Math.PI;
   const gamepad = readGamepad();
   const horizontalInput = ((keys.right ? 1 : 0) - (keys.left ? 1 : 0)) + gamepad.x;
   const forwardInput = ((keys.forward ? 1 : 0) - (keys.backward ? 1 : 0)) - gamepad.z;
@@ -1403,8 +1513,9 @@ function movePlayer(delta) {
     const movement = forward.multiplyScalar(input.z).add(right.multiplyScalar(input.x));
     const speed = worldState.speed * (keys.sprint || gamepad.sprint ? 1.45 : 1);
     player.position.addScaledVector(movement, speed * delta);
-    player.position.x = THREE.MathUtils.clamp(player.position.x, -worldLimit, worldLimit);
-    player.position.z = THREE.MathUtils.clamp(player.position.z, -worldLimit, worldLimit);
+    const bounds = mapConfig[worldState.currentMapId]?.bounds || mapConfig.hub.bounds;
+    player.position.x = THREE.MathUtils.clamp(player.position.x, bounds.minX, bounds.maxX);
+    player.position.z = THREE.MathUtils.clamp(player.position.z, bounds.minZ, bounds.maxZ);
     setGroundY(player);
     resolveCollisions(previousPosition);
   }
@@ -1419,15 +1530,31 @@ function movePlayer(delta) {
 
 function updateCamera(delta) {
   player.rotation.y = cameraRig.yaw + Math.PI;
+  const eyeTarget = player.position.clone().add(new THREE.Vector3(0, 1.58, 0));
+  player.visible = worldState.cameraMode !== 'firstPerson';
+
+  if (worldState.cameraMode === 'firstPerson') {
+    const desired = player.position.clone().add(new THREE.Vector3(0, 1.58, 0));
+    camera.position.lerp(desired, 1 - Math.pow(0.0004, delta));
+    const lookTarget = desired.clone().add(new THREE.Vector3(
+      -Math.sin(cameraRig.yaw) * Math.cos(cameraRig.pitch),
+      -Math.sin(cameraRig.pitch),
+      -Math.cos(cameraRig.yaw) * Math.cos(cameraRig.pitch)
+    ));
+    camera.lookAt(lookTarget);
+    return;
+  }
+
+  const frontMode = worldState.cameraMode === 'thirdPersonFront';
+  const yawOffset = frontMode ? Math.PI : 0;
   const horizontal = Math.cos(cameraRig.pitch) * worldState.followDistance;
   const desired = new THREE.Vector3(
-    player.position.x + Math.sin(cameraRig.yaw) * horizontal,
+    player.position.x + Math.sin(cameraRig.yaw + yawOffset) * horizontal,
     player.position.y + worldState.followHeight + Math.abs(Math.sin(cameraRig.pitch)) * 6,
-    player.position.z + Math.cos(cameraRig.yaw) * horizontal
+    player.position.z + Math.cos(cameraRig.yaw + yawOffset) * horizontal
   );
   camera.position.lerp(desired, 1 - Math.pow(0.002, delta));
-  const target = player.position.clone().add(new THREE.Vector3(0, 1.35, 0));
-  camera.lookAt(target);
+  camera.lookAt(eyeTarget);
 }
 
 function updateGuides() {
