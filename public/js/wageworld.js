@@ -210,6 +210,14 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xa9d6e5);
 scene.fog = new THREE.Fog(0xa9d6e5, 52, 118);
 
+const mapGroups = {
+  home: new THREE.Group(),
+  hub: new THREE.Group(),
+};
+mapGroups.home.name = 'Home Map';
+mapGroups.hub.name = 'Hub Map';
+scene.add(mapGroups.home, mapGroups.hub);
+
 const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 240);
 camera.position.set(0, 9, 13);
 
