@@ -88,6 +88,7 @@ const keys = {
 const worldState = {
   focus: 'Spawn House',
   currentMap: 'Spawn House',
+  currentMapId: 'home',
   isAuthenticated: !!bootstrap.isAuthenticated,
   earnings: 12840,
   speed: 7,
@@ -95,6 +96,7 @@ const worldState = {
   gamepadSensitivity: 2.8,
   followDistance: 10,
   followHeight: 7,
+  cameraMode: 'firstPerson',
   npcEnergy: prefersReducedMotion ? 0 : 1,
   masterVolume: 0.85,
   voiceVolume: 0.9,
@@ -129,7 +131,7 @@ const characterState = loadCharacter();
 
 const cameraRig = {
   yaw: Math.PI,
-  pitch: -0.34,
+  pitch: -0.12,
   dragging: false,
   activePointerId: null,
   lastX: 0,
@@ -140,14 +142,35 @@ const interactables = [];
 const colliders = [];
 let activeInteractable = null;
 let dialogueUntil = 0;
+let activeMapId = 'home';
+const mapConfig = {
+  home: {
+    label: 'Spawn House',
+    status: 'Home spawn',
+    bounds: { minX: -13.4, maxX: 13.4, minZ: -12.4, maxZ: 12.4 },
+    spawn: new THREE.Vector3(0, 0, 4.3),
+  },
+  hub: {
+    label: 'Creator Plaza',
+    status: 'Village center',
+    bounds: { minX: -worldLimit, maxX: worldLimit, minZ: -worldLimit, maxZ: worldLimit },
+    spawn: new THREE.Vector3(0, 0, 5.2),
+  },
+};
 
 function addCollider(x, z, radius, label = 'object') {
-  colliders.push({ x, z, radius, label });
+  colliders.push({ x, z, radius, label, mapId: activeMapId });
 }
 
 function addObjectCollider(object, radius, label = object.userData?.kind || 'object') {
   object.userData.collider = { radius, label };
   addCollider(object.position.x, object.position.z, radius, label);
+}
+
+function addToActiveMap(object) {
+  object.userData.mapId = activeMapId;
+  mapGroups[activeMapId].add(object);
+  return object;
 }
 
 function loadCharacter() {
