@@ -970,6 +970,12 @@ router.get('/play', (req, res) => {
   });
 });
 
+router.get('/wageworld', (req, res) => {
+  res.render('pages/play', {
+    userEmail: req.session?.userEmail || null,
+  });
+});
+
 // ── Username catch-all — must be LAST ──────────────────────────────────────
 // Handles /stotteyman, /johnsmith, etc. when the creator has a profile.
 // Express resolves all other routes first; only non-matched paths reach here.
@@ -978,7 +984,7 @@ router.get('/:username', async (req, res) => {
   const RESERVED = ['point-shop', 'shop', 'admin', 'api', 'auth', 'dashboard',
     'settings', 'login', 'join', 'logout', 'donate', 'merch', 'creators',
     'streams', 'live', 'news', 'faq', 'terms', 'privacy', 'memberships', 'welcome-upgrade',
-    'checkout', 'checkout-success'];
+    'checkout', 'checkout-success', 'wageworld'];
   if (RESERVED.includes(req.params.username)) {
     return res.status(404).render('pages/404', {});
   }
@@ -999,11 +1005,4 @@ router.get('/:username', async (req, res) => {
 });
 
 // GET /play — WAGE World portal destination (after flythrough)
-router.get('/play', (req, res) => {
-  res.render('pages/play', {
-    user: req.user || null,
-    title: 'WAGE World',
-  });
-});
-
 module.exports = router;

@@ -1,4 +1,5 @@
 [auth-custom] No ZOHO_SMTP credentials — magic link emails will NOT be sent. Set ZOHO_SMTP_USER and ZOHO_SMTP_PASS env vars.
+[WageWorld] live WebSocket server ready at /wageworld-live
 Server running on port 3000
 Running migrations...
 [Discord] DISCORD_BOT_TOKEN / DISCORD_GUILD_ID not set — skipping role management

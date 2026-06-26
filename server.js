@@ -1,6 +1,7 @@
 // server.js — WAGE Society Express entry point.
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
 
 // ── dotenv fallback — must run BEFORE pool is created ───────────────────────
 // Render injects DATABASE_URL as a Render Environment Variable, but the value
@@ -125,6 +126,10 @@ app.set('views', path.join(__dirname, 'views'));
 
 // ── Static files ─────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
+app.use('/vendor/three', express.static(path.join(__dirname, 'node_modules', 'three')));
+app.use('/vendor/gsap', express.static(path.join(__dirname, 'node_modules', 'gsap')));
+app.use('/vendor/lil-gui', express.static(path.join(__dirname, 'node_modules', 'lil-gui')));
+app.use('/vendor/simplex-noise', express.static(path.join(__dirname, 'node_modules', 'simplex-noise')));
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'healthy' }));
@@ -239,9 +244,12 @@ function startDiscordRoleManagement() {
 
 // ── Discord bot (event handlers + periodic sync) ─────────────────────────────
 const { startBot: initBot } = require('./lib/start-bot');
+const { initWageWorldLive } = require('./lib/wageworld-live');
+const httpServer = http.createServer(app);
+initWageWorldLive(httpServer);
 
 // ── Start ────────────────────────────────────────────────────────────────────
-app.listen(port, () => {
+httpServer.listen(port, () => {
   console.log(`Server running on port ${port}`);
   // Neon cold start can take 10-20s; each retry uses a fresh Pool.
   const { Pool: PgPool } = require('pg');

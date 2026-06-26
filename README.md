@@ -40,6 +40,11 @@ node server.js
 | `db/*.js` | All DB queries as named functions |
 | `migrations/` | All DDL as timestamped `.sql` files |
 | `views/` | EJS templates (layout, partials, pages) |
+| `docs/wageworld-technical-breakdown.md` | WageWorld 3D scene, controls, settings, character creation, and architecture |
+
+## WageWorld
+
+`/wageworld` and `/play` render a Three.js-powered playable creator village. The current prototype includes a controllable avatar, character creation, a cog-opened settings menu, keyboard/touch/gamepad controls, NPCs, collectibles, and district teleport buttons. See `docs/wageworld-technical-breakdown.md` for implementation details and next steps.
 
 ## Auth
 
