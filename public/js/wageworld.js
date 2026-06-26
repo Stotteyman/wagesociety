@@ -289,7 +289,7 @@ function makeTerrain() {
 
   const grass = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }));
   grass.receiveShadow = true;
-  scene.add(grass);
+  addToActiveMap(grass);
 }
 
 function makePath(width, length, x, z, rotation = 0) {
@@ -297,7 +297,7 @@ function makePath(width, length, x, z, rotation = 0) {
   path.position.set(x, terrainHeight(x, z) + 0.045, z);
   path.rotation.y = rotation;
   path.receiveShadow = true;
-  scene.add(path);
+  addToActiveMap(path);
 }
 
 function makeRiver() {
@@ -311,7 +311,7 @@ function makeRiver() {
     water.receiveShadow = true;
     group.add(water);
   }
-  scene.add(group);
+  addToActiveMap(group);
 }
 
 function makeTree(x, z, scale = 1) {
@@ -331,7 +331,7 @@ function makeTree(x, z, scale = 1) {
 
   tree.position.set(x, 0, z);
   setGroundY(tree);
-  scene.add(tree);
+  addToActiveMap(tree);
   addCollider(x, z, 0.72 * scale, 'tree');
 }
 
@@ -350,7 +350,7 @@ function makeFence(x, z, length, rotation = 0) {
   group.add(railA, railB);
   group.position.set(x, terrainHeight(x, z), z);
   group.rotation.y = rotation;
-  scene.add(group);
+  addToActiveMap(group);
 }
 
 function makeHouse(name, x, z, roofMaterial) {
@@ -377,7 +377,7 @@ function makeHouse(name, x, z, roofMaterial) {
 
   house.position.set(x, 0, z);
   setGroundY(house);
-  scene.add(house);
+  addToActiveMap(house);
   addCollider(x, z, 2.9, name);
   return house;
 }
@@ -427,7 +427,7 @@ function makeStall(x, z, colorMaterial) {
   stall.add(roof);
   stall.position.set(x, 0, z);
   setGroundY(stall);
-  scene.add(stall);
+  addToActiveMap(stall);
   addCollider(x, z, 2.1, 'stall');
 }
 
@@ -449,7 +449,7 @@ function makeStage(x, z) {
   stage.add(lightA, lightB);
   stage.position.set(x, 0, z);
   setGroundY(stage);
-  scene.add(stage);
+  addToActiveMap(stage);
   addCollider(x, z, 5.4, 'stage');
 }
 
@@ -465,7 +465,7 @@ function makeTower(x, z) {
   tower.add(roof);
   tower.position.set(x, 0, z);
   setGroundY(tower);
-  scene.add(tower);
+  addToActiveMap(tower);
   addCollider(x, z, 3.2, 'tower');
 }
 
@@ -484,7 +484,7 @@ function makeRewardMachine(x, z) {
   group.userData.wheel = wheel;
   group.position.set(x, 0, z);
   setGroundY(group);
-  scene.add(group);
+  addToActiveMap(group);
   addCollider(x, z, 2.6, 'reward machine');
   return group;
 }
