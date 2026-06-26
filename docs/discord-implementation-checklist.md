@@ -35,6 +35,7 @@ Use this checklist to build the fully functional WAGE Society Discord bot/admin 
 - [ ] Add `discord_bot_settings`.
 - [ ] Add `discord_admin_actions`.
 - [ ] Add `discord_bot_events`.
+- [ ] Ensure protected runtime credential tables exist for Discord bot and Google OAuth configuration.
 - [ ] Add indexes on Discord IDs, guild IDs, user IDs, and timestamps.
 - [ ] Ensure migration is idempotent and safe to run on Render build.
 
@@ -46,6 +47,7 @@ Use this checklist to build the fully functional WAGE Society Discord bot/admin 
 - [ ] Add named functions for permission overwrite sync.
 - [ ] Add named functions for tier mappings.
 - [ ] Add named functions for bot settings.
+- [ ] Add named functions for protected runtime credential read/update.
 - [ ] Add named functions for audit logs.
 - [ ] Add named functions for bot events.
 - [ ] Do not write inline SQL in route files.
@@ -54,7 +56,7 @@ Use this checklist to build the fully functional WAGE Society Discord bot/admin 
 
 - [ ] Create safe Discord API wrapper.
 - [ ] Add rate-limit handling.
-- [ ] Add token missing/invalid handling.
+- [ ] Add credential missing/invalid handling.
 - [ ] Add permission checking helper.
 - [ ] Add role hierarchy checking helper.
 - [ ] Add guild metadata fetch.
@@ -67,7 +69,8 @@ Use this checklist to build the fully functional WAGE Society Discord bot/admin 
 
 ## Phase 5 — Bot Worker
 
-- [ ] Bot starts only when `DISCORD_BOT_TOKEN` exists.
+- [ ] Bot starts only when a valid runtime credential is available.
+- [ ] Bot runtime credential is read from protected Neon storage.
 - [ ] Gateway ready event records heartbeat/ready state.
 - [ ] Guild join event records connected server.
 - [ ] Guild delete/remove event marks guild removed/disconnected.
@@ -75,6 +78,7 @@ Use this checklist to build the fully functional WAGE Society Discord bot/admin 
 - [ ] Channel create/update/delete events update channels.
 - [ ] Guild member add event applies auto role on join.
 - [ ] Guild member update event can trigger reconciliation if needed.
+- [ ] Bot exposes a safe restart helper that destroys the current client and calls `startBot()` again.
 - [ ] Bot logs safe events to database.
 - [ ] Worker can recover after disconnect.
 
@@ -94,6 +98,8 @@ Use this checklist to build the fully functional WAGE Society Discord bot/admin 
 - [ ] `PATCH /api/admin/discord/guilds/:guildId/tier-role-mappings`
 - [ ] `PATCH /api/admin/discord/channels/:channelId`
 - [ ] `PATCH /api/admin/discord/channels/:channelId/permissions`
+- [ ] `POST /admin/discord/restart` for dashboard restart control.
+- [ ] `POST /admin/discord/token` for dashboard credential update plus automatic restart.
 - [ ] `POST /api/admin/discord/bot/restart-worker`
 - [ ] `POST /api/admin/discord/bot/clear-cache`
 - [ ] `GET /api/admin/discord/logs`
@@ -103,13 +109,18 @@ Use this checklist to build the fully functional WAGE Society Discord bot/admin 
 - [ ] Main Server tab uses `GET /summary`.
 - [ ] Bot Settings tab saves real settings.
 - [ ] Auto role on join is a live role dropdown.
+- [ ] Auto role on join clearly says it is the role assigned when a new member joins.
 - [ ] Tier-to-role mapping uses live WAGE tiers and live Discord roles.
+- [ ] Tier-to-role mapping can be managed and saved from the admin UI.
 - [ ] Sync All Roles button works and shows result.
 - [ ] Other Servers tab lists all connected guilds.
 - [ ] Other Servers actions work: view, sync, disconnect, leave.
 - [ ] Channels & Permissions tab displays real tree.
 - [ ] Channel editor saves real channel changes.
 - [ ] Permission editor supports Allow/Deny/Inherit.
+- [ ] Role/channel permission summaries show properly and are manageable.
+- [ ] Bot maintenance section includes Restart Bot button.
+- [ ] Bot maintenance section includes protected credential update form and Update & Restart button.
 - [ ] Role Settings tab shows real role data.
 - [ ] Logs tab shows real events/audit logs.
 - [ ] Every button has loading, success, warning, and error states.
@@ -136,9 +147,14 @@ Use this checklist to build the fully functional WAGE Society Discord bot/admin 
 - [ ] Test bot removed from server.
 - [ ] Test deleted role mapping warning.
 - [ ] Test disabled tier mapping behavior.
+- [ ] Test auto role on join assignment.
+- [ ] Test tier-to-role mapping save and re-sync.
 - [ ] Test channel permission lockout warning.
+- [ ] Test restart bot dashboard action.
+- [ ] Test protected credential update action and automatic restart.
 - [ ] Test audit logs for every mutation.
-- [ ] Confirm no secrets appear in browser, logs, or API responses.
+- [ ] Confirm private credentials do not appear in browser, logs, docs, or API responses.
+- [ ] If Render API update is unavailable, confirm the limitation is documented.
 
 ## Phase 10 — Optional Three.js
 
@@ -153,4 +169,4 @@ Only build after the normal admin controls work.
 
 ## Launch Standard
 
-Launch only when the admin can trust every number, every dropdown, every button, and every status message.
+Launch only when the admin can trust every number, every dropdown, every button, every permission editor, every restart/update action, and every status message.

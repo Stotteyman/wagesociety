@@ -86,11 +86,11 @@ Minimum provider for this task:
 
 ## Runtime Behavior
 
-### Discord Bot Token
+### Discord Bot Credential
 
-- Bot startup must fetch Discord bot token from Neon.
-- If DB token is missing, startup should fail safely with a clear error.
-- Do not fall back to a committed token.
+- Bot startup must fetch the active Discord bot credential from Neon.
+- If the DB value is missing, startup should fail safely with a clear error.
+- Do not fall back to any committed private value.
 - A temporary env fallback may be acceptable only for local development if no real secret is committed and the code clearly documents the fallback.
 
 ### Google OAuth Credentials
@@ -103,9 +103,8 @@ Minimum provider for this task:
 
 The agent must scan the entire repo for:
 
-- Discord bot tokens
-- Google OAuth client secrets
-- OAuth client IDs if sensitive by context
+- Discord bot credentials
+- Google OAuth private credentials
 - API keys
 - database URLs
 - session secrets
@@ -114,10 +113,10 @@ The agent must scan the entire repo for:
 
 If any are found:
 
-1. Remove the secret from the committed file.
+1. Remove the private value from the committed file.
 2. Replace with a placeholder like `<stored-in-neon>`.
 3. Add runtime DB lookup.
-4. Verify the secret value no longer appears anywhere in the repo.
+4. Verify the private value no longer appears anywhere in the repo.
 
 ## Discord Bot Functional Audit
 
@@ -143,6 +142,38 @@ Required areas:
 - Troubleshooting buttons
 - Safe errors and audit logging
 
+## New Dashboard Controls Required
+
+### Restart Bot
+
+- Add admin-only route: `POST /admin/discord/restart`.
+- Destroy the current Discord client safely.
+- Reinitialize the bot through `startBot()`.
+- Return JSON success or safe error.
+- Add a dashboard button with loading, success, and error states.
+- Write an audit log record.
+
+### Update and Restart Bot Credential
+
+- Add admin-only route: `POST /admin/discord/token`.
+- Accept a new private bot credential in the request body.
+- Save it to protected Neon storage.
+- Restart the bot automatically after saving.
+- Attempt to update the Render environment value through the Render API so the value persists after platform restart.
+- If Render API access is unavailable, document the limitation in tech notes, product overview, and repo docs.
+- Never echo the private value back to the browser, logs, docs, or audit records.
+
+## Mapping and Permission Controls Required
+
+- Tier → Role Mapping must show live WAGE tiers and live Discord roles.
+- Tier → Role Mapping must be manageable from the dashboard.
+- Auto-role on join must clearly show the role assigned when a new member joins the server.
+- Auto-role on join must use a live Discord role dropdown.
+- Channel and role permissions must show correctly.
+- Channel and role permissions must be manageable where bot permissions allow.
+- Permission editor must support Allow, Deny, and Inherit states.
+- Permission changes must warn before admin, member, or bot lockout.
+
 ## Documentation Update Requirement
 
 Every task run must update project documentation after changes.
@@ -167,14 +198,19 @@ Each update must state:
 - [ ] Only `Stotteyman/wagesociety2.0` was scanned/modified.
 - [ ] No unrelated repo was scanned or modified.
 - [ ] No real secrets appear in any committed file.
-- [ ] Discord token is read from Neon at startup.
+- [ ] Discord bot credential is read from Neon at startup.
 - [ ] Google OAuth credentials are read from Neon at runtime.
 - [ ] Bot starts successfully with DB credentials.
 - [ ] Official server sync works.
 - [ ] Connected server tracking works.
 - [ ] Member role assignment works.
+- [ ] Auto role on join works and is configurable.
+- [ ] Tier-to-role mapping works and is configurable.
 - [ ] Channel/category CRUD works through bot and admin UI.
-- [ ] Permission management works safely.
+- [ ] Channel and role permission management works safely.
+- [ ] Restart Bot dashboard action works.
+- [ ] Update and Restart dashboard action works.
+- [ ] Render persistence is implemented or limitation is documented.
 - [ ] Admin metrics are real.
 - [ ] Logs and audit actions work.
 - [ ] Polsia `tech_notes` updated.
@@ -183,4 +219,4 @@ Each update must state:
 
 ## Security Note
 
-If any real Discord token or Google OAuth secret has been exposed in a task description, chat, screenshot, markdown file, log, or any other location outside the protected secrets table, rotate that credential after the DB-backed implementation is complete.
+If any real Discord or Google OAuth credential has been exposed in a task description, chat, screenshot, markdown file, log, or any other location outside protected storage, rotate that credential after the DB-backed implementation is complete.
