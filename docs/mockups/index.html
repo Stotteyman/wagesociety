@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>WAGE Society — mockup deck</title>
+<link rel="stylesheet" href="_mock.css" />
+<style>
+  .deck { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; }
+  .deck a { display: block; }
+  .deck .shot {
+    border: 1px solid var(--line); border-radius: var(--r); overflow: hidden;
+    height: 300px; background: var(--panel);
+  }
+  .deck .shot img { width: 100%; }
+  .deck .cap { display: flex; align-items: baseline; justify-content: space-between; padding: 14px 2px 0; }
+</style>
+</head>
+<body>
+<div class="wrap" style="padding:52px 32px 70px">
+  <span class="eyebrow">Proposal · 27 July 2026</span>
+  <h1 class="display d-1" style="margin:12px 0 10px">WAGE Society — new site mockups</h1>
+  <p class="lede" style="margin-bottom:44px">
+    Click any page to open the live mockup. These are HTML, not images — they become the real components.
+  </p>
+
+  <div class="deck">
+    <a href="home.html">
+      <div class="shot"><img src="png/home.png" alt="Home page mockup" /></div>
+      <div class="cap"><span style="font-weight:700">Home</span><span class="small">home.html</span></div>
+    </a>
+    <a href="directory.html">
+      <div class="shot"><img src="png/directory.png" alt="Directory mockup" /></div>
+      <div class="cap"><span style="font-weight:700">Creator directory</span><span class="small">directory.html</span></div>
+    </a>
+    <a href="profile.html">
+      <div class="shot"><img src="png/profile.png" alt="Creator profile mockup" /></div>
+      <div class="cap"><span style="font-weight:700">Public creator profile</span><span class="small">profile.html</span></div>
+    </a>
+    <a href="dashboard.html">
+      <div class="shot"><img src="png/dashboard.png" alt="Creator dashboard mockup" /></div>
+      <div class="cap"><span style="font-weight:700">Creator dashboard</span><span class="small">dashboard.html</span></div>
+    </a>
+    <a href="brand-guide.html" style="grid-column:1 / -1">
+      <div class="shot" style="height:340px"><img src="png/brand-guide.png" alt="Brand guide" /></div>
+      <div class="cap">
+        <span style="font-weight:700">Brand guide — name, positioning, voice, color, type, mark, icons, components</span>
+        <span class="small">brand-guide.html · docs/BRAND_GUIDE.md</span>
+      </div>
+    </a>
+  </div>
+</div>
+</body>
+</html>

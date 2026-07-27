@@ -1,0 +1,35 @@
+# Netlify build for the WAGE Society SPA (migration target).
+# Express (server.js) still deploys separately on Render until DNS cutover.
+[build]
+  command = "npm run build:web"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+[dev]
+  framework = "#custom"
+  command = "vite"
+  targetPort = 5173
+  port = 8888
+
+# API → serverless functions
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# SPA fallback — must be LAST
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"

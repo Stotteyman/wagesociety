@@ -1,0 +1,221 @@
+@import "tailwindcss";
+@config "../tailwind.config.cjs";
+
+/* =============================================================================
+   W.A.G.E. Society design tokens and primitives — see docs/BRAND_GUIDE.md
+
+   THE LOGO IS THE CREST: public/brand/wage-crest.png (the W.A.G.E. Society
+   Discord bot's own avatar, 512px, transparent). It is an extruded badge —
+   a black shield with hard diagonal cuts, a W built from two beer glasses,
+   heavy white lettering, and a red chevron tail.
+
+   Every primitive below takes its cue from that object: notched corners, hard
+   offset shadows instead of soft blur, thick edges, and amber that fills.
+   Colours are sampled from the PNG — never from wage-crest.gif (compressed)
+   and never from docs/brand-assets/ (AI illustration, not identity).
+   ============================================================================= */
+:root {
+  /* ground — the crest's shield is effectively black; keep it cool and near-black */
+  --wage-ink:     #06090B;
+  --wage-ink-2:   #0B1014;
+  --wage-panel:   #11171C;
+  --wage-panel-2: #182027;
+  --wage-line:    #212A31;
+  --wage-line-hi: #313D47;
+
+  /* text — the crest's lettering is white (#FCFCFC) over a chrome bevel */
+  --wage-paper:   #F4F7F9;
+  --wage-muted:   #8B98A3;
+  --wage-muted-2: #5C6771;
+
+  /* accents, sampled from the official crest */
+  --wage-amber:    #FC9000;  /* the beer in the W */
+  --wage-amber-2:  #FFAA33;  /* hover, and amber text at small sizes */
+  --wage-amber-dk: #963C00;  /* the extruded edge under an amber surface */
+  --wage-red:      #E43000;  /* the chevron */
+  --wage-chrome:   #E4E4E8;  /* the bevel under the lettering */
+  --wage-silver:   #E4E4E8;  /* alias */
+
+  /* semantic — deliberately separate from the brand accents */
+  --wage-success: #34D399;
+  --wage-warning: #E8A317;
+  --wage-error:   #E5484D;
+
+  /* aliases kept so un-migrated components keep compiling */
+  --wage-gold:   #FC9000;
+  --wage-ember:  #E43000;
+  --wage-cyan:   #E4E4E8;
+  --wage-violet: #FFAA33;
+  --wage-orange: #FC9000;
+
+  /* type */
+  --wage-display: 'Archivo Black', 'Bahnschrift', Impact, sans-serif;
+  --wage-body:    'Instrument Sans', system-ui, -apple-system, sans-serif;
+  --wage-mono:    'JetBrains Mono', ui-monospace, 'Cascadia Mono', monospace;
+
+  /* the badge's corner cut, used on every surface */
+  --wage-notch: 14px;
+}
+
+/* Base element styles live in @layer base so Tailwind utilities (normal-case,
+   font-body, tracking-*) can still override them — unlayered rules would win. */
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--wage-ink);
+    color: var(--wage-paper);
+    font-family: var(--wage-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 {
+    font-family: var(--wage-display);
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    line-height: 0.96;
+  }
+  h1, h2 { text-wrap: balance; }
+  a { color: inherit; text-decoration: none; }
+
+  :focus-visible {
+    outline: 2px solid var(--wage-amber);
+    outline-offset: 2px;
+  }
+}
+
+.font-display { font-family: var(--wage-display); letter-spacing: -0.02em; }
+
+/* The crest's lettering sits on a hard dark edge. Display type gets the same,
+   which is what stops Archivo Black from reading as a plain web headline. */
+.wage-cut {
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.55);
+}
+
+/* ── type roles ───────────────────────────────────────────────────────────── */
+.wage-eyebrow {
+  font-family: var(--wage-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--wage-amber-2);
+}
+.wage-eyebrow-mute { color: var(--wage-muted-2); }
+.wage-num {
+  font-family: var(--wage-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* ── surfaces ─────────────────────────────────────────────────────────────── */
+/* Notched corners and a hard offset shadow: the badge, not a rounded card. */
+.wage-card {
+  position: relative;
+  background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.010));
+  border: 1px solid var(--wage-line);
+  border-radius: 2px;
+  clip-path: polygon(
+    var(--notch, var(--wage-notch)) 0, 100% 0,
+    100% calc(100% - var(--notch, var(--wage-notch))),
+    calc(100% - var(--notch, var(--wage-notch))) 100%,
+    0 100%, 0 var(--notch, var(--wage-notch))
+  );
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.45);
+}
+.wage-card-sm { --notch: 9px; }
+.wage-card-hover {
+  transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+.wage-card-hover:hover {
+  border-color: var(--wage-amber);
+  box-shadow: 5px 5px 0 rgba(252, 144, 0, 0.20);
+  transform: translate(-1px, -1px);
+}
+
+/* The chevron tail under the crest, reused as a section marker. */
+.wage-chevron {
+  display: inline-block;
+  width: 20px; height: 10px;
+  background: var(--wage-red);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+/* ── buttons ──────────────────────────────────────────────────────────────── */
+/* Cut like the badge, with an extruded bottom edge that compresses on press. */
+.wage-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  padding: .7rem 1.4rem; border-radius: 2px;
+  font-family: var(--wage-body); font-weight: 700; font-size: 15px;
+  border: 1px solid transparent; cursor: pointer;
+  clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
+  transition: transform .1s ease, background .12s ease, border-color .12s ease, box-shadow .1s ease;
+}
+.wage-btn:active { transform: translateY(2px); }
+
+.wage-btn-primary {
+  background: var(--wage-amber); color: #1A0C00;
+  box-shadow: inset 0 -3px 0 var(--wage-amber-dk);
+}
+.wage-btn-primary:hover { background: var(--wage-amber-2); }
+.wage-btn-primary:active { box-shadow: inset 0 -1px 0 var(--wage-amber-dk); }
+
+.wage-btn-gold {
+  background: var(--wage-amber); color: #1A0C00;
+  box-shadow: inset 0 -3px 0 var(--wage-amber-dk);
+}
+.wage-btn-gold:hover { background: var(--wage-amber-2); }
+
+.wage-btn-ghost {
+  background: rgba(255,255,255,0.025);
+  border-color: var(--wage-line-hi);
+  color: var(--wage-paper);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.45);
+}
+.wage-btn-ghost:hover { border-color: var(--wage-amber); color: var(--wage-amber-2); }
+
+.wage-btn-quiet {
+  color: var(--wage-muted); background: transparent;
+  clip-path: none; box-shadow: none;
+}
+.wage-btn-quiet:hover { color: var(--wage-paper); }
+
+/* ── chips ────────────────────────────────────────────────────────────────── */
+/* Square-cut, not pills — the badge has no round corners. */
+.wage-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--wage-mono); font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 4px 10px;
+  border: 1px solid var(--wage-line-hi); color: var(--wage-muted);
+  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+  white-space: nowrap;
+}
+
+/* ── forms ────────────────────────────────────────────────────────────────── */
+.input {
+  width: 100%;
+  border-radius: 2px;
+  border: 1px solid var(--wage-line);
+  background: var(--wage-ink-2);
+  padding: .68rem .9rem;
+  color: var(--wage-paper);
+  font-family: var(--wage-body);
+  outline: none;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.input::placeholder { color: var(--wage-muted-2); }
+.input:focus { border-color: var(--wage-amber); }
+
+/* Ambient warmth off the crest. Amber only — single hue, so it reads as light
+   coming off the badge rather than as a decorative gradient. */
+.wage-portal-glow {
+  background: radial-gradient(circle, rgba(252,144,0,0.14) 0%, rgba(252,144,0,0.045) 38%, transparent 66%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
