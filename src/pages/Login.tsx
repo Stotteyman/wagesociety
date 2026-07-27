@@ -71,11 +71,11 @@ export default function Login() {
 
         <div className="wage-card mt-8 p-6">
           <div className="grid gap-2.5">
-            <button className="wage-btn wage-btn-ghost w-full" onClick={() => oauth('discord')}>
-              Continue with Discord
-            </button>
             <button className="wage-btn wage-btn-ghost w-full" onClick={() => oauth('google')}>
               Continue with Google
+            </button>
+            <button className="wage-btn wage-btn-ghost w-full" onClick={() => oauth('discord')}>
+              Continue with Discord
             </button>
           </div>
 
