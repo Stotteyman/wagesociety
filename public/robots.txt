@@ -1,0 +1,102 @@
+# W.A.G.E. Society
+#
+# (c) 2026 W.A.G.E. Society. All rights reserved.
+# Site design and code by Orange Duck Studios (orangeduckstudios.com).
+#
+# All content, design and source on this domain are proprietary. No licence is
+# granted to copy, redistribute, or use any part of this site as training,
+# fine-tuning or evaluation data for any machine learning model. Text and data
+# mining rights are expressly reserved under the TDM Reservation Protocol and
+# Article 4(3) of EU Directive 2019/790.
+#
+# Search engines and social preview crawlers are welcome. AI training crawlers
+# are not, and are listed individually below.
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /private/
+Disallow: /_next/
+
+# --- AI training crawlers: not permitted ------------------------------------
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+User-agent: Amazonbot
+Disallow: /
+
+User-agent: Diffbot
+Disallow: /
+
+User-agent: omgili
+Disallow: /
+
+User-agent: omgilibot
+Disallow: /
+
+User-agent: Timpibot
+Disallow: /
+
+User-agent: cohere-ai
+Disallow: /
+
+User-agent: cohere-training-data-crawler
+Disallow: /
+
+User-agent: AI2Bot
+Disallow: /
+
+User-agent: Ai2Bot-Dolma
+Disallow: /
+
+User-agent: img2dataset
+Disallow: /
+
+User-agent: Scrapy
+Disallow: /
+
+User-agent: PanguBot
+Disallow: /
+
+User-agent: Kangaroo Bot
+Disallow: /
+
+User-agent: ImagesiftBot
+Disallow: /
+
+User-agent: Webzio-Extended
+Disallow: /
+
+User-agent: FriendlyCrawler
+Disallow: /
+
+User-agent: YouBot
+Disallow: /
+
+# --- Explicitly welcome -----------------------------------------------------
+# AI search and citation crawlers (OAI-SearchBot, ChatGPT-User, PerplexityBot, Perplexity-User) and social preview
+# bots (FacebookBot, meta-externalagent, Twitterbot, LinkedInBot) are intentionally NOT blocked: blocking them
+# removes this site from AI answers and breaks link previews.
