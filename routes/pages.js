@@ -961,21 +961,6 @@ router.get('/creators/:username', async (req, res) => {
   }
 });
 
-// ── WAGE World game portal ───────────────────────────────────────────────────
-// Phaser game experience — camera fly-through from homepage lands here.
-// Shows game loader + back-to-homepage option.
-router.get('/play', (req, res) => {
-  res.render('pages/play', {
-    userEmail: req.session?.userEmail || null,
-  });
-});
-
-router.get('/wageworld', (req, res) => {
-  res.render('pages/play', {
-    userEmail: req.session?.userEmail || null,
-  });
-});
-
 // ── Username catch-all — must be LAST ──────────────────────────────────────
 // Handles /stotteyman, /johnsmith, etc. when the creator has a profile.
 // Express resolves all other routes first; only non-matched paths reach here.

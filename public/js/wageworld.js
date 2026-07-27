@@ -8,7 +8,6 @@ const loadingQuote = document.querySelector('[data-loading-quote]');
 const focusLabel = document.querySelector('[data-focus-label]');
 const focusValue = document.querySelector('[data-focus-value]');
 const resourceValue = document.querySelector('[data-resource-value]');
-const districtButtons = Array.from(document.querySelectorAll('[data-district]'));
 const moveButtons = Array.from(document.querySelectorAll('[data-move]'));
 const settingsToggle = document.querySelector('[data-settings-toggle]');
 const settingsMenu = document.querySelector('[data-settings-menu]');
@@ -22,15 +21,20 @@ const characterClose = document.querySelector('[data-character-close]');
 const characterInputs = Array.from(document.querySelectorAll('[data-character]'));
 const characterResetButton = document.querySelector('[data-character-reset]');
 const worldRoot = document.querySelector('.wageworld');
-const loginPrompt = document.querySelector('[data-login-prompt]');
 const interactPrompt = document.querySelector('[data-interact-prompt]');
 const chatLog = document.querySelector('[data-chat-log]');
 const chatForm = document.querySelector('[data-chat-form]');
 const chatInput = document.querySelector('[data-chat-input]');
 const voiceToggle = document.querySelector('[data-voice-toggle]');
 const commsStatus = document.querySelector('[data-comms-status]');
+const voiceIndicator = document.querySelector('[data-voice-indicator]');
+const voiceLevelFill = voiceIndicator?.querySelector('.ww-voice-level-fill');
 const voiceInputSelect = document.querySelector('[data-voice-input]');
 const voiceOutputSelect = document.querySelector('[data-voice-output]');
+const inventoryToggle = document.querySelector('[data-inventory-toggle]');
+const inventoryMenu = document.querySelector('[data-inventory-menu]');
+const inventoryClose = document.querySelector('[data-inventory-close]');
+const inventoryList = document.querySelector('[data-inventory-list]');
 const bootstrap = window.WAGEWORLD_BOOTSTRAP || {};
 
 if (!canvas) throw new Error('WageWorld canvas not found');
@@ -63,6 +67,7 @@ const maps = new Map([
   ['Spawn House', { position: new THREE.Vector3(0, 0, 0), status: 'Home spawn', requiresAuth: false }],
   ['Creator Plaza', { position: new THREE.Vector3(0, 0, 0), status: 'Village center', requiresAuth: true }],
   ['Market Row', { position: new THREE.Vector3(19, 0, -13), status: 'Shops open', requiresAuth: true }],
+  ['Hotel Suites', { position: new THREE.Vector3(14, 0, 10), status: 'Private hotel', requiresAuth: true }],
   ['Live Arena', { position: new THREE.Vector3(-20, 0, -11), status: 'Stage live', requiresAuth: true }],
   ['Guild Tower', { position: new THREE.Vector3(-17, 0, 17), status: 'Guides ready', requiresAuth: true }],
   ['Reward Works', { position: new THREE.Vector3(18, 0, 16), status: 'Rewards minting', requiresAuth: true }],
@@ -72,6 +77,7 @@ const districts = new Map([
   ['Spawn House', { position: new THREE.Vector3(0, 0, 0), color: 0xf59e0b, status: 'Home spawn' }],
   ['Creator Plaza', { position: new THREE.Vector3(0, 0, 0), color: 0xf59e0b, status: 'Village center' }],
   ['Market Row', { position: new THREE.Vector3(19, 0, -13), color: 0xf59e0b, status: 'Shops open' }],
+  ['Hotel Suites', { position: new THREE.Vector3(14, 0, 10), color: 0x8b5cf6, status: 'Private hotel' }],
   ['Live Arena', { position: new THREE.Vector3(-20, 0, -11), color: 0x18c7d5, status: 'Stage live' }],
   ['Guild Tower', { position: new THREE.Vector3(-17, 0, 17), color: 0x8b5cf6, status: 'Guides ready' }],
   ['Reward Works', { position: new THREE.Vector3(18, 0, 16), color: 0x22c55e, status: 'Rewards minting' }],
@@ -90,7 +96,8 @@ const worldState = {
   currentMap: 'Spawn House',
   currentMapId: 'home',
   isAuthenticated: !!bootstrap.isAuthenticated,
-  earnings: 12840,
+  tokenBalance: Number(bootstrap.tokenBalance || 0),
+  tokenSymbol: 'WAGE',
   speed: 7,
   cameraSensitivity: 0.006,
   gamepadSensitivity: 2.8,
@@ -103,8 +110,75 @@ const worldState = {
   showChat: true,
   controllerEnabled: true,
   controllerDeadzone: 0.16,
-  invertY: false,
+  invertY: true,
 };
+
+const localClaimedPickups = new Set(JSON.parse(localStorage.getItem('wageworld.claimedPickups') || '[]'));
+
+const inventoryState = {
+  items: JSON.parse(localStorage.getItem('wageworld.inventory') || '[]'),
+};
+
+function saveInventory() {
+  localStorage.setItem('wageworld.inventory', JSON.stringify(inventoryState.items));
+}
+
+function addInventoryItem(item) {
+  if (!item || !item.id) return;
+  if (inventoryState.items.some((existing) => existing.id === item.id)) return;
+  inventoryState.items.unshift(item);
+  saveInventory();
+  renderInventory();
+}
+
+function removeInventoryItem(itemId) {
+  inventoryState.items = inventoryState.items.filter((item) => item.id !== itemId);
+  saveInventory();
+  renderInventory();
+}
+
+function renderInventory() {
+  if (!inventoryList) return;
+  inventoryList.innerHTML = '';
+  if (!inventoryState.items.length) {
+    inventoryList.innerHTML = '<div class="ww-inventory-empty">You are not carrying any items.</div>';
+    return;
+  }
+
+  inventoryState.items.forEach((item) => {
+    const row = document.createElement('div');
+    row.className = 'ww-inventory-item';
+
+    const info = document.createElement('div');
+    info.className = 'ww-inventory-item-info';
+
+    const title = document.createElement('div');
+    title.className = 'ww-inventory-item-name';
+    title.textContent = item.name || 'Unknown item';
+
+    const meta = document.createElement('div');
+    meta.className = 'ww-inventory-item-meta';
+    const details = [];
+    if (item.description) details.push(item.description);
+    if (item.amount != null) details.push(`${item.amount} ${item.amount === 1 ? 'unit' : 'units'}`);
+    if (item.type) details.push(item.type);
+    meta.textContent = details.filter(Boolean).join(' · ') || 'Carried item';
+
+    info.append(title, meta);
+
+    const actions = document.createElement('div');
+    actions.className = 'ww-inventory-item-actions';
+    const drop = document.createElement('button');
+    drop.type = 'button';
+    drop.className = 'ww-setting-action';
+    drop.textContent = 'Drop';
+    drop.addEventListener('click', () => removeInventoryItem(item.id));
+    actions.append(drop);
+
+    row.append(info, actions);
+    inventoryList.append(row);
+  });
+}
 
 const comms = {
   id: null,
@@ -116,6 +190,12 @@ const comms = {
   peers: new Map(),
   nearby: [],
   lastPresenceSent: 0,
+  audioContext: null,
+  analyser: null,
+  microphoneSource: null,
+  voiceData: null,
+  voiceLevel: 0,
+  isSpeaking: false,
 };
 
 const defaultCharacter = {
@@ -156,6 +236,18 @@ const mapConfig = {
     bounds: { minX: -worldLimit, maxX: worldLimit, minZ: -worldLimit, maxZ: worldLimit },
     spawn: new THREE.Vector3(0, 0, 5.2),
   },
+  market: {
+    label: 'Market Row',
+    status: 'Market shops',
+    bounds: { minX: -11.5, maxX: 11.5, minZ: -8.5, maxZ: 8.5 },
+    spawn: new THREE.Vector3(0, 0, 4.5),
+  },
+  hotel: {
+    label: 'Hotel Suites',
+    status: 'Private hotel',
+    bounds: { minX: -10.5, maxX: 10.5, minZ: -7.5, maxZ: 9.5 },
+    spawn: new THREE.Vector3(0, 0, 4.5),
+  },
 };
 
 function addCollider(x, z, radius, label = 'object') {
@@ -186,6 +278,14 @@ function saveCharacter() {
   localStorage.setItem('wageworld.character', JSON.stringify(characterState));
 }
 
+function formatTokenBalance(value = worldState.tokenBalance) {
+  return `${Math.max(0, Number(value || 0)).toLocaleString()} ${worldState.tokenSymbol}`;
+}
+
+function updateTokenHud() {
+  if (resourceValue) resourceValue.textContent = formatTokenBalance();
+}
+
 function setMaterialColor(material, value) {
   material.color.set(value);
   if (material.emissive) material.emissive.set(0x000000);
@@ -213,10 +313,14 @@ scene.fog = new THREE.Fog(0xa9d6e5, 52, 118);
 const mapGroups = {
   home: new THREE.Group(),
   hub: new THREE.Group(),
+  market: new THREE.Group(),
+  hotel: new THREE.Group(),
 };
 mapGroups.home.name = 'Home Map';
 mapGroups.hub.name = 'Hub Map';
-scene.add(mapGroups.home, mapGroups.hub);
+mapGroups.market.name = 'Market Map';
+mapGroups.hotel.name = 'Hotel Map';
+scene.add(mapGroups.home, mapGroups.hub, mapGroups.market, mapGroups.hotel);
 
 const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 240);
 camera.position.set(0, 9, 13);
@@ -238,6 +342,9 @@ const mat = {
   water: new THREE.MeshStandardMaterial({ color: 0x3aa6c8, roughness: 0.28, metalness: 0.05, transparent: true, opacity: 0.82 }),
   wood: new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.72 }),
   darkWood: new THREE.MeshStandardMaterial({ color: 0x4f2f1b, roughness: 0.76 }),
+  trim: new THREE.MeshStandardMaterial({ color: 0x2f3a45, roughness: 0.68 }),
+  metal: new THREE.MeshStandardMaterial({ color: 0x9aa4ad, roughness: 0.32, metalness: 0.62 }),
+  glass: new THREE.MeshStandardMaterial({ color: 0x9bd8ff, roughness: 0.16, metalness: 0.03, transparent: true, opacity: 0.62 }),
   stone: new THREE.MeshStandardMaterial({ color: 0x99a1a6, roughness: 0.8 }),
   roofGold: new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.55 }),
   roofCyan: new THREE.MeshStandardMaterial({ color: 0x18c7d5, roughness: 0.55 }),
@@ -254,6 +361,9 @@ const mat = {
   playerHead: new THREE.MeshStandardMaterial({ color: 0xffc69d, roughness: 0.6 }),
   playerPants: new THREE.MeshStandardMaterial({ color: 0x253047, roughness: 0.68 }),
   reward: new THREE.MeshStandardMaterial({ color: 0xffd166, roughness: 0.3, metalness: 0.55, emissive: 0x5b3100, emissiveIntensity: 0.35 }),
+  fruitRed: new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.52 }),
+  fruitBlue: new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.52 }),
+  fabric: new THREE.MeshStandardMaterial({ color: 0xe11d48, roughness: 0.58 }),
 };
 
 function terrainHeight(x, z) {
@@ -264,11 +374,27 @@ function terrainHeight(x, z) {
 }
 
 function groundHeight(x, z, mapId = activeMapId) {
-  return mapId === 'home' ? 0.12 : terrainHeight(x, z);
+  return mapId === 'home' || mapId === 'market' || mapId === 'hotel' ? 0.12 : terrainHeight(x, z);
 }
 
 function setGroundY(object, lift = 0) {
   object.position.y = groundHeight(object.position.x, object.position.z, object.userData?.mapId || activeMapId) + lift;
+}
+
+function makeBox(width, height, depth, material, x = 0, y = 0, z = 0) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
+  mesh.position.set(x, y, z);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+function makeCylinder(radiusTop, radiusBottom, height, material, x = 0, y = 0, z = 0, segments = 16) {
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radiusTop, radiusBottom, height, segments), material);
+  mesh.position.set(x, y, z);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
 }
 
 function makeTerrain() {
@@ -304,6 +430,31 @@ function makePath(width, length, x, z, rotation = 0) {
   addToActiveMap(path);
 }
 
+function createDoorPortal(x, z, rotation, destinationMapId, promptText, colliderLabel) {
+  const doorPivot = new THREE.Group();
+  doorPivot.position.set(x, 0.1, z);
+  doorPivot.rotation.y = rotation;
+
+  const door = new THREE.Mesh(new THREE.BoxGeometry(2.1, 2.7, 0.16), mat.darkWood);
+  door.position.set(1.05, 1.35, 0);
+  door.castShadow = true;
+  doorPivot.add(door);
+
+  const header = makeBox(2.4, 0.23, 0.18, mat.trim, 1.05, 2.55, 0);
+  doorPivot.add(header);
+
+  doorPivot.userData.kind = 'door';
+  doorPivot.userData.prompt = promptText;
+  doorPivot.userData.action = 'Use door';
+  doorPivot.userData.isOpen = false;
+  doorPivot.userData.destinationMapId = destinationMapId;
+  doorPivot.userData.mapId = activeMapId;
+
+  interactables.push(doorPivot);
+  addCollider(x, z, 1.4, colliderLabel || `door to ${destinationMapId}`);
+  return doorPivot;
+}
+
 function makeRiver() {
   const group = new THREE.Group();
   for (let i = -7; i <= 7; i += 1) {
@@ -320,17 +471,35 @@ function makeRiver() {
 
 function makeTree(x, z, scale = 1) {
   const tree = new THREE.Group();
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18 * scale, 0.24 * scale, 1.4 * scale, 8), mat.wood);
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18 * scale, 0.26 * scale, 1.55 * scale, 14), mat.wood);
   trunk.position.y = 0.7 * scale;
   trunk.castShadow = true;
   tree.add(trunk);
 
-  const leafMat = new THREE.MeshStandardMaterial({ color: scale > 1.05 ? 0x3f9b46 : 0x4caf50, roughness: 0.72 });
   for (let i = 0; i < 3; i += 1) {
-    const crown = new THREE.Mesh(new THREE.SphereGeometry((0.8 - i * 0.08) * scale, 14, 10), leafMat);
+    const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.045 * scale, 0.075 * scale, 0.95 * scale, 8), mat.wood);
+    branch.position.set((i - 1) * 0.22 * scale, (1.12 + i * 0.18) * scale, 0.04 * scale);
+    branch.rotation.z = (i - 1) * 0.58;
+    branch.rotation.x = 0.42;
+    branch.castShadow = true;
+    tree.add(branch);
+  }
+
+  const leafMat = new THREE.MeshStandardMaterial({ color: scale > 1.05 ? 0x3f9b46 : 0x4caf50, roughness: 0.72 });
+  for (let i = 0; i < 5; i += 1) {
+    const crown = new THREE.Mesh(new THREE.SphereGeometry((0.72 - Math.min(i, 2) * 0.05) * scale, 18, 14), leafMat);
     crown.position.set((i - 1) * 0.18 * scale, (1.5 + i * 0.42) * scale, (i % 2) * 0.18 * scale);
     crown.castShadow = true;
     tree.add(crown);
+  }
+
+  if (scale > 1.05) {
+    for (let i = 0; i < 3; i += 1) {
+      const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.08 * scale, 10, 8), i % 2 ? mat.fruitRed : mat.reward);
+      fruit.position.set((i - 1) * 0.42 * scale, (2.0 + i * 0.3) * scale, 0.32 * scale);
+      fruit.castShadow = true;
+      tree.add(fruit);
+    }
   }
 
   tree.position.set(x, 0, z);
@@ -371,19 +540,159 @@ function makeHouse(name, x, z, roofMaterial) {
   roof.castShadow = true;
   house.add(roof);
 
+  const trimTop = makeBox(4.36, 0.16, 0.18, mat.trim, 0, 2.76, 1.84);
+  const trimBottom = makeBox(4.28, 0.14, 0.18, mat.trim, 0, 0.18, 1.84);
+  house.add(trimTop, trimBottom);
+
   const door = new THREE.Mesh(new THREE.BoxGeometry(0.82, 1.35, 0.08), mat.darkWood);
   door.position.set(0, 0.78, 1.79);
   house.add(door);
+  const doorFrame = makeBox(1.02, 1.55, 0.12, mat.trim, 0, 0.86, 1.84);
+  const doorCutout = makeBox(0.74, 1.25, 0.14, mat.darkWood, 0, 0.78, 1.91);
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 8), mat.metal);
+  knob.position.set(0.27, 0.8, 1.98);
+  house.add(doorFrame, doorCutout, knob);
+
+  [-1.35, 1.35].forEach((wx) => {
+    const frame = makeBox(0.88, 0.72, 0.12, mat.trim, wx, 1.55, 1.86);
+    const glass = makeBox(0.66, 0.5, 0.13, mat.glass, wx, 1.55, 1.94);
+    const crossA = makeBox(0.72, 0.05, 0.14, mat.trim, wx, 1.55, 2.02);
+    const crossB = makeBox(0.05, 0.58, 0.14, mat.trim, wx, 1.55, 2.03);
+    house.add(frame, glass, crossA, crossB);
+  });
+
+  const stepA = makeBox(1.7, 0.18, 0.62, mat.stone, 0, 0.1, 2.18);
+  const stepB = makeBox(2.15, 0.14, 0.72, mat.stone, 0, -0.02, 2.58);
+  const chimney = makeBox(0.42, 1.1, 0.42, mat.darkWood, -1.35, 4.18, -0.6);
+  house.add(stepA, stepB, chimney);
 
   const sign = makeBillboard(name, roofMaterial.color.getHex(), 2.6, 0.72);
   sign.position.set(0, 3.15, 2.05);
   house.add(sign);
+
+  const awning = makeBox(4.4, 0.2, 0.5, mat.trim, 0, 2.16, 1.78);
+  house.add(awning);
 
   house.position.set(x, 0, z);
   setGroundY(house);
   addToActiveMap(house);
   addCollider(x, z, 2.9, name);
   return house;
+}
+
+function makeMarketRoom() {
+  const room = new THREE.Group();
+  const floor = makeBox(24, 0.18, 18, mat.floor, 0, 0.09, 0);
+  room.add(floor);
+
+  const wallBack = makeBox(24, 4.8, 0.3, mat.wall, 0, 2.4, -8.9);
+  const wallFront = makeBox(24, 4.8, 0.3, mat.wall, 0, 2.4, 8.9);
+  const wallLeft = makeBox(0.3, 4.8, 18, mat.wall, -11.85, 2.4, 0);
+  const wallRight = wallLeft.clone();
+  wallRight.position.x = 11.85;
+  room.add(wallBack, wallFront, wallLeft, wallRight);
+
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(24.4, 0.65, 18.4), mat.roofGold);
+  roof.position.set(0, 5.1, 0);
+  roof.castShadow = true;
+  room.add(roof);
+
+  const canopy = makeBox(24, 0.2, 2.1, mat.roofGold, 0, 4.5, -6.8);
+  const canopy2 = makeBox(24, 0.2, 2.1, mat.roofGold, 0, 4.5, 6.8);
+  room.add(canopy, canopy2);
+
+  const marketSign = makeBillboard('Market Hall', 0xf59e0b, 4.2, 1.1);
+  marketSign.position.set(0, 3.95, 8.15);
+  room.add(marketSign);
+
+  for (let i = -3; i <= 3; i += 3) {
+    const stall = new THREE.Group();
+    const counter = makeBox(4.6, 0.9, 1.4, mat.wood, 0, 0.45, 0);
+    const canopy = makeBox(4.8, 0.18, 2.4, mat.roofCyan, 0, 1.45, 0);
+    const poleL = makeCylinder(0.08, 0.08, 1.8, mat.metal, -2.2, 0.9, 0.68, 12);
+    const poleR = makeCylinder(0.08, 0.08, 1.8, mat.metal, 2.2, 0.9, 0.68, 12);
+    stall.add(counter, canopy, poleL, poleR);
+    stall.position.set(-7, 0, i);
+    stall.userData.kind = 'stall';
+    stall.userData.prompt = 'Browse the market stalls.';
+    stall.userData.action = 'Browse';
+    interactables.push(stall);
+    room.add(stall);
+    addCollider(-7, i, 1.8, 'market stall');
+  }
+
+  for (let i = -3; i <= 3; i += 3) {
+    const stall = new THREE.Group();
+    const counter = makeBox(4.6, 0.9, 1.4, mat.wood, 0, 0.45, 0);
+    const canopy = makeBox(4.8, 0.18, 2.4, mat.roofGreen, 0, 1.45, 0);
+    const poleL = makeCylinder(0.08, 0.08, 1.8, mat.metal, -2.2, 0.9, 0.68, 12);
+    const poleR = makeCylinder(0.08, 0.08, 1.8, mat.metal, 2.2, 0.9, 0.68, 12);
+    stall.add(counter, canopy, poleL, poleR);
+    stall.position.set(7, 0, i);
+    stall.userData.kind = 'stall';
+    stall.userData.prompt = 'Browse the market stalls.';
+    stall.userData.action = 'Browse';
+    interactables.push(stall);
+    room.add(stall);
+    addCollider(7, i, 1.8, 'market stall');
+  }
+
+  const backDoor = createDoorPortal(0, 8.1, Math.PI, 'hub', 'Exit to Creator Plaza', 'market exit');
+  room.add(backDoor);
+  room.userData.mapId = activeMapId;
+  room.position.set(0, 0, 0);
+  addToActiveMap(room);
+  addCollider(0, 0, 10.5, 'market walls');
+}
+
+function makeHotelRoom() {
+  const hotel = new THREE.Group();
+  const floor = makeBox(20, 0.18, 16, mat.floor, 0, 0.09, 0);
+  hotel.add(floor);
+
+  const wallBack = makeBox(20, 5.2, 0.3, mat.wall, 0, 2.6, -7.9);
+  const wallFront = makeBox(20, 5.2, 0.3, mat.wall, 0, 2.6, 7.9);
+  const wallLeft = makeBox(0.3, 5.2, 16, mat.wall, -9.85, 2.6, 0);
+  const wallRight = wallLeft.clone();
+  wallRight.position.x = 9.85;
+  hotel.add(wallBack, wallFront, wallLeft, wallRight);
+
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(20.4, 0.65, 16.4), mat.roofViolet);
+  roof.position.set(0, 5.4, 0);
+  roof.castShadow = true;
+  hotel.add(roof);
+
+  const reception = new THREE.Group();
+  const desk = makeBox(6.2, 1.05, 1.6, mat.wood, 0, 0.53, 5.5);
+  const deskTop = makeBox(6.2, 0.12, 1.6, mat.trim, 0, 1.01, 5.5);
+  reception.add(desk, deskTop);
+  const regSign = makeBillboard('Register for Private Suites', 0x8b5cf6, 4.2, 0.9);
+  regSign.position.set(0, 2.35, 5.2);
+  reception.add(regSign);
+  hotel.add(reception);
+
+  for (let i = 0; i < 3; i += 1) {
+    const roomSuite = new THREE.Group();
+    const suiteFloor = makeBox(5.4, 0.18, 4.2, mat.path, 0, 0.09, -1.2 + i * -5.4);
+    const bed = makeBox(2.4, 0.45, 1.4, mat.blanket, 0, 0.42, -1.2 + i * -5.4);
+    const wardrobe = makeBox(1.1, 2.3, 0.8, mat.darkWood, 1.7, 1.2, -1.2 + i * -5.4);
+    roomSuite.add(suiteFloor, bed, wardrobe);
+    const suiteDoor = createDoorPortal(8.5, -1.2 + i * -5.4, -Math.PI / 2, 'hotel', 'Enter suite', 'hotel suite door');
+    suiteDoor.position.set(8.5, 0, -1.2 + i * -5.4);
+    roomSuite.add(suiteDoor);
+    addCollider(8.5, -1.2 + i * -5.4, 1.3, 'suite door');
+    hotel.add(roomSuite);
+  }
+
+  const lobbySign = makeBillboard('Hotel Suites', 0x8b5cf6, 4.2, 0.9);
+  lobbySign.position.set(0, 3.8, 6.2);
+  hotel.add(lobbySign);
+  const backDoor = createDoorPortal(0, 7.7, Math.PI, 'hub', 'Exit to Creator Plaza', 'hotel exit');
+  hotel.add(backDoor);
+
+  hotel.position.set(0, 0, 0);
+  addToActiveMap(hotel);
+  addCollider(0, 0, 9.5, 'hotel walls');
 }
 
 function makeBillboard(text, colorHex, width = 4.2, height = 1) {
@@ -425,10 +734,23 @@ function makeStall(x, z, colorMaterial) {
   counter.position.y = 0.6;
   counter.castShadow = true;
   stall.add(counter);
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(4, 0.3, 2), colorMaterial);
-  roof.position.y = 1.55;
-  roof.castShadow = true;
-  stall.add(roof);
+  const shelf = makeBox(3.2, 0.12, 1.35, mat.darkWood, 0, 1.13, 0);
+  stall.add(shelf);
+  for (let i = 0; i < 5; i += 1) {
+    const stripe = makeBox(0.78, 0.24, 2.1, i % 2 ? mat.cream : colorMaterial, -1.56 + i * 0.78, 1.62, 0);
+    stall.add(stripe);
+  }
+  const poleL = makeCylinder(0.05, 0.05, 1.8, mat.metal, -1.82, 0.9, 0.78, 10);
+  const poleR = makeCylinder(0.05, 0.05, 1.8, mat.metal, 1.82, 0.9, 0.78, 10);
+  stall.add(poleL, poleR);
+  for (let i = 0; i < 8; i += 1) {
+    const fruit = new THREE.Mesh(new THREE.SphereGeometry(0.12, 14, 10), i % 2 ? mat.fruitRed : mat.fruitBlue);
+    fruit.position.set(-1.35 + (i % 4) * 0.9, 1.28, -0.24 + Math.floor(i / 4) * 0.45);
+    fruit.castShadow = true;
+    stall.add(fruit);
+  }
+  const crate = makeBox(0.86, 0.5, 0.58, mat.darkWood, 1.18, 0.34, 0.98);
+  stall.add(crate);
   stall.position.set(x, 0, z);
   setGroundY(stall);
   addToActiveMap(stall);
@@ -437,7 +759,7 @@ function makeStall(x, z, colorMaterial) {
 
 function makeStage(x, z) {
   const stage = new THREE.Group();
-  const deck = new THREE.Mesh(new THREE.CylinderGeometry(5, 5.4, 0.65, 20), mat.black);
+  const deck = new THREE.Mesh(new THREE.CylinderGeometry(5, 5.4, 0.65, 36), mat.black);
   deck.position.y = 0.38;
   deck.castShadow = true;
   deck.receiveShadow = true;
@@ -446,6 +768,19 @@ function makeStage(x, z) {
   screen.position.set(0, 2.35, -2.6);
   screen.castShadow = true;
   stage.add(screen);
+  const frameTop = makeBox(6.4, 0.18, 0.18, mat.metal, 0, 4.05, -2.52);
+  const frameL = makeBox(0.18, 3.6, 0.18, mat.metal, -3.25, 2.35, -2.52);
+  const frameR = makeBox(0.18, 3.6, 0.18, mat.metal, 3.25, 2.35, -2.52);
+  const speakerL = makeBox(0.78, 1.25, 0.62, mat.black, -4.0, 1.0, -0.85);
+  const speakerR = makeBox(0.78, 1.25, 0.62, mat.black, 4.0, 1.0, -0.85);
+  stage.add(frameTop, frameL, frameR, speakerL, speakerR);
+  [-1.8, 0, 1.8].forEach((lx) => {
+    const lamp = makeCylinder(0.18, 0.24, 0.28, mat.metal, lx, 3.86, -2.25, 16);
+    lamp.rotation.x = Math.PI / 2;
+    const glow = new THREE.PointLight(lx === 0 ? 0xf59e0b : 0x18c7d5, 1.8, 8);
+    glow.position.set(lx, 3.65, -1.85);
+    stage.add(lamp, glow);
+  });
   const lightA = new THREE.PointLight(0x18c7d5, 3, 14);
   lightA.position.set(-2.5, 3.2, 0);
   const lightB = new THREE.PointLight(0xf59e0b, 2.4, 12);
@@ -459,11 +794,20 @@ function makeStage(x, z) {
 
 function makeTower(x, z) {
   const tower = new THREE.Group();
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 3.1, 6.5, 8), mat.stone);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 3.1, 6.5, 16), mat.stone);
   base.position.y = 3.4;
   base.castShadow = true;
   tower.add(base);
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(3, 2.8, 8), mat.roofViolet);
+  for (let i = 0; i < 3; i += 1) {
+    const ring = makeCylinder(2.6 - i * 0.18, 2.8 - i * 0.18, 0.16, mat.trim, 0, 1.35 + i * 1.8, 0, 16);
+    tower.add(ring);
+  }
+  for (let i = 0; i < 4; i += 1) {
+    const window = makeBox(0.44, 0.82, 0.08, mat.glass, Math.sin(i * Math.PI / 2) * 2.52, 3.2, Math.cos(i * Math.PI / 2) * 2.52);
+    window.rotation.y = i * Math.PI / 2;
+    tower.add(window);
+  }
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(3, 2.8, 16), mat.roofViolet);
   roof.position.y = 8.1;
   roof.castShadow = true;
   tower.add(roof);
@@ -482,6 +826,19 @@ function makeRewardMachine(x, z) {
   const wheel = new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.12, 10, 44), mat.reward);
   wheel.position.set(0, 1.6, 1.56);
   group.add(wheel);
+  const glass = makeBox(2.2, 1.28, 0.12, mat.glass, 0, 1.62, 1.62);
+  const tray = makeBox(2.7, 0.28, 0.5, mat.metal, 0, 0.58, 1.72);
+  group.add(glass, tray);
+  for (let i = 0; i < 5; i += 1) {
+    const button = new THREE.Mesh(new THREE.SphereGeometry(0.12, 14, 10), i % 2 ? mat.roofGreen : mat.reward);
+    button.position.set(-1.35 + i * 0.68, 1.03, 1.76);
+    button.castShadow = true;
+    group.add(button);
+  }
+  const antenna = makeCylinder(0.025, 0.035, 0.9, mat.metal, 1.55, 2.95, 0, 8);
+  const antennaTip = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 8), mat.reward);
+  antennaTip.position.set(1.55, 3.45, 0);
+  group.add(antenna, antennaTip);
   const light = new THREE.PointLight(0x22c55e, 3, 10);
   light.position.y = 3;
   group.add(light);
@@ -491,6 +848,73 @@ function makeRewardMachine(x, z) {
   addToActiveMap(group);
   addCollider(x, z, 2.6, 'reward machine');
   return group;
+}
+
+function makeBench(x, z, rotation = 0) {
+  const bench = new THREE.Group();
+  bench.add(makeBox(2.2, 0.18, 0.56, mat.wood, 0, 0.82, 0));
+  bench.add(makeBox(2.2, 0.18, 0.18, mat.wood, 0, 1.18, -0.32));
+  [-0.82, 0.82].forEach((lx) => {
+    bench.add(makeBox(0.14, 0.8, 0.14, mat.metal, lx, 0.42, -0.18));
+    bench.add(makeBox(0.14, 0.68, 0.14, mat.metal, lx, 0.36, 0.22));
+  });
+  bench.position.set(x, 0, z);
+  bench.rotation.y = rotation;
+  setGroundY(bench);
+  addToActiveMap(bench);
+  addCollider(x, z, 1.2, 'bench');
+  return bench;
+}
+
+function makeStreetLamp(x, z, rotation = 0) {
+  const lamp = new THREE.Group();
+  lamp.add(makeCylinder(0.06, 0.08, 3.0, mat.metal, 0, 1.5, 0, 12));
+  lamp.add(makeCylinder(0.26, 0.34, 0.16, mat.metal, 0, 0.08, 0, 16));
+  const head = makeBox(0.56, 0.44, 0.56, mat.glass, 0, 3.06, 0);
+  const cap = makeCylinder(0.22, 0.34, 0.18, mat.darkWood, 0, 3.38, 0, 16);
+  const glow = new THREE.PointLight(0xffd166, 1.55, 9);
+  glow.position.set(0, 3.03, 0);
+  lamp.add(head, cap, glow);
+  lamp.position.set(x, 0, z);
+  lamp.rotation.y = rotation;
+  setGroundY(lamp);
+  addToActiveMap(lamp);
+  addCollider(x, z, 0.42, 'street lamp');
+  return lamp;
+}
+
+function makePlanter(x, z, rotation = 0) {
+  const planter = new THREE.Group();
+  planter.add(makeBox(1.35, 0.54, 0.78, mat.darkWood, 0, 0.34, 0));
+  for (let i = 0; i < 5; i += 1) {
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), i % 2 ? mat.roofGreen : mat.grass);
+    leaf.position.set(-0.48 + i * 0.24, 0.74 + Math.sin(i) * 0.08, 0.02 + (i % 2) * 0.16);
+    leaf.castShadow = true;
+    planter.add(leaf);
+  }
+  planter.position.set(x, 0, z);
+  planter.rotation.y = rotation;
+  setGroundY(planter);
+  addToActiveMap(planter);
+  addCollider(x, z, 0.9, 'planter');
+  return planter;
+}
+
+function makeBarrelStack(x, z, rotation = 0) {
+  const stack = new THREE.Group();
+  [[0, 0.38, 0], [0.42, 0.38, 0.12], [-0.42, 0.38, 0.08], [0.02, 0.9, 0.08]].forEach(([bx, by, bz]) => {
+    const barrel = makeCylinder(0.28, 0.3, 0.72, mat.wood, bx, by, bz, 18);
+    barrel.rotation.z = Math.PI / 2;
+    stack.add(barrel);
+    stack.add(makeCylinder(0.285, 0.285, 0.04, mat.metal, bx - 0.28, by, bz, 18));
+    stack.add(makeCylinder(0.285, 0.285, 0.04, mat.metal, bx + 0.28, by, bz, 18));
+  });
+  stack.position.set(x, 0, z);
+  stack.rotation.y = rotation;
+  setGroundY(stack);
+  addToActiveMap(stack);
+  addCollider(x, z, 1.05, 'barrels');
+  return stack;
 }
 
 function makeSpawnHouse() {
@@ -706,7 +1130,7 @@ function makeGuideNpc(name, x, z, color, message) {
   return npc;
 }
 
-function makePickup(x, z) {
+function makePickup(id, x, z, amount = 25) {
   const pickup = new THREE.Group();
   const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.12, 18), mat.reward);
   coin.rotation.x = Math.PI / 2;
@@ -717,6 +1141,9 @@ function makePickup(x, z) {
   pickup.position.set(x, 0, z);
   setGroundY(pickup, 1.1);
   pickup.userData.coin = coin;
+  pickup.userData.pickupId = id;
+  pickup.userData.amount = amount;
+  pickup.visible = !localClaimedPickups.has(id);
   addToActiveMap(pickup);
   return pickup;
 }
@@ -747,17 +1174,35 @@ function buildWorld() {
   makePath(1.45, 48, 0, 0, -Math.PI / 4);
 
   makeHouse('Creator Home', 4.8, 4.5, mat.roofGold);
-  makeHouse('Market Row', 20, -13, mat.roofGold);
+  makeHouse('Market Entrance', 20, -13, mat.roofGold);
   makeHouse('Reward Works', 18, 16, mat.roofGreen);
+  makeHouse('Hotel Lobby', 10, 11, mat.roofViolet);
   makeStage(-20, -11);
   makeTower(-17, 17);
   const rewardMachine = makeRewardMachine(13, 18);
 
   makeStall(15.2, -17, mat.roofGold);
   makeStall(22.8, -9.2, mat.roofGold);
+  makeBench(-4.2, 7.4, Math.PI * 0.08);
+  makeBench(5.4, -6.6, -Math.PI * 0.18);
+  makeBench(11.8, 8.6, Math.PI * 0.72);
+  makeStreetLamp(-7.5, 6.5);
+  makeStreetLamp(8.2, 6.7);
+  makeStreetLamp(10.8, -8.4);
+  makeStreetLamp(-11.4, -7.6);
+  makePlanter(-2.8, 4.6, Math.PI * 0.12);
+  makePlanter(3.0, 4.2, -Math.PI * 0.14);
+  makePlanter(18.2, -18.4, Math.PI * 0.2);
+  makeBarrelStack(17.9, -10.4, Math.PI * 0.28);
+  makeBarrelStack(24.5, -14.2, -Math.PI * 0.18);
   makeFence(6, 8, 8, 0);
   makeFence(-8, -18, 9, Math.PI / 2);
   makeFence(23, 4, 7, 0.3);
+
+  const marketDoor = createDoorPortal(20, -9.5, Math.PI, 'market', 'Enter Market Hall', 'Market entrance');
+  const hotelDoor = createDoorPortal(10, 8.9, Math.PI * 0.5, 'hotel', 'Enter Hotel Suites', 'Hotel entrance');
+  addToActiveMap(marketDoor);
+  addToActiveMap(hotelDoor);
 
   for (let i = 0; i < 55; i += 1) {
     const angle = Math.random() * Math.PI * 2;
@@ -777,13 +1222,13 @@ function buildWorld() {
   guides.forEach((guide) => addObjectCollider(guide, 0.9, 'guide'));
 
   const pickups = [
-    makePickup(-2.5, -7),
-    makePickup(8, -12),
-    makePickup(17, -8),
-    makePickup(-19, -16),
-    makePickup(-13, 13),
-    makePickup(22, 19),
-    makePickup(4, 16),
+    makePickup('hub-token-01', -2.5, -7),
+    makePickup('hub-token-02', 8, -12),
+    makePickup('hub-token-03', 17, -8),
+    makePickup('hub-token-04', -19, -16),
+    makePickup('hub-token-05', -13, 13),
+    makePickup('hub-token-06', 22, 19),
+    makePickup('hub-token-07', 4, 16),
   ];
 
   const clouds = [
@@ -792,9 +1237,17 @@ function buildWorld() {
     makeCloud(28, 19, 15, 1.1),
   ];
 
+  activeMapId = 'market';
+  makeMarketRoom();
+
+  activeMapId = 'hotel';
+  makeHotelRoom();
+
   activeMapId = 'home';
   mapGroups.home.visible = true;
   mapGroups.hub.visible = false;
+  mapGroups.market.visible = false;
+  mapGroups.hotel.visible = false;
   return { guides, pickups, clouds, rewardMachine, spawnHouse };
 }
 
@@ -843,13 +1296,79 @@ function updateHud(name = worldState.focus) {
   worldState.focus = name;
   if (focusLabel) focusLabel.textContent = name;
   if (focusValue) focusValue.textContent = district?.status || 'Exploring';
-  if (resourceValue) resourceValue.textContent = `$${worldState.earnings.toLocaleString()}`;
-  districtButtons.forEach((button) => button.classList.toggle('is-active', button.dataset.district === name));
+  updateTokenHud();
 }
 
-function updateLoginPrompt() {
-  if (!loginPrompt) return;
-  loginPrompt.hidden = worldState.isAuthenticated;
+async function loadTokenBalance() {
+  try {
+    const response = await fetch('/api/wageworld/rewards/balance', {
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) return;
+    const data = await response.json();
+    worldState.isAuthenticated = !!data.authenticated;
+    worldState.tokenSymbol = data.tokenSymbol || 'WAGE';
+    worldState.tokenBalance = Number(data.balance || 0);
+    updateTokenHud();
+  } catch (_) {
+    updateTokenHud();
+  }
+}
+
+async function claimPickupReward(pickup) {
+  const pickupId = pickup.userData.pickupId;
+  if (!pickupId || localClaimedPickups.has(pickupId)) return;
+
+  pickup.visible = false;
+
+  if (!worldState.isAuthenticated) {
+    addInventoryItem({
+      id: pickupId,
+      type: 'WAGE tokens',
+      name: `WAGE Token +${pickup.userData.amount || 25}`,
+      amount: Number(pickup.userData.amount || 25),
+      description: 'Collected from the world',
+    });
+
+    localClaimedPickups.add(pickupId);
+    localStorage.setItem('wageworld.claimedPickups', JSON.stringify([...localClaimedPickups]));
+    worldState.tokenBalance += Number(pickup.userData.amount || 25);
+    updateTokenHud();
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/wageworld/rewards/claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ pickupId }),
+    });
+    if (response.status === 401) {
+      worldState.isAuthenticated = false;
+      localClaimedPickups.add(pickupId);
+      localStorage.setItem('wageworld.claimedPickups', JSON.stringify([...localClaimedPickups]));
+      worldState.tokenBalance += Number(pickup.userData.amount || 25);
+      updateTokenHud();
+      return;
+    }
+    if (!response.ok) throw new Error('Claim failed');
+    const data = await response.json();
+    addInventoryItem({
+      id: pickupId,
+      type: 'WAGE tokens',
+      name: `WAGE Token +${pickup.userData.amount || 25}`,
+      amount: Number(pickup.userData.amount || 25),
+      description: 'Collected from the world',
+    });
+    worldState.tokenSymbol = data.tokenSymbol || worldState.tokenSymbol;
+    worldState.tokenBalance = Number(data.balance ?? worldState.tokenBalance);
+    localClaimedPickups.add(pickupId);
+    localStorage.setItem('wageworld.claimedPickups', JSON.stringify([...localClaimedPickups]));
+    updateTokenHud();
+  } catch (_) {
+    pickup.visible = true;
+    updateTokenHud();
+  }
 }
 
 function nearestDistrict() {
@@ -927,15 +1446,12 @@ function teleportToDistrict(name) {
 }
 
 function isTypingTarget(target) {
-  return !!target?.closest?.('input, textarea, select, button, [contenteditable="true"], .ww-settings, .ww-character');
+  return !!target?.closest?.('input, textarea, select, button, [contenteditable="true"], .ww-settings, .ww-character, .ww-inventory');
 }
-
-districtButtons.forEach((button) => {
-  button.addEventListener('click', () => teleportToDistrict(button.dataset.district));
-});
 
 function openSettings() {
   if (!settingsMenu || !settingsToggle) return;
+  unlockPointer();
   settingsMenu.hidden = false;
   settingsToggle.setAttribute('aria-expanded', 'true');
   worldRoot?.classList.add('ww-menu-open');
@@ -943,13 +1459,14 @@ function openSettings() {
     characterMenu.hidden = true;
     characterToggle.setAttribute('aria-expanded', 'false');
   }
+  closeInventoryMenu();
 }
 
 function closeSettings() {
   if (!settingsMenu || !settingsToggle) return;
   settingsMenu.hidden = true;
   settingsToggle.setAttribute('aria-expanded', 'false');
-  if (characterMenu?.hidden !== false) worldRoot?.classList.remove('ww-menu-open');
+  if (characterMenu?.hidden !== false && inventoryMenu?.hidden !== false) worldRoot?.classList.remove('ww-menu-open');
 }
 
 settingsToggle?.addEventListener('click', () => {
@@ -962,18 +1479,20 @@ settingsClose?.addEventListener('click', closeSettings);
 
 function openCharacterMenu() {
   if (!characterMenu) return;
+  unlockPointer();
   syncCharacterInputs();
   characterMenu.hidden = false;
   characterToggle?.setAttribute('aria-expanded', 'true');
   worldRoot?.classList.add('ww-menu-open');
   closeSettings();
+  closeInventoryMenu();
 }
 
 function closeCharacterMenu() {
   if (!characterMenu) return;
   characterMenu.hidden = true;
   characterToggle?.setAttribute('aria-expanded', 'false');
-  if (settingsMenu?.hidden !== false) worldRoot?.classList.remove('ww-menu-open');
+  if (settingsMenu?.hidden !== false && inventoryMenu?.hidden !== false) worldRoot?.classList.remove('ww-menu-open');
 }
 
 characterToggle?.addEventListener('click', () => {
@@ -983,6 +1502,38 @@ characterToggle?.addEventListener('click', () => {
 });
 
 characterClose?.addEventListener('click', closeCharacterMenu);
+
+function openInventoryMenu() {
+  if (!inventoryMenu) return;
+  unlockPointer();
+  inventoryMenu.hidden = false;
+  inventoryToggle?.setAttribute('aria-expanded', 'true');
+  worldRoot?.classList.add('ww-menu-open');
+  closeSettings();
+  closeCharacterMenu();
+  renderInventory();
+}
+
+function closeInventoryMenu() {
+  if (!inventoryMenu) return;
+  inventoryMenu.hidden = true;
+  inventoryToggle?.setAttribute('aria-expanded', 'false');
+  if (settingsMenu?.hidden !== false && characterMenu?.hidden !== false) worldRoot?.classList.remove('ww-menu-open');
+}
+
+inventoryToggle?.addEventListener('click', () => {
+  if (!inventoryMenu) return;
+  if (inventoryMenu.hidden) openInventoryMenu();
+  else closeInventoryMenu();
+});
+
+inventoryClose?.addEventListener('click', closeInventoryMenu);
+
+function toggleInventoryMenu() {
+  if (!inventoryMenu) return;
+  if (inventoryMenu.hidden) openInventoryMenu();
+  else closeInventoryMenu();
+}
 
 characterInputs.forEach((input) => {
   const key = input.dataset.character;
@@ -1071,6 +1622,7 @@ async function refreshVoiceDevices() {
     });
     voiceInputSelect.value = current;
     comms.inputDeviceId = voiceInputSelect.value;
+    voiceInputSelect.disabled = inputs.length === 0;
   }
 
   if (voiceOutputSelect) {
@@ -1084,6 +1636,79 @@ async function refreshVoiceDevices() {
     });
     voiceOutputSelect.value = current;
     comms.outputDeviceId = voiceOutputSelect.value;
+    voiceOutputSelect.disabled = outputs.length === 0;
+  }
+}
+
+function createVoiceAnalyser() {
+  if (!comms.localStream) return;
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) return;
+  comms.audioContext = comms.audioContext || new AudioCtx();
+  comms.microphoneSource = comms.audioContext.createMediaStreamSource(comms.localStream);
+  comms.analyser = comms.audioContext.createAnalyser();
+  comms.analyser.fftSize = 2048;
+  comms.analyser.smoothingTimeConstant = 0.92;
+  comms.microphoneSource.connect(comms.analyser);
+  comms.voiceData = new Uint8Array(comms.analyser.fftSize);
+  comms.voiceLevelSmoothed = 0;
+  comms.isSpeaking = false;
+}
+
+function destroyVoiceAnalyser() {
+  if (comms.analyser) {
+    comms.analyser.disconnect();
+    comms.analyser = null;
+  }
+  if (comms.microphoneSource) {
+    comms.microphoneSource.disconnect();
+    comms.microphoneSource = null;
+  }
+  if (comms.audioContext) {
+    comms.audioContext.close().catch(() => {});
+    comms.audioContext = null;
+  }
+  comms.voiceData = null;
+  comms.voiceLevel = 0;
+  comms.voiceLevelSmoothed = 0;
+  comms.isSpeaking = false;
+}
+
+function updateVoiceActivity() {
+  if (!comms.analyser || !comms.voiceData) return;
+  comms.analyser.getByteTimeDomainData(comms.voiceData);
+  let sum = 0;
+  for (let i = 0; i < comms.voiceData.length; i += 1) {
+    const sample = (comms.voiceData[i] - 128) / 128;
+    sum += sample * sample;
+  }
+  comms.voiceLevel = Math.sqrt(sum / comms.voiceData.length);
+  const level = Math.max(0, comms.voiceLevel - 0.01);
+  comms.voiceLevelSmoothed = Math.max(0, comms.voiceLevelSmoothed * 0.88 + level * 0.12);
+  comms.isSpeaking = comms.voiceLevelSmoothed > 0.04;
+}
+
+function updateVoiceIndicator() {
+  if (!voiceIndicator) return;
+
+  if (!comms.voiceEnabled) {
+    voiceIndicator.classList.remove('is-on', 'is-active');
+    if (voiceLevelFill) voiceLevelFill.style.width = '0%';
+    return;
+  }
+
+  updateVoiceActivity();
+  voiceIndicator.classList.add('is-on');
+  if (comms.isSpeaking) {
+    voiceIndicator.classList.add('is-active');
+  } else {
+    voiceIndicator.classList.remove('is-active');
+  }
+
+  const normalizedLevel = Math.min(1, comms.voiceLevelSmoothed * 2.5);
+  if (voiceLevelFill) {
+    voiceLevelFill.style.width = `${Math.round(normalizedLevel * 100)}%`;
+    voiceLevelFill.style.opacity = normalizedLevel > 0 ? '1' : '0.4';
   }
 }
 
@@ -1172,22 +1797,27 @@ async function enableVoice() {
     video: false,
   });
   comms.voiceEnabled = true;
+  createVoiceAnalyser();
   await refreshVoiceDevices();
   voiceToggle?.classList.add('is-on');
   voiceToggle?.setAttribute('aria-pressed', 'true');
   if (voiceToggle) voiceToggle.textContent = 'Voice On';
+  updateVoiceIndicator();
   sendPresence(true);
   syncVoicePeers();
+  updateVoiceIndicator();
 }
 
 function disableVoice() {
   comms.voiceEnabled = false;
   comms.localStream?.getTracks().forEach((track) => track.stop());
   comms.localStream = null;
+  destroyVoiceAnalyser();
   Array.from(comms.peers.keys()).forEach(closeVoicePeer);
   voiceToggle?.classList.remove('is-on');
   voiceToggle?.setAttribute('aria-pressed', 'false');
   if (voiceToggle) voiceToggle.textContent = 'Voice Off';
+  updateVoiceIndicator();
   sendPresence(true);
 }
 
@@ -1286,10 +1916,10 @@ const keyMap = {
   ArrowUp: 'forward',
   KeyS: 'backward',
   ArrowDown: 'backward',
-  KeyA: 'left',
-  ArrowLeft: 'left',
-  KeyD: 'right',
-  ArrowRight: 'right',
+  KeyA: 'right',
+  ArrowLeft: 'right',
+  KeyD: 'left',
+  ArrowRight: 'left',
   ShiftLeft: 'sprint',
   ShiftRight: 'sprint',
 };
@@ -1309,8 +1939,18 @@ window.addEventListener('keyup', (event) => {
 });
 
 window.addEventListener('keydown', (event) => {
+  if (event.code === 'ControlLeft') {
+    unlockPointer();
+    event.preventDefault();
+    return;
+  }
   if (event.code === 'Escape') closeSettings();
   if (event.code === 'Escape') closeCharacterMenu();
+  if (event.code === 'Tab' && !isTypingTarget(event.target)) {
+    toggleInventoryMenu();
+    event.preventDefault();
+    return;
+  }
   if (event.code === 'KeyV' && !isTypingTarget(event.target)) {
     cycleCameraMode();
     event.preventDefault();
@@ -1348,12 +1988,30 @@ function rotateCamera(deltaX, deltaY) {
   cameraRig.pitch = THREE.MathUtils.clamp(cameraRig.pitch, -1.15, 0.95);
 }
 
+function isPointerLocked() {
+  return document.pointerLockElement === canvas;
+}
+
+function lockPointer() {
+  if (isMobile || isPointerLocked() || worldRoot?.classList.contains('ww-menu-open')) return;
+  canvas.requestPointerLock?.();
+}
+
+function unlockPointer() {
+  if (isPointerLocked()) document.exitPointerLock?.();
+}
+
 canvas.addEventListener('contextmenu', (event) => event.preventDefault());
 
 canvas.addEventListener('pointerdown', (event) => {
   const isTouch = event.pointerType === 'touch';
-  const isRightMouse = event.pointerType === 'mouse' && event.button === 2;
-  if (!isTouch && !isRightMouse) return;
+  const isMouse = event.pointerType === 'mouse';
+  if (isMouse) {
+    lockPointer();
+    event.preventDefault();
+    return;
+  }
+  if (!isTouch) return;
   cameraRig.dragging = true;
   cameraRig.activePointerId = event.pointerId;
   cameraRig.lastX = event.clientX;
@@ -1379,6 +2037,11 @@ function endCameraDrag(event) {
 canvas.addEventListener('pointerup', endCameraDrag);
 canvas.addEventListener('pointercancel', endCameraDrag);
 
+document.addEventListener('mousemove', (event) => {
+  if (!isPointerLocked()) return;
+  rotateCamera(event.movementX, event.movementY);
+});
+
 function readGamepad() {
   if (!worldState.controllerEnabled) return { x: 0, z: 0, sprint: false };
   const pads = navigator.getGamepads ? navigator.getGamepads() : [];
@@ -1386,7 +2049,7 @@ function readGamepad() {
   if (!pad) return { x: 0, z: 0, sprint: false };
   const deadzone = worldState.controllerDeadzone;
   const axis = (value) => (Math.abs(value) > deadzone ? value : 0);
-  const moveX = axis(pad.axes[0] || 0);
+  const moveX = -axis(pad.axes[0] || 0);
   const moveZ = axis(pad.axes[1] || 0);
   const lookX = axis(pad.axes[2] || 0);
   const lookY = axis(pad.axes[3] || 0);
@@ -1494,7 +2157,6 @@ function activateInteractable() {
 }
 
 function movePlayer(delta) {
-  player.rotation.y = cameraRig.yaw + Math.PI;
   const gamepad = readGamepad();
   const horizontalInput = ((keys.right ? 1 : 0) - (keys.left ? 1 : 0)) + gamepad.x;
   const forwardInput = ((keys.forward ? 1 : 0) - (keys.backward ? 1 : 0)) - gamepad.z;
@@ -1503,13 +2165,16 @@ function movePlayer(delta) {
     0,
     forwardInput
   );
+  const controlYaw = cameraRig.yaw + Math.PI;
+  const shouldRotate = Math.abs(forwardInput) >= Math.abs(horizontalInput) || Math.abs(forwardInput) > 0.05;
+  if (shouldRotate) player.rotation.y = controlYaw;
 
   const moving = input.lengthSq() > 0;
   if (moving) {
     const previousPosition = player.position.clone();
     if (input.lengthSq() > 1) input.normalize();
-    const forward = new THREE.Vector3(Math.sin(player.rotation.y), 0, Math.cos(player.rotation.y));
-    const right = new THREE.Vector3(Math.cos(player.rotation.y), 0, -Math.sin(player.rotation.y));
+    const forward = new THREE.Vector3(Math.sin(controlYaw), 0, Math.cos(controlYaw));
+    const right = new THREE.Vector3(Math.cos(controlYaw), 0, -Math.sin(controlYaw));
     const movement = forward.multiplyScalar(input.z).add(right.multiplyScalar(input.x));
     const speed = worldState.speed * (keys.sprint || gamepad.sprint ? 1.45 : 1);
     player.position.addScaledVector(movement, speed * delta);
@@ -1520,8 +2185,10 @@ function movePlayer(delta) {
     resolveCollisions(previousPosition);
   }
 
-  const walk = moving ? Math.sin(elapsedTime * (keys.sprint || gamepad.sprint ? 16 : 11)) : 0;
-  player.position.y += Math.abs(walk) * 0.045;
+  const movingBackward = forwardInput < -0.001 && Math.abs(horizontalInput) < 0.1;
+  const walkFrequency = keys.sprint || gamepad.sprint ? 16 : 11;
+  const walk = moving ? Math.sin(elapsedTime * walkFrequency) : 0;
+  player.position.y += Math.abs(walk) * (movingBackward ? 0.02 : 0.045);
   player.userData.limbs.forEach((limb, index) => {
     const side = index % 2 === 0 ? 1 : -1;
     limb.rotation.x = walk * side * 0.55;
@@ -1571,9 +2238,7 @@ function updatePickups() {
     pickup.userData.coin.rotation.z += 0.05;
     pickup.position.y = terrainHeight(pickup.position.x, pickup.position.z) + 1.1 + Math.sin(elapsedTime * 2.3 + pickup.position.x) * 0.12;
     if (pickup.position.distanceTo(player.position) < 1.25) {
-      pickup.visible = false;
-      worldState.earnings += 125;
-      if (resourceValue) resourceValue.textContent = `$${worldState.earnings.toLocaleString()}`;
+      claimPickupReward(pickup);
     }
   });
 }
@@ -1607,7 +2272,7 @@ function animate() {
   updatePickups();
   animateWorld(delta);
   updateInteractionPrompt();
-  updateLoginPrompt();
+  updateVoiceIndicator();
   sendPresence();
 
   const currentDistrict = nearestDistrict();
@@ -1617,10 +2282,16 @@ function animate() {
   requestAnimationFrame(animate);
 }
 
-requestAnimationFrame(() => {
+requestAnimationFrame(async () => {
   if (loading) loading.classList.add('is-hidden');
   clearInterval(loadingQuoteTimer);
-  refreshVoiceDevices().catch(() => {});
+  updateTokenHud();
+  loadTokenBalance();
+  await refreshVoiceDevices().catch(() => {});
   connectComms();
+  await enableVoice().catch(() => {});
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen?.().catch(() => {});
+  }
   animate();
 });

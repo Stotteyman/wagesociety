@@ -7,21 +7,22 @@ const http = require('http');
 // Render injects DATABASE_URL as a Render Environment Variable, but the value
 // lives in .env locally. This loader reads .env and fills in any missing vars.
 (function loadDotenv() {
-  const envPath = path.join(__dirname, '.env');
-  if (!fs.existsSync(envPath)) return;
-  const content = fs.readFileSync(envPath, 'utf8');
-  // Split on newlines, then on first '=' to handle values with '=' in them
-  for (const line of content.split('\n')) {
-    const idx = line.indexOf('=');
-    if (idx <= 0) continue;
-    const key = line.slice(0, idx).trim();
-    if (!key || key.startsWith('#')) continue;
-    const val = line.slice(idx + 1);
-    // Only fill in empty or sentinel-"undefined" env vars
-    const cur = process.env[key];
-    if (!cur || cur === 'undefined' || cur === '') process.env[key] = val;
+  for (const file of ['.env', '.env.local']) {
+    const envPath = path.join(__dirname, file);
+    if (!fs.existsSync(envPath)) continue;
+    const content = fs.readFileSync(envPath, 'utf8');
+    // Split on newlines, then on first '=' to handle values with '=' in them
+    for (const line of content.split('\n')) {
+      const idx = line.indexOf('=');
+      if (idx <= 0) continue;
+      const key = line.slice(0, idx).trim();
+      if (!key || key.startsWith('#')) continue;
+      const val = line.slice(idx + 1).trim();
+      const cur = process.env[key];
+      if (!cur || cur === 'undefined' || cur === '') process.env[key] = val;
+    }
+    console.log(`[dotenv] Env loaded from ${file}`);
   }
-  console.log('[dotenv] Env loaded from .env');
 })();
 
 const express = require('express');
@@ -72,14 +73,22 @@ app.use((req, res, next) => {
 const sessionSecret = process.env.SESSION_SECRET || (() => {
   throw new Error('SESSION_SECRET env var is required in production');
 })();
+const isLocalhost = (process.env.NODE_ENV || 'development') !== 'production'
+  || (process.env.APP_URL || '').startsWith('http://localhost');
+const sessionStore = isLocalhost
+  ? new session.MemoryStore()
+  : new PgSession({ pool, createTableIfMissing: true });
+if (isLocalhost) {
+  console.warn('[session] Localhost detected — using in-memory session store. Sessions will not persist across restarts.');
+}
 app.use(session({
-  store: new PgSession({ pool, createTableIfMissing: true }),
+  store: sessionStore,
   secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
   cookie: {
     maxAge: 30 * 24 * 60 * 60 * 1000,
-    secure: true,
+    secure: !isLocalhost,
     httpOnly: true,
     sameSite: 'lax',
   },
@@ -128,7 +137,6 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 app.use('/vendor/three', express.static(path.join(__dirname, 'node_modules', 'three')));
 app.use('/vendor/gsap', express.static(path.join(__dirname, 'node_modules', 'gsap')));
-app.use('/vendor/lil-gui', express.static(path.join(__dirname, 'node_modules', 'lil-gui')));
 app.use('/vendor/simplex-noise', express.static(path.join(__dirname, 'node_modules', 'simplex-noise')));
 
 // ── Health check ──────────────────────────────────────────────────────────────
@@ -141,10 +149,7 @@ app.use('/api/discord/webhook',      require('./routes/api/discord-webhook'));
 // ── Referral code capture (runs on all routes) ─────────────────────────────
 app.use(require('./middleware/referral'));
 
-// ── Auth routes — custom email/password + magic link auth ───────────────────
-app.use('/auth', require('./routes/auth-custom'));
-
-// ── Google OAuth ────────────────────────────────────────────────────────────
+// ── Google OAuth ───────────────────────────────────────────────────────────
 app.use('/auth/google', require('./routes/auth-google'));
 
 // ── Kick OAuth ─────────────────────────────────────────────────────────────
@@ -158,6 +163,9 @@ app.use('/auth/discord-bot', require('./routes/auth-discord'));
 
 // ── Discord OAuth as primary login method (separate from account-linking) ──
 app.use('/auth/discord-login', require('./routes/auth-discord-login'));
+
+// ── Auth routes — custom email/password + magic link auth ───────────────────
+app.use('/auth', require('./routes/auth-custom'));
 
 // ── Password-change enforcement middleware (root admin only) ──────────────────
 const { requirePasswordChange, loadUserPermissions } = require('./lib/middleware');
@@ -244,9 +252,7 @@ function startDiscordRoleManagement() {
 
 // ── Discord bot (event handlers + periodic sync) ─────────────────────────────
 const { startBot: initBot } = require('./lib/start-bot');
-const { initWageWorldLive } = require('./lib/wageworld-live');
 const httpServer = http.createServer(app);
-initWageWorldLive(httpServer);
 
 // ── Start ────────────────────────────────────────────────────────────────────
 httpServer.listen(port, () => {

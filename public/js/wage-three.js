@@ -302,7 +302,7 @@
       } else {
         document.body.style.transition = 'opacity 300ms ease-in-out';
         document.body.style.opacity = '0';
-        setTimeout(function () { window.location.href = '/play'; }, 300);
+        setTimeout(function () { window.location.href = '/'; }, 300);
       }
     }
 

@@ -1,0 +1,94 @@
+{
+  "assets": [
+    {
+      "name": "bed",
+      "file": "assets/wageworld/bed.gltf",
+      "format": "gltf"
+    },
+    {
+      "name": "computer",
+      "file": "assets/wageworld/computer.gltf",
+      "format": "gltf"
+    },
+    {
+      "name": "wardrobe",
+      "file": "assets/wageworld/wardrobe.gltf",
+      "format": "gltf"
+    },
+    {
+      "name": "door",
+      "file": "assets/wageworld/door.gltf",
+      "format": "gltf"
+    },
+    {
+      "name": "house",
+      "file": "assets/wageworld/house.gltf",
+      "format": "gltf"
+    },
+    {
+      "name": "stall",
+      "file": "assets/wageworld/stall.gltf",
+      "format": "gltf"
+    },
+    {
+      "name": "stage",
+      "file": "assets/wageworld/stage.gltf",
+      "format": "gltf"
+    },
+    {
+      "name": "tower",
+      "file": "assets/wageworld/tower.gltf",
+      "format": "gltf"
+    },
+    {
+      "name": "reward-machine",
+      "file": "assets/wageworld/reward-machine.gltf",
+      "format": "gltf"
+    },
+    {
+      "name": "bench",
+      "file": "assets/wageworld/bench.gltf",
+      "format": "gltf"
+    },
+    {
+      "name": "street-lamp",
+      "file": "assets/wageworld/street-lamp.gltf",
+      "format": "gltf"
+    },
+    {
+      "name": "planter",
+      "file": "assets/wageworld/planter.gltf",
+      "format": "gltf"
+    },
+    {
+      "name": "tree",
+      "file": "assets/wageworld/tree.gltf",
+      "format": "gltf"
+    },
+    {
+      "name": "fence",
+      "file": "assets/wageworld/fence.gltf",
+      "format": "gltf"
+    },
+    {
+      "name": "pickup",
+      "file": "assets/wageworld/pickup.gltf",
+      "format": "gltf"
+    },
+    {
+      "name": "guide-npc",
+      "file": "assets/wageworld/guide-npc.gltf",
+      "format": "gltf"
+    },
+    {
+      "name": "cloud",
+      "file": "assets/wageworld/cloud.gltf",
+      "format": "gltf"
+    },
+    {
+      "name": "player-avatar",
+      "file": "assets/wageworld/player-avatar.gltf",
+      "format": "gltf"
+    }
+  ]
+}

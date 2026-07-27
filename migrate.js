@@ -94,8 +94,9 @@ module.exports = { runMigrations };
 
 // ── dotenv fallback (Render doesn't auto-inject DATABASE_URL) ──────────────
 function loadDotenvEnv() {
-  const envPath = path.join(__dirname, '.env');
-  if (!process.env.DATABASE_URL && fs.existsSync(envPath)) {
+  for (const file of ['.env', '.env.local']) {
+    const envPath = path.join(__dirname, file);
+    if (!fs.existsSync(envPath)) continue;
     const content = fs.readFileSync(envPath, 'utf8');
     for (const line of content.split('\n')) {
       const trimmed = line.trim();
@@ -106,7 +107,7 @@ function loadDotenvEnv() {
       const val = trimmed.slice(idx + 1).trim();
       if (!process.env[key]) process.env[key] = val;
     }
-    console.log('[dotenv] Loaded env vars from .env');
+    console.log(`[dotenv] Loaded env vars from ${file}`);
   }
 }
 loadDotenvEnv();

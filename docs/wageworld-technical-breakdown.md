@@ -5,7 +5,7 @@ WageWorld is the browser-based 3D creator world mounted at `/wageworld` and `/pl
 ## Entry Points
 
 - `routes/pages.js`: renders `views/pages/play.ejs` for `/play` and `/wageworld`.
-- `views/pages/play.ejs`: full-screen HTML shell, HUD, district buttons, settings menu, character creator menu, mobile movement controls, and import map.
+- `views/pages/play.ejs`: full-screen HTML shell, settings menu, character creator menu, proximity chat UI, mobile movement controls, and import map.
 - `public/js/wageworld.js`: Three.js scene, map groups, world generation, avatar movement, camera controls, controller support, NPCs, collectibles, settings behavior, and character customization.
 - `server.js`: serves selected local packages from `node_modules` through `/vendor/...`.
 
@@ -34,19 +34,23 @@ WageWorld is a playable first-person prototype built around many connected maps 
 - WASD/arrow keys move relative to the camera/player facing direction:
   - `W`: forward
   - `S`: backward
-  - `A`: strafe left
-  - `D`: strafe right
+  - `A`: strafe right
+  - `D`: strafe left
   - `Shift`: sprint
 - `V`: cycle POV mode.
-- Right mouse drag rotates the camera on desktop.
+- Desktop mouse input uses Pointer Lock after clicking into the canvas.
+- `Left Ctrl` unlocks the mouse so on-screen menus and controls can be clicked.
 - Touch drag rotates the camera on touchscreens.
+- Camera Y is inverted by default.
 - Gamepad support reads:
   - left stick for movement
   - right stick for camera rotation
   - left stick press or primary face button for sprint
 - Mobile users get on-screen directional controls.
-- District buttons travel between the current home map and the Creator Plaza hub prototype districts: Market Row, Live Arena, Guild Tower, and Reward Works.
-- Coins can be collected to increment the rewards HUD.
+- The previous top-left brand/status HUD, bottom district panel, and back link were removed so the screen is focused on the world view.
+- Door and object interactions are the intended navigation pattern between maps.
+- WAGE token pickups credit the same website point/token balance used by point purchases and the point shop when the player is logged in.
+- Guests can collect temporary local demo WAGE tokens while exploring, but logging in is required to bank them to the website ledger.
 - NPCs are guide characters that explain systems instead of random walkers.
 - Players collide with major world objects, furniture, trees, stations, and guide NPCs.
 
@@ -88,7 +92,7 @@ Developer tuning controls from `lil-gui` were removed from the player-facing UI.
 The scene is generated procedurally in `public/js/wageworld.js`:
 
 - `mapGroups.home` / `mapGroups.hub`: separate Three.js groups for currently implemented maps.
-- `switchMap()`: toggles active map visibility, updates player map state, moves the player to the map spawn, and refreshes the HUD.
+- `switchMap()`: toggles active map visibility, updates player map state, moves the player to the map spawn, and refreshes active map state.
 - `makeTerrain()`: creates vertex-colored rolling grass terrain from simplex noise.
 - `makePath()`: creates village paths.
 - `makeRiver()`: creates simple water tiles.
@@ -96,7 +100,9 @@ The scene is generated procedurally in `public/js/wageworld.js`:
 - `makeSpawnHouse()`: builds the initial home map with bedroom, bed, computer room, wardrobe/mirror, entry area, operable front door, and login prompt zone.
 - `makePlayer()`: builds the avatar as procedural meshes at roughly human scale.
 - `makeGuideNpc()`: builds stationary guide NPCs with explanatory labels.
-- `makePickup()`: builds collectible reward coins.
+- `makePickup()`: builds collectible WAGE token pickups with stable ids.
+- `/api/wageworld/rewards/balance`: returns the signed-in user's WAGE token/point balance.
+- `/api/wageworld/rewards/claim`: validates a pickup id, credits the authenticated user's `auth_users.referral_points`, and records a `point_transactions` row.
 - `addCollider()` / `resolveCollisions()`: prevent players from walking through registered objects on the active map.
 - `animate()`: owns the main loop and calls movement, camera, NPC, pickup, world animation, HUD updates, and rendering.
 
@@ -123,12 +129,13 @@ Local checks have used Playwright to verify:
 - the old `.wageworld-gui` tuning panel is not present.
 - WASD movement changes the player position in the intended local axes.
 - right mouse drag changes camera yaw.
-- mobile controls are visible and do not overlap the bottom panel.
+- mobile controls are visible without the removed bottom district panel.
 - character-name typing does not trigger movement.
 - guide NPCs are stationary explanatory objects.
 - the loader says `Loading WageWorld` and rotates short loading quotes.
 - default POV is first person, `V` cycles to third person, and the settings menu exposes POV selection.
 - the larger spawn house starts as the active map and the front door transitions into the Creator Plaza hub.
+- authenticated WAGE token pickup claims use `/api/wageworld/rewards/claim`.
 
 ## Known Limitations
 
@@ -136,6 +143,7 @@ Local checks have used Playwright to verify:
 - Collision is prototype-level radius collision, not yet full mesh/navmesh collision.
 - Map travel now has separate home and hub scene groups, but future maps still need explicit loading, unloading, and persistence contracts.
 - Proximity chat and WebRTC voice signaling exist, but there is no durable multiplayer world-state persistence yet.
+- WAGE token rewards currently bridge to the existing website point ledger. A dedicated on-chain cryptocurrency wallet contract is not implemented in this repo yet.
 - Gamepad support uses the browser Gamepad API and depends on browser/controller mapping.
 
 ## Suggested Next Steps
