@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { apiFetch } from '../lib/api';
+import { tierRank, planPrice } from '../lib/plans';
+import type { Plan } from '../lib/plans';
 
-type Plan = { slug: string; name: string; display_price: string | null; price_cents: number; annual_price_cents: number | null };
-
+/**
+ * Plan switcher for the settings page.
+ *
+ * Direction matters: someone already on the top plan is not "upgrading" to a
+ * cheaper one, so the action is labelled from where they actually stand.
+ */
 export default function Membership({ currentTier }: { currentTier: string }) {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [cycle, setCycle] = useState<'monthly' | 'annual'>('monthly');
@@ -15,7 +21,9 @@ export default function Membership({ currentTier }: { currentTier: string }) {
       .then(({ data }) => setPlans(((data as Plan[]) ?? []).filter((p) => p.price_cents > 0)));
   }, []);
 
-  async function upgrade(planSlug: string) {
+  const currentRank = tierRank(currentTier);
+
+  async function choose(planSlug: string) {
     setBusySlug(planSlug); setError(null);
     try {
       const { redirectUrl } = await apiFetch<{ redirectUrl: string }>('checkout', {
@@ -31,35 +39,71 @@ export default function Membership({ currentTier }: { currentTier: string }) {
 
   return (
     <div className="wage-card p-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-lg font-bold">Membership</h2>
-        <div className="flex gap-1 rounded-lg border border-wage-border p-1 text-xs">
-          <button className={`rounded px-2 py-1 ${cycle === 'monthly' ? 'bg-white/10' : ''}`} onClick={() => setCycle('monthly')}>Monthly</button>
-          <button className={`rounded px-2 py-1 ${cycle === 'annual' ? 'bg-white/10' : ''}`} onClick={() => setCycle('annual')}>Annual</button>
+        <div className="flex gap-1 border border-wage-line p-1 text-xs">
+          {(['monthly', 'annual'] as const).map((c) => (
+            <button
+              key={c}
+              onClick={() => setCycle(c)}
+              className={`px-2.5 py-1 font-mono uppercase tracking-[0.1em] transition-colors ${
+                cycle === c ? 'bg-wage-amber text-wage-ink' : 'text-wage-muted hover:text-wage-paper'
+              }`}
+            >
+              {c === 'monthly' ? 'Monthly' : 'Annual'}
+            </button>
+          ))}
         </div>
       </div>
-      <p className="mt-1 text-sm text-neutral-400">Current plan: <b>{currentTier.toUpperCase()}</b></p>
+
+      <p className="mt-1 text-sm text-wage-muted">
+        Current plan: <b className="text-wage-paper">{currentTier.toUpperCase()}</b>
+        {cycle === 'annual' && <span className="ml-2 text-wage-amber-2">Annual saves two months</span>}
+      </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         {plans.map((p) => {
+          const rank = tierRank(p.slug);
           const isCurrent = p.slug === currentTier;
-          const cents = cycle === 'annual' ? p.annual_price_cents ?? p.price_cents * 12 : p.price_cents;
+          const isDowngrade = rank >= 0 && currentRank >= 0 && rank < currentRank;
+
           return (
-            <div key={p.slug} className="rounded-xl border border-wage-border p-4">
-              <div className="font-semibold">{p.name}</div>
-              <div className="text-sm text-neutral-400">${(cents / 100).toFixed(0)}/{cycle === 'annual' ? 'yr' : 'mo'}</div>
+            <div
+              key={p.slug}
+              className={`wage-card wage-card-sm p-4 ${isCurrent ? '!border-wage-amber' : ''}`}
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-semibold">{p.name}</span>
+                {isCurrent && <span className="wage-chip border-wage-amber/60 text-wage-amber-2">current</span>}
+              </div>
+              <div className="wage-num mt-1 text-[15px] text-wage-amber-2">
+                {planPrice(p, cycle)}
+                <span className="text-wage-muted-2">/{cycle === 'annual' ? 'yr' : 'mo'}</span>
+              </div>
+
               <button
-                className="wage-btn wage-btn-primary mt-3 w-full !py-1.5 text-sm"
+                className={`mt-3 w-full !py-1.5 text-sm wage-btn ${
+                  isDowngrade ? 'wage-btn-ghost' : 'wage-btn-primary'
+                }`}
                 disabled={isCurrent || busySlug === p.slug}
-                onClick={() => upgrade(p.slug)}
+                onClick={() => choose(p.slug)}
               >
-                {isCurrent ? 'Current plan' : busySlug === p.slug ? 'Redirecting...' : `Upgrade to ${p.name}`}
+                {isCurrent
+                  ? 'Current plan'
+                  : busySlug === p.slug
+                    ? 'Redirecting...'
+                    : `${isDowngrade ? 'Downgrade' : 'Upgrade'} to ${p.name}`}
               </button>
             </div>
           );
         })}
       </div>
-      {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
+
+      {error && (
+        <p role="status" className="mt-3 border border-wage-error/40 bg-wage-error/[0.08] px-4 py-2.5 text-sm text-wage-error">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

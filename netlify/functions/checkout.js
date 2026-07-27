@@ -1,14 +1,43 @@
-// POST /api/checkout { planSlug, cycle } — membership checkout redirect.
-// Validates the plan against membership_plans (source of truth), records a
-// pending session so the webhook can activate the membership, and returns
-// the Stripe Payment Link URL (with client_reference_id) for the client to redirect to.
+// POST /api/checkout { planSlug, cycle } — membership checkout.
+//
+// This creates a Stripe Checkout Session on W.A.G.E.'s OWN account.
+//
+// It used to redirect to static buy.stripe.com Payment Links hardcoded in
+// _stripe-config.js. Those links are owned by acct_1TaNvdRSi3U4FW38 — a
+// Polsia-era account this project holds no key for (our key 403s on it) — and
+// they render that account's logo, which is where the stray branding came from.
+// The branding was the visible symptom; the real problem was that every
+// membership payment settled into someone else's account, and our webhook
+// (registered on our own account) could never see the event, so no tier and no
+// Discord role would ever be granted.
+//
+// Prices come from membership_plans, never from the request body.
 const { getAuthContext, getServiceClient, isConfigured, json } = require('./_auth');
-const { SUBSCRIPTION_LINKS_MONTHLY, SUBSCRIPTION_LINKS_ANNUAL } = require('./_stripe-config');
+const { APP_URL } = require('./_stripe-config');
+
+const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
+
+/** Annual is billed at ten months, i.e. two months free. */
+const ANNUAL_MULTIPLIER = 10;
+const TRIAL_DAYS = 7;
+
+const stripe = async (path, params) => {
+  const res = await fetch(`https://api.stripe.com/v1/${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${STRIPE_SECRET}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams(params),
+  });
+  return { ok: res.ok, body: await res.json().catch(() => ({})) };
+};
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return json(204, {});
   if (event.httpMethod !== 'POST') return json(405, { error: 'Method not allowed' });
   if (!isConfigured()) return json(500, { error: 'Supabase not configured' });
+  if (!STRIPE_SECRET) return json(500, { error: 'not_configured', detail: 'STRIPE_SECRET_KEY is missing.' });
 
   const { user } = await getAuthContext(event);
   if (!user || !user.email) return json(401, { error: 'Must be logged in to upgrade' });
@@ -23,7 +52,7 @@ exports.handler = async (event) => {
 
   const { data: plan, error: planErr } = await svc
     .from('membership_plans')
-    .select('slug, price_cents, is_active')
+    .select('slug, name, price_cents, is_active')
     .eq('slug', planSlug)
     .maybeSingle();
   if (planErr) return json(500, { error: planErr.message });
@@ -31,19 +60,50 @@ exports.handler = async (event) => {
     return json(400, { error: `Invalid plan slug: ${planSlug}` });
   }
 
-  const links = cycle === 'annual' ? SUBSCRIPTION_LINKS_ANNUAL : SUBSCRIPTION_LINKS_MONTHLY;
-  const baseUrl = links[planSlug];
-  if (!baseUrl) return json(400, { error: `No payment link for ${planSlug} ${cycle}` });
+  const annual = cycle === 'annual';
+  const amount = annual ? plan.price_cents * ANNUAL_MULTIPLIER : plan.price_cents;
+  const email = user.email.toLowerCase();
+
+  const session = await stripe('checkout/sessions', {
+    mode: 'subscription',
+    customer_email: email,
+    // client_reference_id is what the webhook falls back to when matching a
+    // payment to an account, so it has to be the email, not the user id.
+    client_reference_id: email,
+    'line_items[0][price_data][currency]': 'usd',
+    'line_items[0][price_data][unit_amount]': String(amount),
+    'line_items[0][price_data][recurring][interval]': annual ? 'year' : 'month',
+    'line_items[0][price_data][product_data][name]': `W.A.G.E. Society — ${plan.name}`,
+    'line_items[0][price_data][product_data][description]':
+      `${plan.name} membership, billed ${annual ? 'yearly' : 'monthly'}. Cancel anytime.`,
+    'line_items[0][quantity]': '1',
+    'subscription_data[trial_period_days]': String(TRIAL_DAYS),
+    // Repeated onto the subscription so later customer.subscription.* events can
+    // resolve the plan without guessing from the amount.
+    'subscription_data[metadata][plan_slug]': plan.slug,
+    'subscription_data[metadata][email]': email,
+    'subscription_data[metadata][billing_cycle]': annual ? 'annual' : 'monthly',
+    'metadata[type]': 'membership',
+    'metadata[plan_slug]': plan.slug,
+    'metadata[billing_cycle]': annual ? 'annual' : 'monthly',
+    'metadata[client_reference_id]': email,
+    allow_promotion_codes: 'true',
+    success_url: `${APP_URL}/dashboard?upgraded=${encodeURIComponent(plan.slug)}`,
+    cancel_url: `${APP_URL}/settings?upgrade=cancelled`,
+  });
+
+  if (!session.ok || !session.body?.url) {
+    return json(400, { error: 'stripe_failed', detail: session.body?.error?.message });
+  }
 
   const { error: insertErr } = await svc.from('checkout_sessions').insert({
     user_id: user.id,
-    user_email: user.email.toLowerCase(),
+    user_email: email,
     plan_slug: planSlug,
     billing_cycle: cycle,
-    stripe_link_url: baseUrl,
+    stripe_link_url: session.body.url,
   });
   if (insertErr) console.error('[checkout] Failed to record pending session:', insertErr.message);
 
-  const redirectUrl = `${baseUrl}?client_reference_id=${encodeURIComponent(user.email)}`;
-  return json(200, { redirectUrl });
+  return json(200, { redirectUrl: session.body.url });
 };

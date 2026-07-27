@@ -164,6 +164,19 @@ exports.handler = async (event) => {
         return json(200, { received: true });
       }
 
+      // A la carte add-on. Also before the membership branch, and deliberately
+      // grants no tier: buying an add-on is not buying a membership.
+      if (meta.kind === 'addon_purchase') {
+        await svc.from('addon_purchases')
+          .update({
+            status: 'paid',
+            stripe_subscription_id: obj.subscription || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_session_id', stripeSessionId);
+        return json(200, { received: true });
+      }
+
       const isMembership = obj.mode === 'subscription' || obj.mode === 'payment' || !!obj.subscription || meta.type === 'subscription' || meta.type === 'membership';
       if (isMembership) {
         let email = meta.client_reference_id && meta.client_reference_id.includes('@') ? meta.client_reference_id : null;
