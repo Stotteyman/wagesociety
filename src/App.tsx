@@ -18,6 +18,7 @@ import Admin from './pages/Admin';
 import Referrals from './pages/Referrals';
 import PointShop from './pages/PointShop';
 import Verify from './pages/Verify';
+import WhyTenPercent from './pages/WhyTenPercent';
 import Watch from './pages/Watch';
 import NotFound from './pages/NotFound';
 
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/blog" element={<Blog />} />
         <Route path="/blog/:slug" element={<BlogPost />} />
         <Route path="/faq" element={<Faq />} />
+        <Route path="/why-10-percent" element={<WhyTenPercent />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/streams" element={<Streams />} />
         <Route path="/merch" element={<Merch />} />

@@ -101,7 +101,14 @@ export default function Layout() {
           <span className="whitespace-nowrap">Network <b className="text-wage-paper">{stats.creators ?? 0}</b> creators</span>
           <span className="whitespace-nowrap">Online <b className="text-wage-paper">{stats.online_now ?? 0}</b></span>
           <span className="ml-auto hidden whitespace-nowrap sm:inline">
-            We take <b className="text-wage-paper">10%</b>
+            We take{' '}
+            <Link
+              to="/why-10-percent"
+              title="Why we take 10%"
+              className="font-bold text-wage-paper underline decoration-wage-amber decoration-2 underline-offset-4 transition-colors hover:text-wage-amber-2"
+            >
+              10%
+            </Link>
           </span>
         </div>
       </div>
