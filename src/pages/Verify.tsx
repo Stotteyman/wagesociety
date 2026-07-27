@@ -132,7 +132,7 @@ export default function Verify() {
           />
           <h1 className="wage-cut mt-5 text-[clamp(30px,5vw,46px)]">Get set up</h1>
           <p className="mx-auto mt-3 max-w-[46ch] text-[16px] text-wage-muted">
-            Four steps. Takes about two minutes, and everything except the last one is free.
+            Four steps, about two minutes, all of it free.
           </p>
           <p className="wage-num mt-4 text-[13px] text-wage-muted-2">
             {doneCount} of {steps.length} done
