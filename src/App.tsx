@@ -18,6 +18,7 @@ import Admin from './pages/Admin';
 import Referrals from './pages/Referrals';
 import PointShop from './pages/PointShop';
 import KickCallback from './pages/KickCallback';
+import Verify from './pages/Verify';
 import NotFound from './pages/NotFound';
 
 export default function App() {
@@ -34,6 +35,8 @@ export default function App() {
         <Route path="/streams" element={<Streams />} />
         <Route path="/merch" element={<Merch />} />
         <Route path="/login" element={<Login />} />
+        {/* Public on purpose: /verify is the front door, signed in or not. */}
+        <Route path="/verify" element={<Verify />} />
         <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
         <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
         <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />

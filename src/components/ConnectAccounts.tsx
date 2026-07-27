@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { startKickLink, kickConfigured } from '../lib/kick';
+import { linkDiscord } from '../lib/discord';
 import YouTubeChannelPicker from './YouTubeChannelPicker';
 
 /**
@@ -32,15 +33,22 @@ export default function ConnectAccounts({
 
   async function connect(provider: 'discord' | 'google') {
     setBusy(provider); setMsg(null);
+
+    // Discord goes through its own helper: it needs guilds.join so we can add
+    // the member to the official server on their behalf.
+    if (provider === 'discord') {
+      const err = await linkDiscord();
+      if (err) { setMsg(err); setBusy(null); }
+      return;
+    }
+
     const { error } = await supabase.auth.linkIdentity({
       provider,
+      // Google is also how we read which YouTube channels you own, so the
+      // YouTube scope has to be asked for at link time.
       options: {
         redirectTo: `${window.location.origin}/settings?linked=${provider}`,
-        // Google is also how we read which YouTube channels you own, so the
-        // YouTube scope has to be asked for at link time.
-        ...(provider === 'google'
-          ? { scopes: 'https://www.googleapis.com/auth/youtube.readonly' }
-          : {}),
+        scopes: 'https://www.googleapis.com/auth/youtube.readonly',
       },
     });
     if (error) { setMsg(error.message); setBusy(null); }
