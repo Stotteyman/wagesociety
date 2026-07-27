@@ -17,7 +17,6 @@ import Settings from './pages/Settings';
 import Admin from './pages/Admin';
 import Referrals from './pages/Referrals';
 import PointShop from './pages/PointShop';
-import KickCallback from './pages/KickCallback';
 import Verify from './pages/Verify';
 import Watch from './pages/Watch';
 import NotFound from './pages/NotFound';
@@ -45,7 +44,6 @@ export default function App() {
         <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
         <Route path="/referrals" element={<RequireAuth><Referrals /></RequireAuth>} />
         <Route path="/shop" element={<PointShop />} />
-        <Route path="/kick/callback" element={<RequireAuth><KickCallback /></RequireAuth>} />
         <Route path="/admin" element={<RequireAuth><Admin /></RequireAuth>} />
         <Route path="*" element={<NotFound />} />
       </Route>

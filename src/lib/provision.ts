@@ -20,6 +20,10 @@ export async function runProvisioning(): Promise<Provision | null> {
     try { await supabase.rpc('ws_apply_referral', { p_code: ref }); } catch { /* ignore */ }
     localStorage.removeItem('wage_ref');
   }
+  // Kick arrives as a Supabase identity now, so it needs the same sync into the
+  // app tables that Discord gets. It is a no-op when Kick was never linked.
+  try { await supabase.rpc('ws_link_kick'); } catch { /* ignore */ }
+
   const { data, error } = await supabase.rpc('ws_link_discord');
   if (error) return null;
   const p = data as Provision;

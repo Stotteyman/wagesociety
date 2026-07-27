@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { startKickLink, kickConfigured } from '../lib/kick';
+import { linkKick, isKickIdentity } from '../lib/kick';
 import { linkDiscord } from '../lib/discord';
 import YouTubeChannelPicker from './YouTubeChannelPicker';
 
@@ -31,13 +31,20 @@ export default function ConnectAccounts({
   }
   useEffect(() => { load(); }, []);
 
-  async function connect(provider: 'discord' | 'google') {
+  async function connect(provider: 'discord' | 'google' | 'kick') {
     setBusy(provider); setMsg(null);
 
     // Discord goes through its own helper: it needs guilds.join so we can add
     // the member to the official server on their behalf.
     if (provider === 'discord') {
       const err = await linkDiscord();
+      if (err) { setMsg(err); setBusy(null); }
+      return;
+    }
+
+    // Kick is a custom Supabase provider, so it carries no extra scopes.
+    if (provider === 'kick') {
+      const err = await linkKick();
       if (err) { setMsg(err); setBusy(null); }
       return;
     }
@@ -85,19 +92,13 @@ export default function ConnectAccounts({
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-4 border-t border-wage-line pt-3">
-          <div>
-            <div className="font-semibold">Kick</div>
-            <div className="text-xs text-wage-muted-2">Feature your Kick channel</div>
-          </div>
-          {kickConfigured() ? (
-            <button className="wage-btn wage-btn-primary !px-4 !py-1.5 text-sm" onClick={() => startKickLink()}>
-              Connect
-            </button>
-          ) : (
-            <span className="text-xs text-wage-muted-2">Not configured</span>
-          )}
-        </div>
+        <Row
+          label="Kick"
+          note="Feature your Kick channel"
+          linked={linked.some(isKickIdentity)}
+          busy={busy === 'kick'}
+          onConnect={() => connect('kick')}
+        />
 
         <div className="flex items-center justify-between gap-4 border-t border-wage-line pt-3 opacity-60">
           <div>
