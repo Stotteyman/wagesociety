@@ -141,6 +141,29 @@ exports.handler = async (event) => {
         return json(200, { received: true });
       }
 
+      // Creator video sales. These must be handled BEFORE the membership branch
+      // below, which otherwise claims every payment/subscription session and
+      // would try to grant a WAGE tier for someone buying a creator's video.
+      if (meta.kind === 'video_purchase') {
+        await svc.from('video_purchases')
+          .update({ status: 'paid' })
+          .eq('stripe_session_id', stripeSessionId);
+        return json(200, { received: true });
+      }
+
+      if (meta.kind === 'creator_subscription') {
+        if (meta.creator_id && meta.subscriber_id) {
+          await svc.from('creator_subscriptions')
+            .update({
+              status: 'active',
+              stripe_subscription_id: obj.subscription || null,
+            })
+            .eq('creator_id', meta.creator_id)
+            .eq('subscriber_id', meta.subscriber_id);
+        }
+        return json(200, { received: true });
+      }
+
       const isMembership = obj.mode === 'subscription' || obj.mode === 'payment' || !!obj.subscription || meta.type === 'subscription' || meta.type === 'membership';
       if (isMembership) {
         let email = meta.client_reference_id && meta.client_reference_id.includes('@') ? meta.client_reference_id : null;
@@ -175,6 +198,26 @@ exports.handler = async (event) => {
 
     if (['customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted'].includes(stripeEvent.type)) {
       const sub = obj;
+
+      // A fan's subscription to a creator, not a WAGE membership. Claim it first
+      // so the membership logic below never mistakes it for a tier purchase.
+      const { data: creatorSub } = await svc
+        .from('creator_subscriptions')
+        .select('id')
+        .eq('stripe_subscription_id', sub.id)
+        .maybeSingle();
+      if (creatorSub) {
+        const ended = stripeEvent.type === 'customer.subscription.deleted'
+          || ['canceled', 'unpaid', 'incomplete_expired'].includes(sub.status);
+        await svc.from('creator_subscriptions').update({
+          status: ended ? 'canceled' : 'active',
+          current_period_end: sub.current_period_end
+            ? new Date(sub.current_period_end * 1000).toISOString()
+            : null,
+        }).eq('id', creatorSub.id);
+        return json(200, { received: true });
+      }
+
       const priceId = sub.items?.data?.[0]?.price?.id;
       const billingCycle = inferBillingCycle(priceId || '');
       const planSlug = sub.metadata?.plan_slug || inferTierFromPriceId(priceId) || 'creator';

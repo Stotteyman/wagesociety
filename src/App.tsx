@@ -19,6 +19,7 @@ import Referrals from './pages/Referrals';
 import PointShop from './pages/PointShop';
 import KickCallback from './pages/KickCallback';
 import Verify from './pages/Verify';
+import Watch from './pages/Watch';
 import NotFound from './pages/NotFound';
 
 export default function App() {
@@ -37,6 +38,8 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         {/* Public on purpose: /verify is the front door, signed in or not. */}
         <Route path="/verify" element={<Verify />} />
+        {/* Public page, gated player — metadata is open, playback is entitlement-checked. */}
+        <Route path="/watch/:id" element={<Watch />} />
         <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
         <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
         <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />

@@ -7,6 +7,7 @@ import { runProvisioning } from '../lib/provision';
 import PageHeader from '../components/ui/PageHeader';
 import AvatarUpload from '../components/ui/AvatarUpload';
 import SocialLinksEditor from '../components/SocialLinksEditor';
+import VideoStudio from '../components/VideoStudio';
 
 type ProfileRow = {
   display_name?: string; bio?: string; avatar_url?: string;
@@ -94,6 +95,7 @@ export default function Settings() {
         <ConnectAccounts primaryPlatform={platform} onPrimaryPlatformChange={setPlatform} />
       </div>
 
+      <div className="mt-5"><VideoStudio /></div>
       <div className="mt-5"><SocialLinksEditor /></div>
       <div className="mt-5"><Membership currentTier={tier} /></div>
 

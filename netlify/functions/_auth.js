@@ -25,21 +25,32 @@ function getServiceClient() {
   });
 }
 
-// Resolve the caller from the Bearer token → { user, role } or { user: null }.
+// Client acting AS the signed-in user, so RLS and auth.uid() apply. Use this
+// whenever a decision must not be fooled by what the client claims — entitlement
+// checks in particular, which the service-role client would happily bypass.
+function getUserClient(token) {
+  return createClient(SUPABASE_URL, ANON_KEY || SERVICE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    db: { schema: SCHEMA },
+  });
+}
+
+// Resolve the caller from the Bearer token → { user, role, token } or { user: null }.
 async function getAuthContext(event) {
   const authz = event.headers.authorization || event.headers.Authorization || '';
   const token = authz.replace(/^Bearer\s+/i, '').trim();
-  if (!token) return { user: null, role: 'guest' };
+  if (!token) return { user: null, role: 'guest', token: null };
 
   const client = createClient(SUPABASE_URL, ANON_KEY || SERVICE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data, error } = await client.auth.getUser(token);
-  if (error || !data?.user) return { user: null, role: 'guest' };
+  if (error || !data?.user) return { user: null, role: 'guest', token: null };
 
   const user = data.user;
   const email = (user.email || '').toLowerCase();
-  if (SUPERADMIN_EMAILS.has(email)) return { user, role: 'superadmin' };
+  if (SUPERADMIN_EMAILS.has(email)) return { user, role: 'superadmin', token };
 
   // Highest role from wagesociety.user_roles → roles
   let role = 'member';
@@ -56,14 +67,14 @@ async function getAuthContext(event) {
         .sort((a, b) => (b.priority || 0) - (a.priority || 0))[0]?.name || role;
     }
   } catch (_) { /* default member */ }
-  return { user, role };
+  return { user, role, token };
 }
 
 function hasRole(current, required) {
   return (ROLE_LADDER[current] || 0) >= (ROLE_LADDER[required] || 0);
 }
 
-function json(statusCode, body) {
+function json(statusCode, body, extraHeaders = {}) {
   return {
     statusCode,
     headers: {
@@ -71,9 +82,13 @@ function json(statusCode, body) {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      ...extraHeaders,
     },
     body: JSON.stringify(body),
   };
 }
 
-module.exports = { SCHEMA, isConfigured, getServiceClient, getAuthContext, hasRole, json, SUPERADMIN_EMAILS };
+module.exports = {
+  SCHEMA, isConfigured, getServiceClient, getUserClient,
+  getAuthContext, hasRole, json, SUPERADMIN_EMAILS,
+};

@@ -28,7 +28,7 @@ const features: { icon: IconName; title: string; body: string }[] = [
   {
     icon: 'earn',
     title: 'Monetize everything',
-    body: 'Memberships, merch, tips, paid streams — every revenue channel in one dashboard, at 0% platform cut.',
+    body: 'Memberships, merch, tips, paid video — every revenue channel in one dashboard. We take 10%, you keep the rest.',
   },
   {
     icon: 'stream',
@@ -83,7 +83,7 @@ export default function Home() {
             </h1>
             <p className="mt-6 max-w-[52ch] text-[19px] leading-relaxed text-[#C9C3D2]">
               Your profile, your streams, your memberships, your merch — one place you actually own.
-              No 30% cut. No algorithm deciding who gets fed.
+              We take 10%, not 45%. No algorithm deciding who gets fed.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link to="/login" className="wage-btn wage-btn-primary">Claim your handle — free</Link>
