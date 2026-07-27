@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { apiFetch } from '../lib/api';
 import { useSession } from '../hooks/useSession';
 import PageHeader from '../components/ui/PageHeader';
+import ReturnNotice from '../components/ui/ReturnNotice';
 import { price, planPrice } from '../lib/plans';
 import type { Plan, Addon } from '../lib/plans';
 
@@ -84,8 +85,33 @@ export default function Plans() {
         lede="The site is free, and it stays free. A subscription adds tools, classes, workshops and people you can call. Add-ons can be bought on their own — no subscription required."
       />
 
+      <div className="mt-8">
+        <ReturnNotice
+          params={['ordered', 'order']}
+          resolve={(p) => {
+            const ordered = p.get('ordered');
+            if (ordered) {
+              const name = addons.find((a) => a.slug === ordered)?.name || 'Your add-on';
+              return {
+                tone: 'ok',
+                title: `${name} ordered`,
+                body: 'Payment received. We will be in touch by email to get started.',
+              };
+            }
+            if (p.get('order') === 'cancelled') {
+              return {
+                tone: 'info',
+                title: 'Order cancelled',
+                body: 'You were not charged. Nothing has been ordered.',
+              };
+            }
+            return null;
+          }}
+        />
+      </div>
+
       {error && (
-        <p role="status" className="mt-8 border border-wage-error/40 bg-wage-error/[0.08] px-4 py-3 text-sm text-wage-error">
+        <p role="status" className="border border-wage-error/40 bg-wage-error/[0.08] px-4 py-3 text-sm text-wage-error">
           {error}
         </p>
       )}

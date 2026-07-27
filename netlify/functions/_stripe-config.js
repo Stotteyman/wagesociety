@@ -12,6 +12,27 @@
 // reintroduce a static payment link unless it was created on acct_1TMaxXCrLaBewrts.
 const APP_URL = process.env.APP_URL || 'https://wagesociety.com';
 
+const isLocal = (u) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test((u || '').replace(/\/$/, ''));
+
+/**
+ * Where Stripe should send the buyer back to.
+ *
+ * APP_URL is stale in local envs (it still says :3000, the old Express port),
+ * which sent everyone to a dead port after checkout. In development only, the
+ * request's own origin wins, so whatever port the dev server is on is correct.
+ *
+ * The request origin is honoured ONLY when it is localhost AND APP_URL is itself
+ * a localhost URL. Trusting an arbitrary Origin header in production would let
+ * someone hand Stripe a return address pointing at a site they control.
+ */
+function returnBase(event) {
+  if (!isLocal(APP_URL)) return APP_URL.replace(/\/$/, '');
+  const headers = (event && event.headers) || {};
+  const origin = headers.origin || headers.Origin;
+  if (origin && isLocal(origin)) return origin.replace(/\/$/, '');
+  return APP_URL.replace(/\/$/, '');
+}
+
 function inferBillingCycle(stripePriceId) {
   if (!stripePriceId) return 'monthly';
   const id = stripePriceId.toLowerCase();
@@ -47,6 +68,7 @@ function inferTierFromPriceId(priceId) {
 
 module.exports = {
   APP_URL,
+  returnBase,
   inferBillingCycle,
   inferTierFromAmount,
   inferTierFromPriceId,

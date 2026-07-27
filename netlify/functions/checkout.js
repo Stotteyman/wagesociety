@@ -13,7 +13,7 @@
 //
 // Prices come from membership_plans, never from the request body.
 const { getAuthContext, getServiceClient, isConfigured, json } = require('./_auth');
-const { APP_URL } = require('./_stripe-config');
+const { returnBase } = require('./_stripe-config');
 
 const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
 
@@ -88,8 +88,8 @@ exports.handler = async (event) => {
     'metadata[billing_cycle]': annual ? 'annual' : 'monthly',
     'metadata[client_reference_id]': email,
     allow_promotion_codes: 'true',
-    success_url: `${APP_URL}/dashboard?upgraded=${encodeURIComponent(plan.slug)}`,
-    cancel_url: `${APP_URL}/settings?upgrade=cancelled`,
+    success_url: `${returnBase(event)}/dashboard?upgraded=${encodeURIComponent(plan.slug)}`,
+    cancel_url: `${returnBase(event)}/settings?upgrade=cancelled`,
   });
 
   if (!session.ok || !session.body?.url) {

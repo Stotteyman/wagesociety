@@ -5,6 +5,7 @@ import ConnectAccounts from '../components/ConnectAccounts';
 import Membership from '../components/Membership';
 import { runProvisioning } from '../lib/provision';
 import PageHeader from '../components/ui/PageHeader';
+import ReturnNotice from '../components/ui/ReturnNotice';
 import AvatarUpload from '../components/ui/AvatarUpload';
 import SocialLinksEditor from '../components/SocialLinksEditor';
 import VideoStudio from '../components/VideoStudio';
@@ -53,6 +54,36 @@ export default function Settings() {
   return (
     <section className="mx-auto max-w-2xl px-5 py-14">
       <PageHeader eyebrow="Account" title="Settings" lede={session?.user.email} />
+
+      <div className="mt-8">
+        <ReturnNotice
+          params={['upgrade', 'connect']}
+          resolve={(p) => {
+            if (p.get('upgrade') === 'cancelled') {
+              return {
+                tone: 'info',
+                title: 'Checkout cancelled',
+                body: 'You were not charged and your plan has not changed. Pick a plan below whenever you are ready.',
+              };
+            }
+            if (p.get('connect') === 'done') {
+              return {
+                tone: 'ok',
+                title: 'Payout setup finished',
+                body: 'Stripe has what it needs. It can take a few minutes before you can accept payments.',
+              };
+            }
+            if (p.get('connect') === 'retry') {
+              return {
+                tone: 'error',
+                title: 'Payout setup did not finish',
+                body: 'Stripe still needs some details before you can be paid. Start it again from below.',
+              };
+            }
+            return null;
+          }}
+        />
+      </div>
 
       <form onSubmit={save} className="wage-card mt-8 grid gap-5 p-6">
         <div className="text-[16px] font-bold">Public profile</div>

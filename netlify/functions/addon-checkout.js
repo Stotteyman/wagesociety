@@ -7,7 +7,7 @@
 // The session is created on W.A.G.E.'s own Stripe account, and the price is read
 // from the database so a client cannot name its own.
 const { getAuthContext, getServiceClient, isConfigured, json } = require('./_auth');
-const { APP_URL } = require('./_stripe-config');
+const { returnBase } = require('./_stripe-config');
 
 const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
 
@@ -61,8 +61,8 @@ exports.handler = async (event) => {
     'metadata[addon_slug]': addon.slug,
     'metadata[buyer_id]': user.id,
     allow_promotion_codes: 'true',
-    success_url: `${APP_URL}/plans?ordered=${encodeURIComponent(addon.slug)}`,
-    cancel_url: `${APP_URL}/plans`,
+    success_url: `${returnBase(event)}/plans?ordered=${encodeURIComponent(addon.slug)}`,
+    cancel_url: `${returnBase(event)}/plans?order=cancelled`,
   };
 
   if (recurring) {

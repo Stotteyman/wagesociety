@@ -5,7 +5,7 @@
 // Prices are read from the database, never from the request body — a client that
 // could name its own price would be able to buy a $50 video for a penny.
 const { getAuthContext, getServiceClient, isConfigured, json } = require('./_auth');
-const { APP_URL } = require('./_stripe-config');
+const { returnBase } = require('./_stripe-config');
 const { PLATFORM_FEE_PERCENT, platformFeeCents } = require('./_platform');
 
 const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
@@ -64,8 +64,8 @@ exports.handler = async (event) => {
       'metadata[kind]': 'creator_subscription',
       'metadata[creator_id]': creator.id,
       'metadata[subscriber_id]': user.id,
-      success_url: `${APP_URL}/creators/${creator.username}?subscribed=1`,
-      cancel_url: `${APP_URL}/creators/${creator.username}`,
+      success_url: `${returnBase(event)}/creators/${creator.username}?subscribed=1`,
+      cancel_url: `${returnBase(event)}/creators/${creator.username}`,
     });
     if (!session.ok) return json(400, { error: 'stripe_failed', detail: session.body?.error?.message });
 
@@ -110,8 +110,8 @@ exports.handler = async (event) => {
     'metadata[kind]': 'video_purchase',
     'metadata[video_id]': video.id,
     'metadata[buyer_id]': user.id,
-    success_url: `${APP_URL}/watch/${video.id}?purchased=1`,
-    cancel_url: `${APP_URL}/watch/${video.id}`,
+    success_url: `${returnBase(event)}/watch/${video.id}?purchased=1`,
+    cancel_url: `${returnBase(event)}/watch/${video.id}`,
   });
   if (!session.ok) return json(400, { error: 'stripe_failed', detail: session.body?.error?.message });
 

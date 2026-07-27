@@ -6,6 +6,7 @@ import { runProvisioning, priceFor, type Provision } from '../lib/provision';
 import StatTile from '../components/ui/StatTile';
 import TierChip from '../components/ui/TierChip';
 import { referralUrl } from '../lib/site';
+import ReturnNotice from '../components/ui/ReturnNotice';
 
 type Profile = {
   username: string | null; display_name: string | null; tier: string; role: string;
@@ -52,6 +53,19 @@ export default function Dashboard() {
 
   return (
     <section className="mx-auto max-w-5xl px-5 py-14">
+      <ReturnNotice
+        params={['upgraded']}
+        resolve={(q) => {
+          const slug = q.get('upgraded');
+          if (!slug) return null;
+          return {
+            tone: 'ok',
+            title: `You are on ${slug.charAt(0).toUpperCase()}${slug.slice(1)}`,
+            body: 'Your trial has started. Discord roles sync within a minute or so of the payment clearing.',
+          };
+        }}
+      />
+
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
           <span className="wage-eyebrow wage-eyebrow-mute">

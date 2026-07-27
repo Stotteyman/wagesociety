@@ -6,7 +6,7 @@
 // cut as an application fee. The money never lands in the platform account, so we
 // are not holding anyone else's funds and Stripe issues the creator's 1099.
 const { getAuthContext, getServiceClient, isConfigured, json } = require('./_auth');
-const { APP_URL } = require('./_stripe-config');
+const { returnBase } = require('./_stripe-config');
 
 const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
 const STRIPE_API = 'https://api.stripe.com/v1';
@@ -66,8 +66,8 @@ exports.handler = async (event) => {
   // Account links are single-use and short-lived, so one is minted per attempt.
   const link = await stripe('account_links', {
     account: accountId,
-    refresh_url: `${APP_URL}/settings?connect=retry`,
-    return_url: `${APP_URL}/settings?connect=done`,
+    refresh_url: `${returnBase(event)}/settings?connect=retry`,
+    return_url: `${returnBase(event)}/settings?connect=done`,
     type: 'account_onboarding',
   });
   if (!link.ok) return json(400, { error: 'stripe_link_failed', detail: link.body?.error?.message });
