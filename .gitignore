@@ -2,7 +2,7 @@ node_modules/
 .env
 .DS_Store
 
-# Polsia safety (auto-injected)
+# Secrets and local agent state — never commit
 .env
 .env.*
 .claude/

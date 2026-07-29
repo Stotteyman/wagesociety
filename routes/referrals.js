@@ -93,6 +93,9 @@ router.get('/dashboard/referrals', async (req, res) => {
     ).catch(() => ({ rows: [] }));
 
     res.render('pages/dashboard/referrals', {
+      // Every link a member shares has to be built from this, never from a
+      // hard-coded host — see the note in views/pages/dashboard/referrals.ejs.
+      appUrl: (process.env.APP_URL || 'https://wagesociety.com').replace(/\/$/, ''),
       stats: userStats,
       recentReferrals: recent.rows,
       pointBalance: parseInt(balanceRow.rows[0].balance, 10),

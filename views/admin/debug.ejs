@@ -144,7 +144,7 @@
       <h1>🔧 Internal Diagnostic Panel</h1>
       <div style="display:flex;gap:0.75rem;align-items:center;">
         <span class="debug-badge">Admin Only</span>
-        <span style="font-size:0.75rem;color:var(--muted);">wage-society.polsia.app/admin/debug</span>
+        <span style="font-size:0.75rem;color:var(--muted);">wagesociety.com/admin/debug</span>
       </div>
     </div>
 
@@ -862,7 +862,7 @@
 
     // ── Password prompt on load ────────────────────────────────────
     if (!pw) {
-      const entered = prompt('Enter the DEBUG_PASSWORD (check FOR_POLSIA.txt or Render env vars):');
+      const entered = prompt('Enter the DEBUG_PASSWORD (set as an env var on the host):');
       if (entered) {
         localStorage.setItem('debug_pw', entered);
         location.reload();
