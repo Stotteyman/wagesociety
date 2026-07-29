@@ -119,7 +119,10 @@
         <button class="copy-code-btn" onclick="copyCode(this)">Copy Code</button>
         <p class="copy-msg" id="copyMsg"></p>
         <div class="share-row">
-          <a href="https://twitter.com/intent/tweet?text=Join%20me%20on%20W.A.G.E.%20Society%20%E2%80%94%20creator%20tools%20with%20no%20middlemen.%20Use%20my%20code%20<%= stats.code %>%20for%20bonus%20points%3A%20https://wage-society.polsia.app/join" target="_blank" rel="noopener" class="share-btn">Share on X</a>
+          <%# The shared link must come from APP_URL. A hard-coded host here is how
+              every member ended up tweeting a retired alias. %>
+          <% const shareBase = (locals.appUrl || 'https://wagesociety.com').replace(/\/$/, ''); %>
+          <a href="https://twitter.com/intent/tweet?text=Join%20me%20on%20W.A.G.E.%20Society%20%E2%80%94%20creator%20tools%20with%20no%20middlemen.%20Use%20my%20code%20<%= stats.code %>%20for%20bonus%20points%3A%20<%= shareBase %>/join" target="_blank" rel="noopener" class="share-btn">Share on X</a>
           <a href="/leaderboard" class="share-btn">View Leaderboard</a>
         </div>
       </div>

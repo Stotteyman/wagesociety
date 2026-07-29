@@ -1,5 +1,6 @@
-// routes/api/webhooks.js — Polsia Stripe webhook handler.
-// Receives Stripe events via Polsia's webhook forwarding.
+// routes/api/webhooks.js — Stripe webhook handler.
+// Stripe events used to arrive here forwarded by the Polsia platform, which is
+// retired — read the signing-secret note below before this route is served again.
 // Handles: donations (checkout.session.completed) and
 // subscription lifecycle including 7-day trial events.
 // Billing cycle is inferred from price ID — annual links use unique price IDs.
@@ -15,9 +16,12 @@
 //   ELITE:   $199/mo=19900
 //   UNLIMITED: $499/mo=49900
 //
-// NOTE: STRIPE_SIGNING_SECRET may not be set in prod — Polsia's webhook
-// edge layer provides integrity. We validate by accepting events from the
-// configured webhook path only.
+// SECURITY NOTE: the signature is only checked when STRIPE_SIGNING_SECRET is
+// set (see the handler at the bottom); without it every event posted to this
+// path is trusted. That was defensible while Polsia's edge layer sat in front
+// of the app and vouched for the traffic. It no longer does, and this handler
+// activates paid memberships — so set STRIPE_SIGNING_SECRET before this route
+// is exposed again.
 const express = require('express');
 const router = express.Router();
 const { completeDonationByWebhook } = require('../../db/donations');

@@ -257,6 +257,9 @@ router.get('/dashboard/referrals', async (req, res) => {
     : 0;
 
   res.render('pages/referrals', {
+    // Every link a member shares has to be built from this, never from a
+    // hard-coded host — see the note in views/pages/referrals.ejs.
+    appUrl: (process.env.APP_URL || 'https://wagesociety.com').replace(/\/$/, ''),
     referralCode: user.referral_code || 'WAGE-NONE',
     stats,
     tier,
@@ -838,7 +841,7 @@ router.get('/donate', async (req, res) => {
 });
 
 // ── Membership checkout success ─────────────────────────────────────────────
-// Polsia Stripe redirects here with ?session_id=cs_xxx after a successful subscription.
+// Stripe redirects here with ?session_id=cs_xxx after a successful subscription.
 // Before redirecting to Stripe, we stored { tier, billing_cycle } in
 // req.session.pendingCheckout (via /api/checkout/redirect).
 // We activate membership in DB via webhook (checkout.session.completed).
@@ -913,7 +916,7 @@ router.get('/checkout/success', async (req, res) => {
 });
 
 // ── Donate success page ─────────────────────────────────────────────────────
-// Polsia Stripe redirects back with ?session_id=cs_xxx after a successful donation.
+// Stripe redirects back with ?session_id=cs_xxx after a successful donation.
 // We look up the completed donation in our DB to display donor info (not trust URL params alone).
 router.get('/donate/success', async (req, res) => {
   const sessionId = req.query.session_id;
@@ -931,7 +934,7 @@ router.get('/donate/success', async (req, res) => {
       donorMessage: record.donor_message || null,
     });
   } else {
-    // Session not found in DB —Polsia may not have forwarded the webhook yet,
+    // Session not found in DB — the Stripe webhook may not have landed yet,
     // or this was a quick-amount fixed link with no DB record. Show name from URL params as fallback.
     res.render('pages/donate-success', {
       donorName:    req.query.name    || null,

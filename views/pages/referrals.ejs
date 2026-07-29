@@ -45,7 +45,10 @@
     </div>
     <% } %>
 
-    <% const appUrl = 'https://wage-society.polsia.app'; const referralLink = appUrl + '/join?ref=' + referralCode; %>
+    <%# Referral links must be built from APP_URL. Hard-coding a host here is how
+        every member ended up handing out invites to a retired alias. %>
+    <% const shareBase = (locals.appUrl || 'https://wagesociety.com').replace(/\/$/, '');
+       const referralLink = shareBase + '/join?ref=' + referralCode; %>
 
     <!-- Referral Code Card -->
     <div style="background:var(--surface);border:1px solid rgba(255,102,0,0.35);border-radius:16px;padding:2.5rem;margin-bottom:2rem;position:relative;overflow:hidden;">
