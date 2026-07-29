@@ -55,6 +55,13 @@ const FOOTER: { heading: string; links: { to: string; label: string }[] }[] = [
       { to: '/why-10-percent', label: 'Why we take 10%' },
     ],
   },
+  {
+    heading: 'Legal',
+    links: [
+      { to: '/terms', label: 'Terms of service' },
+      { to: '/privacy-policy', label: 'Privacy policy' },
+    ],
+  },
 ];
 
 type NetworkStats = { creators?: number; online_now?: number; live_now?: number };
@@ -266,7 +273,7 @@ export default function Layout() {
 
       <footer className="mt-16 border-t border-wage-line py-12">
         <div className="mx-auto max-w-6xl px-5">
-          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
             <div>
               <img
                 src="/brand/wage-crest.png"

@@ -34,12 +34,17 @@ export default function Login() {
     }
   }
 
-  async function oauth(provider: 'google' | 'discord') {
+  // 'x' is Supabase's OAuth 2.0 X provider (the legacy 'twitter' one is OAuth 1.0a and
+  // is being deprecated). supabase-js types have not caught up, hence the cast.
+  async function oauth(provider: 'google' | 'discord' | 'x') {
     if (!supabaseConfigured) {
       setMsg({ tone: 'error', text: 'Sign-in is not configured on this deploy yet.' });
       return;
     }
-    await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
+    await supabase.auth.signInWithOAuth({
+      provider: provider as 'google' | 'discord',
+      options: { redirectTo },
+    });
   }
 
   async function magicLink() {
@@ -76,6 +81,9 @@ export default function Login() {
             </button>
             <button className="wage-btn wage-btn-ghost w-full" onClick={() => oauth('discord')}>
               Continue with Discord
+            </button>
+            <button className="wage-btn wage-btn-ghost w-full" onClick={() => oauth('x')}>
+              Continue with X
             </button>
           </div>
 
