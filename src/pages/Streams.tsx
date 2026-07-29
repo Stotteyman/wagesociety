@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { apiFetch } from '../lib/api';
 import PageHeader, { CardSkeleton } from '../components/ui/PageHeader';
 import EmptyState from '../components/ui/EmptyState';
 import Avatar from '../components/ui/Avatar';
@@ -16,7 +15,6 @@ type Stream = {
 export default function Streams() {
   const [streams, setStreams] = useState<Stream[]>([]);
   const [loading, setLoading] = useState(true);
-  const [liveUnknown, setLiveUnknown] = useState(false);
 
   async function fetchChannels() {
     // wagesociety_channels returns every connected channel, live or not, so a
@@ -28,23 +26,11 @@ export default function Streams() {
     setLoading(false);
   }
 
-  useEffect(() => {
-    (async () => {
-      await fetchChannels();
-      // Refresh stale YouTube statuses on demand. Polling on a timer would blow
-      // through the API quota, so the check rides along with real page views.
-      try {
-        const r = await apiFetch<{ configured: boolean; checked: number }>('youtube-live', {
-          method: 'POST',
-          body: '{}',
-        });
-        if (!r.configured) { setLiveUnknown(true); return; }
-        if (r.checked > 0) await fetchChannels();
-      } catch {
-        // A failed refresh just means statuses stay as they were.
-      }
-    })();
-  }, []);
+  // Status is kept current by scheduled jobs in the database — Kick through its API,
+  // YouTube by reading the channel's own /live page. Neither needs an API key, so
+  // there is nothing to trigger from here and no quota to conserve; the page just
+  // reads what the last check wrote.
+  useEffect(() => { fetchChannels(); }, []);
 
   const liveCount = streams.filter((s) => s.is_live).length;
 
@@ -52,16 +38,9 @@ export default function Streams() {
     <section className="mx-auto max-w-6xl px-5 py-14">
       <PageHeader
         eyebrow="Streams"
-        title={liveUnknown ? 'Creator channels' : liveCount > 0 ? `${liveCount} live now` : 'Nobody live right now'}
+        title={liveCount > 0 ? `${liveCount} live now` : 'Nobody live right now'}
         lede="Every WAGE creator's channel, pulled from the platforms they've connected. Live ones come first."
       />
-
-      {liveUnknown && (
-        <p className="mt-6 border border-wage-warning/40 bg-wage-warning/[0.08] px-4 py-3 text-sm text-wage-warning">
-          Live status can't be checked yet — YOUTUBE_API_KEY isn't set. Channels below are listed
-          without a live/offline state rather than being shown as offline.
-        </p>
-      )}
 
       <div className="mt-9 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {loading ? (
@@ -98,7 +77,7 @@ export default function Streams() {
                 <span className="absolute left-3 top-3">
                   {s.is_live
                     ? <LiveChip />
-                    : liveUnknown || !s.live_checked_at
+                    : !s.live_checked_at
                       ? <span className="wage-chip">Status unknown</span>
                       : <span className="wage-chip">Offline</span>}
                 </span>
