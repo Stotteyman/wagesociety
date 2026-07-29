@@ -1,145 +1,175 @@
-# WAGE Society — Codebase Assessment
+# WAGE Society — Codebase Guide
+
+> **Verified against source on 2026-07-29.** Every claim below was re-checked against the
+> files it describes. The previous version of this file described an Express + EJS + Neon
+> stack with "No Supabase" — that was wrong in a way that mis-aims anyone who reads it.
+> `docs/AGENT_NOTES.md` (rewritten 2026-07-28) is the other authoritative doc; if the two
+> ever disagree, prefer `AGENT_NOTES.md` for hosting/auth/permissions detail and re-check
+> the source.
 
 ## What this app does
 
-Creator OS for the W.A.G.E. Society community — a platform where creators manage profiles, go live, sell memberships and merch, blog, and build audiences without platform middlemen taking a cut.
+Creator OS for the W.A.G.E. Society community — creators manage profiles, go live, sell
+memberships, merch and gated video, blog, and build audiences. The platform takes **10%**
+of creator sales and the creator keeps the other 90% (`netlify/functions/_platform.js`,
+mirrored for the browser in `src/lib/platform.ts`).
 
-## Stack
+## Stack — the live app
 
-Express.js + EJS templates + PostgreSQL (Neon) + vanilla CSS + Node.js 20. Session auth via `express-session` + `connect-pg-simple`. Login via bcrypt email/password + magic link. No Supabase.
+**Vite + React (TypeScript) SPA → Netlify Functions → Supabase (Postgres, Auth, RLS).**
 
-## Directory map
+| Layer | Reality |
+|---|---|
+| Entry | `index.html` → `src/main.tsx` → `src/App.tsx` (React Router) |
+| Pages | `src/pages/*.tsx`, shared UI in `src/components/`, primitives in `src/components/ui/` |
+| Styling | Tailwind v4 (`tailwind.config.cjs`, `postcss.config.cjs`); tokens in `docs/BRAND_GUIDE.md` |
+| API | `netlify/functions/*.js`, exposed at `/api/*` by a redirect in `netlify.toml` |
+| Database | Supabase Postgres, schema **`wagesociety`** (`netlify/functions/_auth.js:5`, overridable via `SUPABASE_SCHEMA`) |
+| Auth | Supabase Auth — Discord, Google, email; Kick as custom provider `custom:kick` |
+| Node | 20 (`.nvmrc`) |
+
+`package.json` scripts — **these are all of them**: `start`, `dev` (both `node server.js`,
+legacy), `dev:web` (vite), `build:web` (vite build), `preview`, `typecheck` (`tsc --noEmit`).
+There is **no test script**, and **no `build` or `migrate` script** — anything claiming
+`npm run build` runs migrations on deploy is stale.
+
+### Legacy Express app — dead code, still in the tree
+
+`server.js`, `routes/`, `views/`, `db/`, `bot/`, `lib/`, `jobs/`, `middleware/`, `migrate.js`
+are the retired Express + EJS + Neon + bcrypt application. Per `docs/AGENT_NOTES.md` it is
+**no longer deployed and its Neon database is unreachable**. Do not extend it or use it as a
+reference for how things work now. It is mapped below only so you can recognise it.
+
+## Hosting and deploy
+
+- Netlify project `wagesociety`; `wagesociety.com` cut over from Render to Netlify 2026-07-28.
+- `netlify.toml`: build `npm run build:web`, publish `dist/`, functions `netlify/functions`,
+  `/api/*` → `/.netlify/functions/:splat`, then an SPA fallback `/*` → `/index.html` **last**.
+- **Auto-builds are off.** Pushing to GitHub deploys nothing; publishing is always explicit
+  (see `docs/AGENT_NOTES.md` for the exact deploy command). DNS is at GoDaddy.
+- `dist/` is build output and is gitignored — never edit it, never treat it as source.
+- `polsia.toml`, `render.yaml` and `FOR_POLSIA.md` at the repo root are **dead config** from
+  the Render/Polsia era. They carry the old cron schedules (guild sync `*/30`, role sync
+  `*/15`); preserve those somewhere before deleting the files.
+
+## Directory map — live app
 
 ```
-server.js         — Express entry point; wires routes, sessions, static, view engine
-migrate.js        — DB migration runner (runs on every deploy via npm run build)
-bot/              — discord-bot.js (event handlers), periodic-sync.js (guarded 30-min sync),
-                   rate-limiter.js (10 req/10s queue), periodic-sync-trigger.js (Blaxel cron)
-jobs/             — discord-role-sync.js (15-min drift fix, POLSIA_IN_PROCESS_CRONS_ENABLED guard)
-lib/
-  auth.js         — User provisioning helpers (onFirstOAuthLogin, getSessionUser, ensureUser)
-  middleware.js   — Auth/membership/permission middleware (requireAuth, loadUserPermissions,
-                    requirePermission, requireRole, requireAdmin)
-  referral-codes.js — Referral code generation (WAGE-XXXXXX) and tier calculation (bronze/silver/gold/diamond)
-  stripe-sync.js — Sync membership tiers to Stripe via Polsia API (createSubscriptionLink)
-  discord-token.js — Discord OAuth token refresh helper (shared by me.js + discord-servers.js)
-  upload-r2.js   — Image resize (sharp) + R2/S3 upload for avatar uploads. Falls back to base64 if R2 env vars absent.
-  start-bot.js   — Discord bot startup wiring (extracted from server.js for 300-line cap)
-middleware/
-  referral.js     — Captures ?ref= WAGE-XXXXXX from URL into session + cookie (30-day)
-  discord-sync.js — Discord role sync engine: syncRoles(userId) = staff role (non-cumulative) + subscription tier (cumulative, up to Elite/Unlimited bot-created); removeDiscordRoles, syncAllGuildsForUser, syncRolesFromDb
-  ensure-discord-roles.js — Bot startup: @everyone lockdown, creates @member/@WAGE Creator/@WAGE Pro, Elite/Unlimited; sets up #verify channel with embed + link button
-  stripe-config.js — Stripe payment/subscription link URLs (NO direct Stripe API)
-db/
-  index.js       — Pool singleton (only file that creates new Pool())
-  profiles.js, blog.js, users.js, roles.js, memberships.js, discord.js, discord-servers.js, discord-oauth-states.js, oauth-providers.js, discord-admin.js, discord-structure.js, admin.js — domain query files
-  merch.js, subscriptions.js, autoclipper.js, faq.js, donations.js, adminUsers.js, diagnostic.js, membership_tiers.js, admin-referrals.js — domain queries
-routes/
-  auth-custom.js       — Custom bcrypt email/password + magic link auth (Neon-only, no Supabase)
-  discord.js           — Discord OAuth linking + role sync trigger (GET /auth/discord/link, /auth/discord/callback, POST /auth/discord/unlink)
-  auth-discord.js      — W.A.G.E. Society bot OAuth flow (GET /auth/discord-bot, /auth/discord-bot/callback)
-  auth-google.js       — Google OAuth login + account linking (GET /auth/google, /auth/google/callback, POST /auth/google/unlink)
-  auth-kick.js        — Kick OAuth login + account linking (GET /auth/kick, /auth/kick/callback, POST /auth/kick/unlink)
-  auth-discord-login.js — Discord OAuth as primary login method (GET /auth/discord-login, /auth/discord-login/callback)
-  points-shop.js — Browse + purchase point shop items (GET /point-shop, POST /point-shop/purchase)
-  pages.js       — All rendered page routes
-  admin/
-    discord-resync.js — /admin/discord page + resync + status endpoints
-    debug.js     — /admin/debug panel: 11 diagnostic sections
-    tiers-page.js — /admin/tiers rendered page
-  api/
-    auth.js       — Session helpers
-    live.js       — Livestream list + autoclipper queue
-    shop.js       — Merch items
-    news.js       — Blog posts CRUD (permission-gated)
-    public-directory.js — Creator directory
-    me.js         — Profile access + update; YouTube channel fetch + selection; Discord server selection;
-                   avatar upload (POST /api/me/avatar, DELETE /api/me/avatar)
-    marketing.js  — Newsletter subscription
-    check-username.js — Username availability
-    collab.js     — Collaboration requests
-    chatbot.js    — Chat bot integration
-    donate.js     — Donation payment links via Stripe
-    webhooks.js   — Stripe webhook handler (donations + subscription lifecycle)
-    admin-users.js — Admin user management (ban, password reset, suspend)
-    admin-roles.js — Admin roles + permissions management
-    admin-shop.js — Admin shop management
-    admin-tiers.js — Admin membership tier CRUD with Stripe sync
-    points-shop.js — Admin point shop items CRUD (GET/POST/PUT/DELETE /api/points-shop/items)
-    discord-servers.js — Discord server install: generate bot install URL, list servers,
-                         handle bot-join webhook, DM owner on connect, server config PATCH
-    discord-role-mappings.js — Admin role mapping (tier→Discord role name), guild member list, manual role edit
-    discord-stats.js — Server stats/overview/channels/roles endpoints (bot-required)
-    admin-discord.js — Discord admin API: server info, roles CRUD, channel setup, bot settings, tier map, logs, sync-structure, audit
-    admin-referrals.js — Admin referral attribution: attribute, history, overview, reverse endpoints (users.manage auth)
-    discord-webhook.js — Discord interaction webhook (slash commands, components, member-add)
-views/
-  layout.ejs     — Landing page (hero, manifesto, features, how, closing)
-  partials/      — nav, hero, manifesto, features, how, closing, footer
-  pages/          — faq, directory, live (→/streams), merch, news, login, join, dashboard, settings,
-                    onboarding, terms, privacy, subscriptions, admin-*, profile, donate, play, 403
-                    streams/ — streams.ejs (stream listing), [id].ejs (individual embed)
-  admin/
-    discord.ejs   — /admin/discord 4-tab management page (Main Server, Bot Settings, Other Servers, Logs)
-    debug.ejs     — /admin/debug full panel (11 sections, JS-powered, DEBUG_PASSWORD-gated)
-public/js/
-  wage-three.js  — Three.js particle system + WAGE World portal (camera fly-through, raycaster click detection)
-  admin-discord.js — Discord admin page client JS
-public/css/
-  theme.css      — Full design system (dark theme, #ff6600 orange accents, Space Grotesk)
-  pages.css      — Page-specific styles
-migrations/      — SQL or JS migrations (timestamp_name.sql/js)
-reports/         — Diagnostic and audit reports (markdown)
+index.html, vite.config.ts, tsconfig.json, tailwind.config.cjs, postcss.config.cjs
+src/
+  main.tsx, App.tsx           — router; route table is App.tsx, read it before adding a page
+  lib/
+    supabase.ts               — browser client; reads public.wagesociety_* views (anon key)
+    api.ts                    — fetch wrapper for /api/* functions
+    provision.ts              — link → join → sync ordering for Discord onboarding
+    platform.ts               — browser mirror of the 10% fee maths
+    plans.ts, handles.ts, discord.ts, kick.ts, site.ts
+  hooks/useSession.ts, useRole.ts
+  components/                 — Layout, RequireAuth, ConnectAccounts, VideoStudio,
+                                YouTubeChannelPicker, HandleEditor, Membership, …
+  components/ui/              — Avatar, AvatarUpload, StatTile, TierChip, EmptyState,
+                                PageHeader, LegalPage, ReturnNotice
+  pages/                      — Home, Directory, CreatorProfile, Blog, BlogPost, Faq,
+                                Leaderboard, Streams, Merch, Login, Verify, LinkDevice,
+                                Watch, Tools, Dashboard, Onboarding, Settings, Referrals,
+                                PointShop, Plans, WhyTenPercent, Terms, PrivacyPolicy,
+                                Admin, NotFound
+  pages/admin/AdminOps.tsx    — operational tabs of the admin control center
+netlify/functions/
+  _auth.js                    — shared: service/user Supabase clients, role ladder, json()
+  _platform.js, _stripe-config.js — shared helpers (not endpoints)
+  me.js, profile.js, check-username.js, newsletter.js, health.js
+  checkout.js, addon-checkout.js, video-checkout.js, stripe-webhook.js
+  connect-onboard.js, connect-status.js          — Stripe Connect for creators
+  video-playback.js, tool-download.js            — entitlement-gated signed URLs
+  discord-join.js, discord-sync.js, discord-sync-user.js
+  youtube-channels.js, youtube-live.js
+  app-auth.js, app-entitlement.js                — desktop app device authorization
+  admin-health.js, admin-discord-ops.js          — admin monitors + Discord ops
+docs/                         — AGENT_NOTES.md (read first), BRAND_GUIDE.md, discord-*.md,
+                                wageworld-technical-breakdown.md, member-tools-downloads.md
+reports/                      — audits; newest is DIAGNOSTIC_2026-07-17.md (Express-era)
+automation/                   — unattended agent: PROMPT.md, AUTOMATION_BACKLOG.md, RUN_LOG.md
+scripts/                      — build-brand-assets.mjs, backfill-referral-codes.js, …
 ```
+
+## Directory map — legacy Express (dead)
+
+`server.js` mounts these routers, in this order. Listed for recognition only:
+
+```
+/api/webhooks, /api/discord/webhook            (before body parsers — raw body)
+/auth/google, /auth/kick, /auth/discord, /auth/discord-bot, /auth/discord-login, /auth
+/api/auth /api/live /api/shop /api/points-shop /point-shop /api/news
+/api/public-directory /api/public-profile /api/me /api/account /api/points
+/api/marketing /api/check-username /api/search /api/collab /api/chatbot
+/api/donate /api/checkout
+/api/admin/{users,shop,roles,tiers,discord,referrals}
+/admin (routes/admin/index.js), /admin/discord, /admin/diagnostics, /admin/tiers
+/admin/debug → 301 redirect to /admin/diagnostics
+/api/discord-servers, /api/discord/role-mappings, /api/discord
+/api/stats, /api/homepage-stats, /api/trial, /api/subscriptions
+/ (routes/referrals.js), / (routes/pages.js — last)
+```
+
+Legacy footguns, if you ever do touch this tree:
+
+- `routes/pages.js:968` is a `/:username` catch-all. A new top-level page route that is not
+  in its `RESERVED` array renders `profile-not-found` instead of the page.
+- That guard renders `pages/404`, and **`views/pages/404.ejs` does not exist** — every
+  reserved-path 404 throws instead of rendering.
+- `routes/pages.js:992` is a dangling `// GET /play` comment with no handler; `/play` and
+  `/wageworld` are dead (see `reports/DIAGNOSTIC_2026-07-17.md` §2).
+- `db/index.js` throws at require-time when `DATABASE_URL` is unset, so requiring anything
+  in this tree without env fails immediately.
 
 ## Database
 
-```
-auth_users        — Auth accounts (email, password_hash, display_name, avatar_url, is_suspended, admin_reset_token,
-                   referral_code, referred_by, referral_points, total_referrals, referral_tier)
-_migrations       — migration tracker
-member_profiles   — Creator profiles (username, display_name, bio, avatar_url, role, permissions)
-member_livestreams, blog_posts, collab_requests, collab_applications, dashboard_tool_entries, autoclipper_jobs
-merch_items       — Shop items (name, description, price, image_url)
-membership_plans  — Membership tiers (free/creator/pro) with price and features
-user_memberships  — Paid tier subscriptions (email, plan_slug, stripe fields, period dates, billing_cycle)
-membership_tiers — Admin-manageable tiers (name, slug, price_cents, stripe_price_id, stripe_product_id, features JSONB)
-faq_entries       — FAQ questions/answers (question, answer, sort_order, is_active)
-org_roles/org_permissions/org_role_permissions/org_user_roles/org_ban_records — legacy email-keyed role system
-referrals         — Referral relationships: referrer_id, referred_user_id, status, reward_given
-admin_referral_attributions — Manual referral attributions by admins (referee_id, referrer_id, referral_code_used, attributed_by_admin_id, created_at)
-admin_referral_reversals   — Point reversal log for manual attribution reversals
-point_transactions — Point ledger: user_id, amount, type, description (referral_signup/verified/purchase/retained/shop_purchase/manual_referral_attribution/referral_reversed)
-shop_items        — Redeemable rewards catalog: name, point_cost, item_type (badge/membership_days/profile_frame/username_color/vip_access/role), metadata, active
-shop_purchases    — Point redemptions: user_id, item_id
-discord_links     — Discord OAuth account links per user (discord_id, username, avatar, tokens, expiry, guild_ids, selected_guild_id, selected_guild_name)
-discord_roles, discord_servers, discord_server_configs — Discord bot/guild tracking
-discord_managed_roles — Bot-created roles (Elite, Unlimited) per guild, tracked by role_type
-discord_oauth_states — Short-lived OAuth CSRF states (state, user_id, redirect_path)
-discord_mod_actions — Audit log for bot role changes: guild_id, moderator_id, target_user_id, action, reason
-discord_bot_settings, discord_tier_role_map, discord_bot_logs — Admin Discord management (settings, tier→role map, activity log)
-discord_server_structure — Full snapshot of Discord server roles/channels/categories with permission overwrites (synced from Discord API)
-discord_permission_audit — Inheritance chain audit results: violations, role counts, channel counts, timestamps
-diagnostic_log, donations, newsletter_subscriptions
-roles/permissions/role_permissions/user_roles — auth_users.id-keyed roles + permissions
-oauth_connections — OAuth account links (google/kick/discord) per user
-platform_stats    — Aggregate landing page stats (key/value pairs: earnings, creator count, etc.)
-```
+- Supabase Postgres. Application tables live in the **`wagesociety`** schema — *not* `public`,
+  and *not* a schema called `wage`.
+- The browser reads **`public.wagesociety_*` views** with the anon key: `wagesociety_home_stats`,
+  `_creators`, `_blog`, `_plans`, `_addons`, `_faq`, `_leaderboard`, `_merch`, `_shop`,
+  `_channels`, `_videos`. All privileged writes go through Netlify Functions with the
+  service-role key, never from the browser (`src/lib/supabase.ts:8`).
+- Business logic lives in Postgres **RPCs named `ws_*`** in the `public` schema, reading and
+  writing `wagesociety.*`: `ws_current_role()`, `ws_is_staff(role)`, `ws_has_permission(key)`,
+  `ws_admin_metrics()`, `ws_admin_rbac()`, `ws_admin_audit_log()`, `ws_audit()`, …
+- **There is no `migrations/` folder and no schema file in this repo.** `migrate.js`'s
+  `runFolderMigrations()` silently returns when the folder is absent (`migrate.js:54`), so
+  the schema exists only in the live Supabase database. This is a real
+  disaster-recovery gap — see backlog item W2.
+
+## Permissions
+
+Role ladder (`netlify/functions/_auth.js:13`):
+`guest 0 · member/customer 1 · staff 2 · manager 3 · admin 4 · superadmin 5`.
+`stotteyman@gmail.com` and `gggiddings@yahoo.com` are hardcoded superadmin so the owner
+cannot be locked out. Every admin action must be gated **server-side** in the function or
+the RPC; hiding UI is presentation, never the security boundary.
 
 ## External integrations
 
-- **Stripe**: Hosted payment links (no direct API). Monthly/annual subscription links via lib/stripe-config.js.
-- **Discord**: OAuth linking + guild role sync via bot (DISCORD_CLIENT_ID/SECRET/BOT_TOKEN).
-- **Google + Kick OAuth**: Account linking (Polsia infra env vars).
-- **R2**: Avatar uploads via @aws-sdk/client-s3; falls back to base64 if unconfigured.
-- **Email**: Zoho SMTP (ZOHO_SMTP_*); not yet wired to templates.
+- **Stripe** — real API via Netlify Functions: membership + add-on checkout, gated video,
+  Stripe Connect payouts, signature-verified webhook. Not hosted payment links any more.
+- **Discord** — Supabase OAuth link, guild join, tier role sync, admin ops. Ordering rule:
+  **join the guild before syncing roles**, and honour `retry_after` on 429s.
+- **Google / Kick / X** — Supabase Auth providers; Kick is `custom:kick`.
+- **YouTube** — live status refreshed on a schedule, designed around API quota.
+- **Supabase project is shared across the org.** Auth config (`SITE_URL`, redirect
+  allow-list, SMTP) is global — changes have blast radius beyond this site.
 
 ## Recent changes
 
-61. 2026-06-21 — Admin Referral Attribution: new /admin/referrals page with manual referral attribution (admin assigns user→referrer link, awards 100+200pts); new admin_referral_attributions + admin_referral_reversals tables; GET/POST/DELETE API at /api/admin/referrals; autocomplete user search; override + reverse flow; attribution history table; referral overview stats.
-60. 2026-06-21 — Phase 5: memberships.ejs glassmorphism polish (wage-badge on current-plan/trial badges, data-tier on plan cards); profile.ejs avatar bumped to 160px with 4rem placeholder; both pages were already built in prior phases with full Three.js integration.
-59. 2026-06-21 — Phase 3: glassmorphism auth pages (/login) with portal edge glow effect (radial-gradient), gold border on focus inputs, Inter font added; WAGE Creators directory (/creators) with wage-card glassmorphism cards, Now Live horizontal carousel, tier filter tabs (All/Creator/Pro/Elite) with dedicated ?tier= param; scroll-reveal stagger on member cards (50ms increments, up to 12 cards); getPublicDirectory() now accepts tier filter param; pages.css: auth-page styles removed (inline in login.ejs), member-card updated to wage-card glassmorphism.
-58. 2026-06-20 — Phase 6: WAGE World Portal (Three.js camera fly-through, portal ring geometry with raycaster click detection, gold overlay transition→/play), /play page with game container, scroll-reveal system (IntersectionObserver, .scroll-reveal + .scroll-reveal-delay-N classes), WCAG AA accessibility (skip links, :focus-visible gold ring, landmark regions nav/main/footer, aria-labels), skeleton loaders + empty states. theme.css extended with portal-cta, scroll-reveal, skip-link, focus-visible, skeleton, empty-state styles.
-57. 2026-06-20 — Phase 1 Three.js overhaul: WAGE design tokens (--wage-* vars), glassmorphism base (.wage-card, .wage-btn), Three.js canvas + wage-three.js particle system (homepage-only, 60-280 particles, mouse parallax, RAF paused on hidden), mobile nav glassmorphism, Inter + JetBrains Mono fonts loaded.
-55. 2026-06-18 — Memberships + Pricing mobile pass: plans-grid responsive (1→2→3 cols), price amounts clamp(2rem,5vw,2.5rem), plan-card mobile padding, full-width CTAs. New checkout pages /checkout /checkout/annual /checkout/trial with checkout-container/summary/form styles, centered layout, Stripe redirect flow.
-54. 2026-06-16 — Streams mobile pass: streams.ejs platform filter, streams/[id].ejs 16:9 embed, stream embed on profile.ejs, platform filter CSS, live-creators scroll→grid responsive, /streams/:id route, getStreamsByUsername/getStreamById in db/livestreams.js.
+From `git log` on `crest-brand-rebuild` (newest first). Older numbered entries that used to
+live here described the retired Express app and have been dropped as misleading.
+
+- 2026-07-29 — Live status on a schedule instead of a YouTube API key; YouTube scope only on
+  opt-in; X account connect; terms + privacy pages and X sign-in; X/TikTok brand asset sizes;
+  real icon/social set generated from the crest; two signup failure modes fixed.
+- 2026-07-28 — Desktop app requires a WAGE account; nav thinned to two items; `@handle`
+  editing; admin panel rebuilt as an operating console (metrics, access control, monitors);
+  Discord gated behind website verification with join-before-role-assign; member tool downloads.
+- 2026-07-27 — Stripe Connect gated video with the 10% platform fee; membership checkout moved
+  onto our own Stripe account with add-ons; `/why-10-percent`; Admin rebuilt on the crest
+  design system; Kick linked through Supabase; YouTube live detection; `/verify` onboarding
+  wizard with automatic Discord join; AI-training crawler policy.
