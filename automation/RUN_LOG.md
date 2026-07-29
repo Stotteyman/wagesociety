@@ -18,7 +18,7 @@ Newest entries at the top. One block per run, written by the agent itself.
 
 - Item: W1 — Make `CLAUDE.md` true again
 - Result: shipped
-- Branch: `auto/2026-07-29-claude-md-truth` (see push note below)
+- Branch: `auto/2026-07-29-claude-md-truth` (pushed to origin)
 - Verify gate: skipped (doc only) — no `.js`/`.ts`/`.ejs`/route/`src/` file was touched,
   so no gate rule in §5 applied. Only `CLAUDE.md` and `automation/*` changed.
 - Commit: `8698ae4` (CLAUDE.md) + a second commit for `automation/`
