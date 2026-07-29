@@ -51,25 +51,32 @@ const port = process.env.PORT || 3000;
 app.set('trust proxy', 1);
 
 // ── Canonical domain redirect — runs BEFORE session middleware ──────────────
-// wage-society.polsia.app is a Render alias; wagesociety.com is the canonical
-// domain. Force auth-sensitive paths to canonical domain.
-// EXCEPTION: OAuth callback paths must stay on wage-society.polsia.app because
-// the OAuth providers (Google, Kick, Discord) have that origin configured as
-// their redirect URI. Redirecting callbacks to wagesociety.com breaks auth.
+// LEGACY_HOST is the old platform alias the site used to answer on; wagesociety.com
+// is the canonical domain. Auth-sensitive paths arriving on the legacy host are
+// forced to canonical.
+// NOTE the deliberate carve-out: OAuth *callback* paths are matched here too, and
+// they are redirected as well — the providers were configured against the legacy
+// origin, so if that origin is retired the redirect URIs must be updated at Google,
+// Kick and Discord in the same change, or sign-in breaks.
+// Defaults to the historical value so behaviour is unchanged; set LEGACY_HOST to an
+// empty string once the alias is gone and this middleware turns itself off.
 const CANONICAL_DOMAIN = (process.env.APP_URL || 'wagesociety.com').replace(/^https?:\/\//, '');
+const LEGACY_HOST = (process.env.LEGACY_HOST ?? 'wage-society.polsia.app').replace(/^https?:\/\//, '');
 
-app.use((req, res, next) => {
-  if (req.hostname !== 'wage-society.polsia.app') return next();
-  const p = req.path;
-  const OAUTH_RE = /^\/auth\/(google|google\/callback|kick|kick\/callback|discord-login|discord-login\/callback|discord|discord\/callback|discord-bot|discord-bot\/callback)/;
-  const AUTH_RE  = /^\/(login|dashboard|logout)/;
-  if (OAUTH_RE.test(p) || AUTH_RE.test(p)) {
-    return res.redirect(302, `https://${CANONICAL_DOMAIN}${req.originalUrl}`);
-  }
-  next();
-});
+if (LEGACY_HOST) {
+  app.use((req, res, next) => {
+    if (req.hostname !== LEGACY_HOST) return next();
+    const p = req.path;
+    const OAUTH_RE = /^\/auth\/(google|google\/callback|kick|kick\/callback|discord-login|discord-login\/callback|discord|discord\/callback|discord-bot|discord-bot\/callback)/;
+    const AUTH_RE  = /^\/(login|dashboard|logout)/;
+    if (OAUTH_RE.test(p) || AUTH_RE.test(p)) {
+      return res.redirect(302, `https://${CANONICAL_DOMAIN}${req.originalUrl}`);
+    }
+    next();
+  });
+}
 
-// ── DATABASE_URL injected by Polsia platform — no hard exit needed ────────
+// ── DATABASE_URL injected by the hosting platform — no hard exit needed ────
 const sessionSecret = process.env.SESSION_SECRET || (() => {
   throw new Error('SESSION_SECRET env var is required in production');
 })();

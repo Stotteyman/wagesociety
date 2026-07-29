@@ -222,7 +222,7 @@ router.post('/api/env', requireDebugPassword, async (_req, res) => {
     'DISCORD_REDIRECT_URI', 'DISCORD_GUILD_ID',
     'DISCORD_ROLE_FREE_ID', 'DISCORD_ROLE_CREATOR_ID', 'DISCORD_ROLE_PRO_ID',
     'STRIPE_LINK_CREATOR', 'STRIPE_LINK_PRO', 'STRIPE_LINK_DONATION_*',
-    'POLSIA_R2_*', 'ZOHO_SMTP_*',
+    'R2_*', 'ZOHO_SMTP_*',
   ];
 
   const envVars = {};
