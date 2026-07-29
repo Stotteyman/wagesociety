@@ -20,6 +20,7 @@ import PointShop from './pages/PointShop';
 import Verify from './pages/Verify';
 import WhyTenPercent from './pages/WhyTenPercent';
 import Plans from './pages/Plans';
+import Tools from './pages/Tools';
 import Watch from './pages/Watch';
 import NotFound from './pages/NotFound';
 
@@ -43,6 +44,9 @@ export default function App() {
         <Route path="/verify" element={<Verify />} />
         {/* Public page, gated player — metadata is open, playback is entitlement-checked. */}
         <Route path="/watch/:id" element={<Watch />} />
+        {/* Same shape as /watch: the page sells the tool to everyone, the
+            download itself is tier-checked server-side. */}
+        <Route path="/tools" element={<Tools />} />
         <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
         <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
         <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
