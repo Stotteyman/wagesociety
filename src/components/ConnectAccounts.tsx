@@ -54,14 +54,18 @@ export default function ConnectAccounts({
       provider: provider as 'google',
       options: {
         redirectTo: `${window.location.origin}/settings?linked=${provider}`,
-        // Only Google carries an extra scope — it is how we read which YouTube
-        // channels you own. X needs nothing beyond the defaults.
-        ...(provider === 'google'
+        // youtube.readonly is a Google *sensitive* scope, which Google will refuse
+        // until the app passes its verification review. Requesting it on every Google
+        // link meant a refusal took ordinary Google sign-in down with it. It is now
+        // asked for only when someone deliberately opts into the YouTube feature, so
+        // the worst case is that one feature is unavailable rather than the account
+        // connection failing.
+        ...(provider === 'google' && reconsent
           ? {
               scopes: 'https://www.googleapis.com/auth/youtube.readonly',
-              // Google silently reuses a previous consent, so asking again for a
-              // scope that was declined does nothing without prompt=consent.
-              ...(reconsent ? { queryParams: { prompt: 'consent' } } : {}),
+              // Google silently reuses an earlier consent, so re-asking for a scope
+              // that was declined does nothing without prompt=consent.
+              queryParams: { prompt: 'consent' },
             }
           : {}),
       },
@@ -104,7 +108,8 @@ export default function ConnectAccounts({
               <div>
                 <div className="text-sm font-semibold">Featured YouTube channel</div>
                 <p className="mt-0.5 text-xs text-wage-muted-2">
-                  No channels listed? The YouTube permission was probably not granted.
+                  Reading your channel list needs an extra Google permission, asked for
+                  separately so a refusal cannot break your sign-in.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
