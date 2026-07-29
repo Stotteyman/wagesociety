@@ -1,140 +1,42 @@
-// sw.js — WAGE Society Service Worker
-// App shell caching + network-first for API + offline fallback
+// sw.js — deliberately a self-uninstaller, not a service worker.
+//
+// The Express site that used to live on this domain registered a caching service
+// worker. A registration survives the site it came from: every returning visitor still
+// had it installed and intercepting requests, serving a cached app shell built for
+// paths the SPA no longer has. That is almost certainly why sign-in failed
+// intermittently with pkce_code_verifier_not_found — if the OAuth callback document
+// came from that cache, the current JS never ran, so the PKCE verifier in local
+// storage was never read.
+//
+// Deleting this file would NOT fix it: a browser keeps the last worker it installed
+// successfully, and only replaces it when this URL returns different content. So the
+// file has to stay and actively remove itself.
+//
+// The SPA does not register a service worker at all. Once this has run for a visitor,
+// nothing here runs again. Do not reintroduce caching without a versioning story —
+// caching an SPA shell is how you ship a bundle nobody can update.
 
-const CACHE_NAME = 'wage-v1';
-const OFFLINE_URL = '/offline';
-
-// Assets to precache (app shell)
-const PRECACHE_ASSETS = [
-  '/',
-  '/css/theme.css',
-  '/css/pages.css',
-  '/manifest.json',
-  '/images/icon-192.svg',
-  '/images/icon-512.svg',
-  '/images/apple-touch-icon.svg',
-];
-
-// ── Install: precache app shell ───────────────────────────────────────────────
-self.addEventListener('install', function(event) {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(function(cache) {
-      return cache.addAll(PRECACHE_ASSETS).catch(function(err) {
-        console.warn('[SW] Precache failed (non-fatal):', err.message);
-        // Continue even if some assets fail
-        return Promise.resolve();
-      });
-    })
-  );
-  // Activate immediately (skipWaiting helps avoid stale caches on update)
+self.addEventListener('install', () => {
+  // Take over from the old worker immediately rather than waiting for every tab to close.
   self.skipWaiting();
 });
 
-// ── Activate: clean up old caches ──────────────────────────────────────────────
-self.addEventListener('activate', function(event) {
-  event.waitUntil(
-    caches.keys().then(function(cacheNames) {
-      return Promise.all(
-        cacheNames
-          .filter(function(name) { return name !== CACHE_NAME; })
-          .map(function(name) { return caches.delete(name); })
-      );
-    }).then(function() {
-      // Take control of all clients immediately
-      self.clients.claim();
-    })
-  );
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    // Drop everything the previous worker cached, including the stale app shell.
+    const names = await caches.keys();
+    await Promise.all(names.map((n) => caches.delete(n)));
+
+    // Unregister, so this stops being consulted at all.
+    await self.registration.unregister();
+
+    // Reload open tabs so they leave the cached document behind and fetch the real site.
+    const clients = await self.clients.matchAll({ type: 'window' });
+    for (const client of clients) {
+      try { client.navigate(client.url); } catch { /* a tab we cannot steer is fine */ }
+    }
+  })());
 });
 
-// ── Fetch: network-first for API/pages, cache-first for assets ───────────────
-self.addEventListener('fetch', function(event) {
-  const url = event.request.url;
-  const method = event.request.method;
-
-  // Only handle GET requests
-  if (method !== 'GET') return;
-
-  // Skip non-http(s) requests
-  if (!url.startsWith('http')) return;
-
-  // Skip cross-origin requests (CDN fonts, external images, etc.)
-  // But allow our own R2-hosted images
-  const parsedUrl = new URL(url);
-  const isOurs = parsedUrl.hostname === self.location.hostname ||
-                 parsedUrl.hostname.endsWith('.r2.dev');
-
-  // For non-ours, use stale-while-revalidate (let browser cache handle it)
-  if (!isOurs) {
-    // Don't intercept external resources — let the browser handle caching
-    return;
-  }
-
-  // API requests → network-first with offline fallback
-  if (url.includes('/api/')) {
-    event.respondWith(
-      fetch(event.request)
-        .catch(function() {
-          // Return JSON error for API failures
-          return new Response(
-            JSON.stringify({ error: 'You are offline. Reconnect to access WAGE Society.' }),
-            { status: 503, headers: { 'Content-Type': 'application/json' } }
-          );
-        })
-    );
-    return;
-  }
-
-  // Static assets (CSS, JS, images, fonts) → cache-first
-  const isStatic = /\/(css\/|js\/|images\/|fonts\/|icon-|\/sw\/|manifest)/.test(url);
-  if (isStatic) {
-    event.respondWith(
-      caches.match(event.request).then(function(cached) {
-        if (cached) return cached;
-        return fetch(event.request).then(function(response) {
-          // Cache successful responses
-          if (response.ok) {
-            var responseClone = response.clone();
-            caches.open(CACHE_NAME).then(function(cache) {
-              cache.put(event.request, responseClone);
-            });
-          }
-          return response;
-        });
-      })
-    );
-    return;
-  }
-
-  // Page requests (HTML) → network-first, fall back to offline page
-  if (url.indexOf('.') === -1 || url.endsWith('/')) {
-    // It's a page route
-    event.respondWith(
-      fetch(event.request)
-        .then(function(response) {
-          // Cache the page for offline
-          if (response.ok) {
-            var clone = response.clone();
-            caches.open(CACHE_NAME).then(function(cache) {
-              cache.put(event.request, clone);
-            });
-          }
-          return response;
-        })
-        .catch(function() {
-          // Offline — try cached page or offline fallback
-          return caches.match(event.request).then(function(cached) {
-            if (cached) return cached;
-            return caches.match(OFFLINE_URL).then(function(offlinePage) {
-              if (offlinePage) return offlinePage;
-              // Ultimate fallback: return a basic offline HTML
-              return new Response(
-                '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Offline — WAGE Society</title><style>*{box-sizing:border-box;margin:0;padding:0}body{background:#0f1115;color:#fafafa;font-family:system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center}.icon{width:64px;height:64px;margin-bottom:1.5rem;opacity:0.5}h1{font-size:1.75rem;font-weight:800;margin-bottom:0.75rem;color:#ff6600}p{color:#a1a1aa;max-width:360px;line-height:1.6;margin-bottom:2rem}a{display:inline-block;background:#ff6600;color:#fff;padding:0.75rem 1.5rem;border-radius:10px;text-decoration:none;font-weight:700}</style></head><body><div class="icon">📡</div><h1>You are offline</h1><p>Reconnect to access WAGE Society. Check your connection and try again.</p><a href="/">Try Again</a></body></html>',
-                { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
-              );
-            });
-          });
-        })
-    );
-    return;
-  }
-});
+// No fetch handler on purpose: while this worker is alive it must not intercept
+// anything, least of all an auth callback.

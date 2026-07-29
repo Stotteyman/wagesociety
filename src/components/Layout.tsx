@@ -4,6 +4,7 @@ import { supabase, supabaseConfigured } from '../lib/supabase';
 import { useSession } from '../hooks/useSession';
 import { useRole } from '../hooks/useRole';
 import { captureRef } from '../lib/provision';
+import AuthErrorNotice from './AuthErrorNotice';
 
 /**
  * Navigation is split by how often a link is actually used.
@@ -266,6 +267,9 @@ export default function Layout() {
           </span>
         </div>
       </div>
+
+      {/* Catches an OAuth failure wherever the callback lands, not just on /login. */}
+      <AuthErrorNotice key={pathname} />
 
       <main className="flex-1" key={pathname}>
         <Outlet />
