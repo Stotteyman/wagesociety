@@ -122,6 +122,12 @@ Legacy footguns, if you ever do touch this tree:
   `/wageworld` are dead (see `reports/DIAGNOSTIC_2026-07-17.md` §2).
 - `db/index.js` throws at require-time when `DATABASE_URL` is unset, so requiring anything
   in this tree without env fails immediately.
+- There are **two user tables** — `auth_users` (UUID, real) and a legacy `users` (integer,
+  created inline by `migrate.js:28`) — and `discord_links.user_id` is read as both types by
+  different files. Nothing writes `users` any more (`lib/auth.js`'s `ensureUser()` has no
+  callers), so the integer lookups return `null` and the Discord paths fail *silently*
+  rather than loudly. Traced with file:line evidence in `docs/USER_TABLE_SPLIT_BRAIN.md` —
+  read that before touching anything Discord-related in this tree.
 
 ## Database
 
