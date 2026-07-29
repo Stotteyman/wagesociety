@@ -1,6 +1,7 @@
 // bot/periodic-sync.js — Periodic guild sync every 30 minutes.
-// Runs only when POLSIA_IN_PROCESS_CRONS_ENABLED === 'true' (guarded Render execution).
-// Blaxel shadow sets this env to 'false'; schedules declared in polsia.toml.
+// Runs only when POLSIA_IN_PROCESS_CRONS_ENABLED === 'true' (guarded in-process execution).
+// The external cron host set that env to 'false' and ran bot/periodic-sync-trigger.js
+// instead — exactly one of the two must be live. See docs/CRON_SCHEDULES.md.
 
 const { RateLimiter } = require('./rate-limiter');
 

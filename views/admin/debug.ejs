@@ -862,7 +862,7 @@
 
     // ── Password prompt on load ────────────────────────────────────
     if (!pw) {
-      const entered = prompt('Enter the DEBUG_PASSWORD (check FOR_POLSIA.txt or Render env vars):');
+      const entered = prompt('Enter the DEBUG_PASSWORD (set as an env var on the host):');
       if (entered) {
         localStorage.setItem('debug_pw', entered);
         location.reload();
