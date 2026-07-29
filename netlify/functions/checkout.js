@@ -40,7 +40,16 @@ exports.handler = async (event) => {
   if (!STRIPE_SECRET) return json(500, { error: 'not_configured', detail: 'STRIPE_SECRET_KEY is missing.' });
 
   const { user } = await getAuthContext(event);
-  if (!user || !user.email) return json(401, { error: 'Must be logged in to upgrade' });
+  if (!user) return json(401, { error: 'Must be logged in to upgrade' });
+  // Discord does not always give us an email, and the whole billing chain is keyed on
+  // one — Stripe's receipt, and the webhook that matches a payment back to an account.
+  // Say so plainly instead of returning a "not logged in" error to someone who is.
+  if (!user.email) {
+    return json(400, {
+      error: 'email_required',
+      detail: 'Add an email address in Settings first — we need one to send your receipt and activate your membership.',
+    });
+  }
 
   let body;
   try { body = JSON.parse(event.body || '{}'); } catch { return json(400, { error: 'Invalid JSON body' }); }

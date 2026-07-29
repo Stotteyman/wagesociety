@@ -10,6 +10,7 @@ import AvatarUpload from '../components/ui/AvatarUpload';
 import SocialLinksEditor from '../components/SocialLinksEditor';
 import HandleEditor from '../components/HandleEditor';
 import DeviceList from '../components/DeviceList';
+import AddEmail from '../components/AddEmail';
 import VideoStudio from '../components/VideoStudio';
 
 type ProfileRow = {
@@ -86,6 +87,8 @@ export default function Settings() {
           }}
         />
       </div>
+
+      <AddEmail />
 
       <div className="mt-8"><HandleEditor /></div>
 

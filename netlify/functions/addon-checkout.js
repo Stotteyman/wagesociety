@@ -30,7 +30,13 @@ exports.handler = async (event) => {
   if (!STRIPE_SECRET) return json(500, { error: 'not_configured', detail: 'STRIPE_SECRET_KEY is missing.' });
 
   const { user } = await getAuthContext(event);
-  if (!user || !user.email) return json(401, { error: 'Sign in to order this.' });
+  if (!user) return json(401, { error: 'Sign in to order this.' });
+  if (!user.email) {
+    return json(400, {
+      error: 'email_required',
+      detail: 'Add an email address in Settings first — we need one to send your receipt.',
+    });
+  }
 
   let body;
   try { body = JSON.parse(event.body || '{}'); } catch { return json(400, { error: 'Invalid JSON body' }); }
