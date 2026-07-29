@@ -4,6 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const { requireAdmin } = require('../../lib/middleware');
+const { pool } = require('../../db/index');
 const {
   getSystemStats,
   getAuditLog,
@@ -179,19 +180,19 @@ router.delete('/api/changelog/:id', requireAdmin, async (req, res) => {
 // TAB D — Console
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// GET /api/admin/diagnostics/logs — live server log buffer
+// GET /admin/diagnostics/api/logs — live server log buffer
 router.get('/api/logs', requireAdmin, (req, res) => {
   const since   = parseInt(req.query.since || '0', 10);
   const lines   = logBuffer.slice(since);
   res.json({ lines, bufferStart: 0, bufferEnd: logBuffer.length });
 });
 
-// POST /api/admin/diagnostics/logs/clear — clear the UI log display (no-op on buffer)
+// POST /admin/diagnostics/api/logs/clear — clear the UI log display (no-op on buffer)
 router.post('/api/logs/clear', requireAdmin, (_req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/admin/diagnostics/query — read-only SQL query runner
+// POST /admin/diagnostics/api/query — read-only SQL query runner
 router.post('/api/query', requireAdmin, async (req, res) => {
   const { sql } = req.body;
   if (!sql?.trim()) return res.status(400).json({ error: 'Query is required' });
@@ -257,7 +258,7 @@ router.post('/api/query', requireAdmin, async (req, res) => {
   }
 });
 
-// GET /api/admin/diagnostics/system-info
+// GET /admin/diagnostics/api/system-info
 router.get('/api/system-info', requireAdmin, async (_req, res) => {
   try {
     const [sysInfo, dbPool] = await Promise.all([

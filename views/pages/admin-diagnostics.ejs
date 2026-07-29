@@ -390,7 +390,7 @@ function switchTab(tab) {
 // ── TAB A: Overview ──────────────────────────────────────────────────────────
 async function loadStats() {
   try {
-    const data = await fetch('/api/admin/diagnostics/api/stats').then(r => r.json());
+    const data = await fetch('/admin/diagnostics/api/stats').then(r => r.json());
     const u = data.users || {};
     const t = data.tiers || [];
     const c = data.content || {};
@@ -468,7 +468,7 @@ async function loadAuditLog(page) {
   const filter = document.getElementById('auditActionFilter').value;
   try {
     const params = new URLSearchParams({ page, action: filter });
-    const data = await fetch(`/api/admin/diagnostics/api/audit-log?${params}`).then(r => r.json());
+    const data = await fetch(`/admin/diagnostics/api/audit-log?${params}`).then(r => r.json());
 
     // Populate filter options
     if (auditActions.length === 0 && data.actions?.length) {
@@ -536,7 +536,7 @@ function toggleAuditRow(tr) {
 async function loadChangelog(page) {
   changelogPage = page;
   try {
-    const data = await fetch(`/api/admin/diagnostics/api/changelog?page=${page}`).then(r => r.json());
+    const data = await fetch(`/admin/diagnostics/api/changelog?page=${page}`).then(r => r.json());
     const list = document.getElementById('changelogList');
     const empty = document.getElementById('changelogEmpty');
     const pagEl = document.getElementById('changelogPagination');
@@ -592,7 +592,7 @@ function openChangelogModal(entry) {
 }
 
 function editChangelog(id) {
-  fetch(`/api/admin/diagnostics/api/changelog`)
+  fetch(`/admin/diagnostics/api/changelog`)
     .then(r => r.json())
     .then(data => {
       const entry = data.entries?.find(e => e.id === id);
@@ -611,7 +611,7 @@ async function saveChangelog() {
   };
   if (!payload.title) { showNotification('Title is required', true); return; }
 
-  const url = id ? `/api/admin/diagnostics/api/changelog/${id}` : '/api/admin/diagnostics/api/changelog';
+  const url = id ? `/admin/diagnostics/api/changelog/${id}` : '/admin/diagnostics/api/changelog';
   const method = id ? 'PUT' : 'POST';
 
   try {
@@ -639,7 +639,7 @@ function confirmDeleteChangelog(id) {
 async function doDelete() {
   if (!deleteTarget) return;
   try {
-    const res = await fetch(`/api/admin/diagnostics/api/changelog/${deleteTarget}`, { method: 'DELETE' });
+    const res = await fetch(`/admin/diagnostics/api/changelog/${deleteTarget}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Delete failed');
     closeConfirm();
     if (deleteType === 'changelog') loadChangelog(1);
@@ -686,7 +686,7 @@ function stopLogPolling() {
 
 async function loadLogs() {
   try {
-    const data = await fetch(`/api/admin/diagnostics/api/logs?since=${logOffset}`).then(r => r.json());
+    const data = await fetch(`/admin/diagnostics/api/logs?since=${logOffset}`).then(r => r.json());
     if (!data.lines?.length) {
       if (logOffset === 0) {
         document.getElementById('logLines').innerHTML = '<div style="color:var(--muted);padding:1rem;">No logs captured yet. Server-side console.log calls will appear here.</div>';
@@ -716,7 +716,7 @@ function clearLogs() {
 // Quick query presets
 async function loadQuickQueries() {
   try {
-    const data = await fetch('/api/admin/diagnostics/api/quick-queries').then(r => r.json());
+    const data = await fetch('/admin/diagnostics/api/quick-queries').then(r => r.json());
     const container = document.getElementById('queryPresets');
     container.innerHTML = (data.available || []).map(key => {
       const label = key.replace(/_/g, ' ').replace(/\b\//g, ' / ');
@@ -728,7 +728,7 @@ async function loadQuickQueries() {
 async function runPreset(key) {
   document.getElementById('queryInput').value = '';
   try {
-    const data = await fetch(`/api/admin/diagnostics/api/quick-queries?query=${key}`).then(r => r.json());
+    const data = await fetch(`/admin/diagnostics/api/quick-queries?query=${key}`).then(r => r.json());
     renderQueryResults(data);
   } catch (err) {
     showQueryError(err.message);
@@ -739,7 +739,7 @@ async function runQuery() {
   const sql = document.getElementById('queryInput').value.trim();
   if (!sql) return;
   try {
-    const res = await fetch('/api/admin/diagnostics/api/query', {
+    const res = await fetch('/admin/diagnostics/api/query', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sql }),
@@ -778,7 +778,7 @@ function showQueryError(msg) {
 
 async function loadSystemInfo() {
   try {
-    const data = await fetch('/api/admin/diagnostics/api/system-info').then(r => r.json());
+    const data = await fetch('/admin/diagnostics/api/system-info').then(r => r.json());
     const pool = data.dbPool || {};
     document.getElementById('sysinfoContent').innerHTML = `
       <div class="sysinfo-grid">
