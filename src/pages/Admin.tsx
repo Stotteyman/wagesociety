@@ -4,6 +4,7 @@ import { apiFetch } from '../lib/api';
 import { useRole } from '../hooks/useRole';
 import PageHeader from '../components/ui/PageHeader';
 import { MetricsTab, RolesTab, MonitorsTab, DiscordTab, AuditTab } from './admin/AdminOps';
+import { HANDLE_MIN, handleMessage, normaliseHandle } from '../lib/handles';
 
 type Tab =
   | 'overview' | 'monitors' | 'discord' | 'roles' | 'audit'
@@ -386,6 +387,64 @@ function ShopAdmin() {
 
 const TIERS = ['free', 'creator', 'pro', 'elite', 'unlimited'];
 
+/**
+ * Inline handle editor for one member. Starts read-only so a stray click cannot
+ * rename someone — changing a handle breaks every link to their profile.
+ */
+function HandleField({ user, onSave }: { user: any; onSave: (u: any, handle: string) => Promise<boolean> }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(user.username || '');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { setValue(user.username || ''); }, [user.username]);
+
+  if (!editing) {
+    return (
+      <div className="mt-1 flex items-center gap-2">
+        <span className="font-mono text-[12px] text-wage-amber-2">@{user.username || '—'}</span>
+        <button
+          onClick={() => setEditing(true)}
+          className="font-mono text-[11px] uppercase tracking-[0.12em] text-wage-muted-2 underline hover:text-wage-paper"
+        >
+          Edit handle
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+      <span className="font-mono text-[12px] text-wage-muted-2">@</span>
+      <input
+        value={value}
+        onChange={(e) => setValue(normaliseHandle(e.target.value))}
+        autoFocus
+        spellCheck={false}
+        maxLength={30}
+        className="input !w-44 !py-1 font-mono text-sm"
+      />
+      <button
+        disabled={busy || value === user.username || value.length < HANDLE_MIN}
+        onClick={async () => {
+          setBusy(true);
+          const ok = await onSave(user, value);
+          setBusy(false);
+          if (ok) setEditing(false);
+        }}
+        className="wage-btn wage-btn-primary !px-3 !py-1 text-sm"
+      >
+        {busy ? 'Saving...' : 'Save'}
+      </button>
+      <button
+        onClick={() => { setValue(user.username || ''); setEditing(false); }}
+        className="wage-btn wage-btn-ghost !px-3 !py-1 text-sm"
+      >
+        Cancel
+      </button>
+    </div>
+  );
+}
+
 function UsersAdmin() {
   const [rows, setRows] = useState<any[]>([]);
   const [q, setQ] = useState('');
@@ -422,6 +481,17 @@ function UsersAdmin() {
     load();
   }
 
+  async function saveHandle(u: any, handle: string) {
+    setErr(null); setNote(null);
+    const { data, error } = await supabase.rpc('ws_admin_set_username', { p_user_id: u.id, p_username: handle });
+    if (error) { setErr(error.message); return false; }
+    const r = data as { ok: boolean; reason?: string; username?: string; previous?: string };
+    if (!r.ok) { setErr(handleMessage(r.reason)); return false; }
+    setNote(`@${r.previous} is now @${r.username}.`);
+    load();
+    return true;
+  }
+
   return (
     <div>
       <div className="mb-5 flex gap-2">
@@ -452,6 +522,7 @@ function UsersAdmin() {
                 {u.membership ? ` / ${u.membership}` : ''}
                 {u.trial_ends_at ? ` / trial ends ${fmtDate(u.trial_ends_at)}` : ''}
               </div>
+              <HandleField user={u} onSave={saveHandle} />
             </div>
             <select value={u.tier} onChange={(e) => setTier(u, e.target.value)} className="input !w-auto !py-1.5 text-sm">
               {TIERS.map((t) => <option key={t} value={t}>{t}</option>)}

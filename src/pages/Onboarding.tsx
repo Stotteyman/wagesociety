@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { HANDLE_MIN, HANDLE_PATTERN, checkHandle, handleMessage, normaliseHandle } from '../lib/handles';
 import { supabase } from '../lib/supabase';
 
 export default function Onboarding() {
@@ -19,13 +20,14 @@ export default function Onboarding() {
     });
   }, []);
 
-  // Live username availability
+  // Live availability. The rule itself lives in the database so this cannot drift
+  // out of step with what the save will actually accept.
   useEffect(() => {
-    if (!/^[a-z0-9_]{3,30}$/.test(username)) { setAvail(null); return; }
+    if (username.length < HANDLE_MIN || !HANDLE_PATTERN.test(username)) { setAvail(null); return; }
     let active = true;
-    const t = setTimeout(() => {
-      supabase.rpc('ws_check_username', { p_username: username })
-        .then(({ data }) => { if (active) setAvail(Boolean(data)); });
+    const t = setTimeout(async () => {
+      const r = await checkHandle(username);
+      if (active) setAvail(r.ok);
     }, 300);
     return () => { active = false; clearTimeout(t); };
   }, [username]);
@@ -61,9 +63,9 @@ export default function Onboarding() {
               <span className="font-mono text-sm text-wage-muted-2">wagesociety.com/creators/</span>
               <input
                 value={username}
-                onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                onChange={(e) => setUsername(normaliseHandle(e.target.value))}
                 required
-                pattern="[a-z0-9_]{3,30}"
+                pattern="[a-z0-9_]{5,30}"
                 placeholder="yourname"
                 aria-describedby="handle-hint"
                 className="min-w-0 flex-1 bg-transparent px-1 py-2.5 font-mono text-sm outline-none"
@@ -76,7 +78,7 @@ export default function Onboarding() {
               )}
             </div>
             <span id="handle-hint" className="text-[12.5px] text-wage-muted-2">
-              3—30 characters: lowercase letters, numbers, underscore.
+              At least {HANDLE_MIN} characters: lowercase letters, numbers, underscore.
             </span>
           </label>
 
@@ -118,7 +120,8 @@ export default function Onboarding() {
 
 function mapErr(m: string): string {
   if (m.includes('username_taken')) return 'That handle is already taken. Try another.';
-  if (m.includes('invalid_username')) return 'Handles are 3—30 characters: lowercase letters, numbers, underscore.';
+  if (m.startsWith('invalid_username:')) return handleMessage(m.split(':')[1]);
+  if (m.includes('invalid_username')) return `Handles are ${HANDLE_MIN}—30 characters: lowercase letters, numbers, underscore.`;
   if (m.includes('not_authenticated')) return 'Your session expired. Sign in again to continue.';
   return m;
 }

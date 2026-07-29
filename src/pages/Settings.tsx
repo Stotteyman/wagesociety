@@ -8,6 +8,7 @@ import PageHeader from '../components/ui/PageHeader';
 import ReturnNotice from '../components/ui/ReturnNotice';
 import AvatarUpload from '../components/ui/AvatarUpload';
 import SocialLinksEditor from '../components/SocialLinksEditor';
+import HandleEditor from '../components/HandleEditor';
 import VideoStudio from '../components/VideoStudio';
 
 type ProfileRow = {
@@ -85,7 +86,9 @@ export default function Settings() {
         />
       </div>
 
-      <form onSubmit={save} className="wage-card mt-8 grid gap-5 p-6">
+      <div className="mt-8"><HandleEditor /></div>
+
+      <form onSubmit={save} className="wage-card mt-5 grid gap-5 p-6">
         <div className="text-[16px] font-bold">Public profile</div>
 
         <AvatarUpload value={avatarUrl} name={displayName || 'You'} onChange={setAvatarUrl} />
