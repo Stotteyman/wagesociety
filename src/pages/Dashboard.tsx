@@ -7,6 +7,7 @@ import StatTile from '../components/ui/StatTile';
 import TierChip from '../components/ui/TierChip';
 import { referralUrl } from '../lib/site';
 import ReturnNotice from '../components/ui/ReturnNotice';
+import DashboardTools from '../components/DashboardTools';
 
 type Profile = {
   username: string | null; display_name: string | null; tier: string; role: string;
@@ -134,6 +135,8 @@ export default function Dashboard() {
               detail={remaining === 0 ? 'Everything is done' : `${remaining} step${remaining === 1 ? '' : 's'} left`}
             />
           </div>
+
+          <DashboardTools />
 
           <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_340px]">
             <div className="grid content-start gap-5">

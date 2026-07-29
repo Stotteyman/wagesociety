@@ -46,7 +46,8 @@ export default function App() {
         <Route path="/watch/:id" element={<Watch />} />
         {/* Same shape as /watch: the page sells the tool to everyone, the
             download itself is tier-checked server-side. */}
-        <Route path="/tools" element={<Tools />} />
+        {/* Member software, not a public page — reached from the dashboard. */}
+        <Route path="/tools" element={<RequireAuth><Tools /></RequireAuth>} />
         <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
         <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
         <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
