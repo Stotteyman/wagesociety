@@ -1,14 +1,23 @@
 // bot/periodic-sync.js — Periodic guild sync every 30 minutes.
-// Runs only when POLSIA_IN_PROCESS_CRONS_ENABLED === 'true' (guarded in-process execution).
-// The external cron host set that env to 'false' and ran bot/periodic-sync-trigger.js
+// Runs only when ENABLE_IN_PROCESS_CRONS === 'true', so that exactly one host
+// runs the schedule when several are up. The old name for this flag was
+// POLSIA_IN_PROCESS_CRONS_ENABLED and is still read as a fallback.
+// The external cron host set that flag to 'false' and ran bot/periodic-sync-trigger.js
 // instead — exactly one of the two must be live. See docs/CRON_SCHEDULES.md.
 
 const { RateLimiter } = require('./rate-limiter');
 
 const rl = new RateLimiter();
 
+// Empty string counts as unset, so `||` is deliberate here — `??` would let a
+// blank Netlify variable mask the old name instead of falling through to it.
+function inProcessCronsEnabled() {
+  return (process.env.ENABLE_IN_PROCESS_CRONS
+    || process.env.POLSIA_IN_PROCESS_CRONS_ENABLED) === 'true';
+}
+
 function startPeriodicSync(botClient, { pool, fetchGuild, upsertServer, updateServerConfig }) {
-  if (process.env.POLSIA_IN_PROCESS_CRONS_ENABLED !== 'true') {
+  if (!inProcessCronsEnabled()) {
     console.log(JSON.stringify({ event: 'periodic_sync_skip', reason: 'not_enabled_on_this_host' }));
     return null;
   }

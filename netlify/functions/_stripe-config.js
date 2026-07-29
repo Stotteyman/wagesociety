@@ -1,8 +1,10 @@
 // netlify/functions/_stripe-config.js — shared helper (NOT an endpoint).
 //
 // This file used to hold hardcoded buy.stripe.com Payment Link URLs copied from
-// the legacy Express app (lib/stripe-config.js, where they are still named
-// POLSIA_DONATION_* — the giveaway). Those links belong to acct_1TaNvdRSi3U4FW38,
+// the legacy Express app (lib/stripe-config.js, where the env vars overriding them
+// were named POLSIA_DONATION_* — the giveaway; since renamed to STRIPE_DONATION_*
+// with the old names kept as a fallback, and the provenance recorded there in a
+// comment). Those links belong to acct_1TaNvdRSi3U4FW38,
 // a Polsia-era Stripe account this project has no key for, so every payment
 // through them settled into someone else's account, carried someone else's logo,
 // and fired webhooks our endpoint never saw.

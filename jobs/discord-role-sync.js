@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // jobs/discord-role-sync.js — 15-minute drift fix cron job.
-// Guards: only runs when POLSIA_IN_PROCESS_CRONS_ENABLED === 'true'.
+// Guards: only runs when ENABLE_IN_PROCESS_CRONS === 'true'. The old name for
+// that flag was POLSIA_IN_PROCESS_CRONS_ENABLED and is still read as a fallback.
 // Queries all users with Discord connected, compares expected vs actual roles,
 // and fixes any drift. Syncs via syncRoles() from lib/discord-sync.js.
 //
@@ -13,8 +14,13 @@
 const path = require('path');
 
 // ── Gate: only run if in-process crons are enabled ───────────────────────────
-if (process.env.POLSIA_IN_PROCESS_CRONS_ENABLED !== 'true') {
-  console.log(JSON.stringify({ event: 'discord_role_sync_skip', reason: 'POLSIA_IN_PROCESS_CRONS_ENABLED != true' }));
+// Empty string counts as unset, so `||` is deliberate here — `??` would let a
+// blank Netlify variable mask the old name instead of falling through to it.
+const CRONS_ENABLED = process.env.ENABLE_IN_PROCESS_CRONS
+  || process.env.POLSIA_IN_PROCESS_CRONS_ENABLED;
+
+if (CRONS_ENABLED !== 'true') {
+  console.log(JSON.stringify({ event: 'discord_role_sync_skip', reason: 'ENABLE_IN_PROCESS_CRONS != true' }));
   process.exit(0);
 }
 
