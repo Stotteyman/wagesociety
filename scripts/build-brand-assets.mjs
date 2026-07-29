@@ -238,6 +238,52 @@ async function main() {
     await write(join(SOCIAL, 'facebook-cover-1640x924.png'), buf);
   }
 
+  // ── x / twitter ────────────────────────────────────────────────────────────
+  console.log('\nx (twitter)');
+  // Avatar is masked to a circle, same reasoning as the Facebook one.
+  {
+    const s = 400, c = Math.round(s * 0.64);
+    const off = Math.round((s - c) / 2);
+    const buf = await sharp(avatarBackdrop(s))
+      .composite([{ input: await crest(c), top: off, left: off }])
+      .png().toBuffer();
+    await write(join(SOCIAL, 'x-avatar-400.png'), buf);
+  }
+  // 1500x500 header. The avatar overlaps the lower left and the strip is cropped
+  // hard on narrow viewports, so the crest sits centred and high enough to clear it.
+  {
+    const w = 1500, h = 500;
+    const c = Math.round(h * 0.62);
+    const buf = await sharp(backdrop(w, h))
+      .composite([{ input: await crest(c), top: Math.round((h - c) / 2 - h * 0.06), left: Math.round((w - c) / 2) }])
+      .png().toBuffer();
+    await write(join(SOCIAL, 'x-header-1500x500.png'), buf);
+  }
+
+  // ── tiktok ─────────────────────────────────────────────────────────────────
+  console.log('\ntiktok');
+  // TikTok has no banner — the avatar is the whole identity, shown as small as
+  // ~100px, so it gets slightly tighter padding to keep the lettering readable.
+  {
+    const s = 1080, c = Math.round(s * 0.70);
+    const off = Math.round((s - c) / 2);
+    const buf = await sharp(avatarBackdrop(s))
+      .composite([{ input: await crest(c), top: off, left: off }])
+      .png().toBuffer();
+    await write(join(SOCIAL, 'tiktok-avatar-1080.png'), buf);
+    await write(join(SOCIAL, 'tiktok-avatar-200.png'), await sharp(buf).resize(200, 200).png().toBuffer());
+  }
+
+  // Vertical safe-area template for short-form: 1080x1920 with the mark parked in
+  // the upper third, clear of TikTok's caption and button furniture.
+  {
+    const w = 1080, h = 1920, c = Math.round(w * 0.46);
+    const buf = await sharp(backdrop(w, h))
+      .composite([{ input: await crest(c), top: Math.round(h * 0.16), left: Math.round((w - c) / 2) }])
+      .png().toBuffer();
+    await write(join(SOCIAL, 'vertical-1080x1920.png'), buf);
+  }
+
   console.log('\ndone.');
 }
 
