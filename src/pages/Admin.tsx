@@ -3,18 +3,30 @@ import { supabase } from '../lib/supabase';
 import { apiFetch } from '../lib/api';
 import { useRole } from '../hooks/useRole';
 import PageHeader from '../components/ui/PageHeader';
+import { MetricsTab, RolesTab, MonitorsTab, DiscordTab, AuditTab } from './admin/AdminOps';
 
-type Tab = 'overview' | 'users' | 'subs' | 'store' | 'blog' | 'merch' | 'faq';
+type Tab =
+  | 'overview' | 'monitors' | 'discord' | 'roles' | 'audit'
+  | 'users' | 'subs' | 'store' | 'blog' | 'merch' | 'faq';
 
+/** Operations first, then people, then the content editors. */
 const TABS: [Tab, string][] = [
-  ['overview', 'Overview'],
+  ['overview', 'Metrics'],
+  ['monitors', 'Monitors'],
+  ['discord', 'Discord'],
   ['users', 'Users'],
+  ['roles', 'Roles'],
   ['subs', 'Subscriptions'],
+  ['audit', 'Audit'],
   ['store', 'Point Store'],
   ['blog', 'Blog'],
   ['merch', 'Merch'],
   ['faq', 'FAQ'],
 ];
+
+/** Tabs that expose access control or destructive operations. */
+const ADMIN_ONLY: Tab[] = ['roles'];
+const MANAGER_ONLY: Tab[] = ['discord'];
 
 /* ── shared bits ─────────────────────────────────────────────────────────── */
 
@@ -78,6 +90,12 @@ export default function Admin() {
   const { loading, atLeast } = useRole();
   const [tab, setTab] = useState<Tab>('overview');
 
+  // Hide what the account cannot use, rather than showing a tab that only errors.
+  // The RPCs enforce this server-side too — this is presentation, not the boundary.
+  const visibleTabs = TABS.filter(([t]) =>
+    (!ADMIN_ONLY.includes(t) || atLeast('admin')) &&
+    (!MANAGER_ONLY.includes(t) || atLeast('manager')));
+
   if (loading) return <p className="p-16 text-center text-wage-muted">Loading...</p>;
   if (!atLeast('staff')) {
     return (
@@ -93,7 +111,7 @@ export default function Admin() {
       <PageHeader eyebrow="Staff" title="Admin" lede="Members, subscriptions and everything the site publishes." />
 
       <nav className="mt-9 flex flex-wrap border-b border-wage-line">
-        {TABS.map(([t, label]) => (
+        {visibleTabs.map(([t, label]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -109,7 +127,11 @@ export default function Admin() {
       </nav>
 
       <div className="mt-8">
-        {tab === 'overview' && <Overview />}
+        {tab === 'overview' && <MetricsTab />}
+        {tab === 'monitors' && <MonitorsTab />}
+        {tab === 'discord' && <DiscordTab />}
+        {tab === 'roles' && <RolesTab />}
+        {tab === 'audit' && <AuditTab />}
         {tab === 'users' && <UsersAdmin />}
         {tab === 'subs' && <SubsAdmin />}
         {tab === 'store' && <ShopAdmin />}
@@ -118,43 +140,6 @@ export default function Admin() {
         {tab === 'faq' && <FaqAdmin />}
       </div>
     </section>
-  );
-}
-
-/* ── overview ────────────────────────────────────────────────────────────── */
-
-function Overview() {
-  const [o, setO] = useState<Record<string, number> | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  useEffect(() => {
-    supabase.rpc('ws_admin_overview').then(({ data, error }) => (error ? setErr(error.message) : setO(data as any)));
-  }, []);
-
-  if (err) return <Notice tone="error">{err}</Notice>;
-  if (!o) return <Loading />;
-
-  // Grouped so the people numbers read first and the content numbers second.
-  const groups: [string, [string, string][]][] = [
-    ['Members', [['Creators', 'creators'], ['Active members', 'memberships'], ['Subscribers', 'subscribers']]],
-    ['Content', [['Published posts', 'published'], ['Blog (all)', 'blog_posts'], ['Merch', 'merch'], ['FAQ', 'faq']]],
-  ];
-
-  return (
-    <div className="grid gap-8">
-      {groups.map(([heading, tiles]) => (
-        <div key={heading}>
-          <div className="wage-eyebrow-mute mb-3 font-mono text-[10.5px] uppercase tracking-[0.16em]">{heading}</div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {tiles.map(([label, k]) => (
-              <div key={k} className="wage-card wage-card-sm px-4 py-5">
-                <div className="wage-num text-[30px] leading-none text-wage-amber-2">{o[k] ?? 0}</div>
-                <div className="mt-2 font-mono text-[10.5px] uppercase tracking-[0.14em] text-wage-muted-2">{label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }
 
