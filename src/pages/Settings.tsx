@@ -9,6 +9,7 @@ import ReturnNotice from '../components/ui/ReturnNotice';
 import AvatarUpload from '../components/ui/AvatarUpload';
 import SocialLinksEditor from '../components/SocialLinksEditor';
 import HandleEditor from '../components/HandleEditor';
+import DeviceList from '../components/DeviceList';
 import VideoStudio from '../components/VideoStudio';
 
 type ProfileRow = {
@@ -131,6 +132,7 @@ export default function Settings() {
 
       <div className="mt-5"><VideoStudio /></div>
       <div className="mt-5"><SocialLinksEditor /></div>
+      <DeviceList />
       <div className="mt-5"><Membership currentTier={tier} /></div>
 
       <div className="mt-10 border-t border-wage-line pt-6">

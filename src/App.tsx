@@ -18,6 +18,7 @@ import Admin from './pages/Admin';
 import Referrals from './pages/Referrals';
 import PointShop from './pages/PointShop';
 import Verify from './pages/Verify';
+import LinkDevice from './pages/LinkDevice';
 import WhyTenPercent from './pages/WhyTenPercent';
 import Plans from './pages/Plans';
 import Tools from './pages/Tools';
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         {/* Public on purpose: /verify is the front door, signed in or not. */}
         <Route path="/verify" element={<Verify />} />
+        <Route path="/link" element={<LinkDevice />} />
         {/* Public page, gated player — metadata is open, playback is entitlement-checked. */}
         <Route path="/watch/:id" element={<Watch />} />
         {/* Same shape as /watch: the page sells the tool to everyone, the
