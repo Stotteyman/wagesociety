@@ -31,7 +31,7 @@ export default function ConnectAccounts({
   }
   useEffect(() => { load(); }, []);
 
-  async function connect(provider: 'discord' | 'google' | 'kick') {
+  async function connect(provider: 'discord' | 'google' | 'kick' | 'x', reconsent = false) {
     setBusy(provider); setMsg(null);
 
     // Discord goes through its own helper: it needs guilds.join so we can add
@@ -50,12 +50,20 @@ export default function ConnectAccounts({
     }
 
     const { error } = await supabase.auth.linkIdentity({
-      provider,
-      // Google is also how we read which YouTube channels you own, so the
-      // YouTube scope has to be asked for at link time.
+      // 'x' is Supabase's OAuth 2.0 X provider; supabase-js types have not caught up.
+      provider: provider as 'google',
       options: {
         redirectTo: `${window.location.origin}/settings?linked=${provider}`,
-        scopes: 'https://www.googleapis.com/auth/youtube.readonly',
+        // Only Google carries an extra scope — it is how we read which YouTube
+        // channels you own. X needs nothing beyond the defaults.
+        ...(provider === 'google'
+          ? {
+              scopes: 'https://www.googleapis.com/auth/youtube.readonly',
+              // Google silently reuses a previous consent, so asking again for a
+              // scope that was declined does nothing without prompt=consent.
+              ...(reconsent ? { queryParams: { prompt: 'consent' } } : {}),
+            }
+          : {}),
       },
     });
     if (error) { setMsg(error.message); setBusy(null); }
@@ -78,9 +86,13 @@ export default function ConnectAccounts({
           busy={busy === 'discord'}
           onConnect={() => connect('discord')}
         />
+        {/* This row is Google, not YouTube. Linking Google does not by itself mean we
+            can see a YouTube channel — that is a separate permission Google asks for,
+            and it can be declined while the sign-in still succeeds. Calling the row
+            "YouTube" made a connected Google account look like a connected channel. */}
         <Row
-          label="YouTube"
-          note="Sign in with Google, then pick the channel to feature"
+          label="Google"
+          note="Sign in with Google, and read which YouTube channels you own"
           linked={googleLinked}
           busy={busy === 'google'}
           onConnect={() => connect('google')}
@@ -88,6 +100,32 @@ export default function ConnectAccounts({
 
         {googleLinked && (
           <div className="border-t border-wage-line pt-3">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="text-sm font-semibold">Featured YouTube channel</div>
+                <p className="mt-0.5 text-xs text-wage-muted-2">
+                  No channels listed? The YouTube permission was probably not granted.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => connect('google', true)}
+                  disabled={busy === 'google'}
+                  className="wage-btn wage-btn-ghost !px-3 !py-1 text-sm"
+                >
+                  {busy === 'google' ? 'Opening...' : 'Grant YouTube access'}
+                </button>
+                <a
+                  href="https://myaccount.google.com/permissions"
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="wage-btn wage-btn-quiet !px-3 !py-1 text-sm"
+                >
+                  Google permissions
+                </a>
+              </div>
+            </div>
             <YouTubeChannelPicker />
           </div>
         )}
@@ -98,6 +136,14 @@ export default function ConnectAccounts({
           linked={linked.some(isKickIdentity)}
           busy={busy === 'kick'}
           onConnect={() => connect('kick')}
+        />
+
+        <Row
+          label="X"
+          note="Show your X profile on your page"
+          linked={linked.includes('x') || linked.includes('twitter')}
+          busy={busy === 'x'}
+          onConnect={() => connect('x')}
         />
 
         <div className="flex items-center justify-between gap-4 border-t border-wage-line pt-3 opacity-60">
