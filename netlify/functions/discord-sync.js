@@ -28,12 +28,31 @@ exports.handler = async (event) => {
   // 2) apply with the bot token
   const base = `https://discord.com/api/v10/guilds/${plan.guild_id}/members/${plan.discord_id}`;
   const H = { Authorization: `Bot ${BOT}`, 'Content-Type': 'application/json' };
-  const out = { synced: true, tier: plan.tier, added: null, removed: [] };
+  const out = { synced: true, tier: plan.tier, added: null, removed: [], restored: [] };
 
   if (plan.add_role_id) {
     const r = await fetch(`${base}/roles/${plan.add_role_id}`, { method: 'PUT', headers: H });
     out.added = r.ok ? plan.add_role_id : `err_${r.status}`;
   }
+
+  // Hand back anything the verification lockdown took away. Confirmed to the database
+  // only if every write landed — a partial failure leaves the snapshot unrestored so
+  // the next sync tries again, rather than marking it done and losing the roles.
+  const restore = plan.restore_role_ids || [];
+  let allRestored = true;
+  for (const rid of restore) {
+    const r = await fetch(`${base}/roles/${rid}`, { method: 'PUT', headers: H });
+    if (r.ok) out.restored.push(rid);
+    else allRestored = false;
+  }
+  if (restore.length && allRestored) {
+    await fetch(`${SUPABASE_URL}/rest/v1/rpc/ws_confirm_discord_restore`, {
+      method: 'POST',
+      headers: { apikey: ANON, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: '{}',
+    }).catch(() => {});
+  }
+
   for (const rid of plan.remove_role_ids || []) {
     const r = await fetch(`${base}/roles/${rid}`, { method: 'DELETE', headers: H });
     if (r.ok) out.removed.push(rid);

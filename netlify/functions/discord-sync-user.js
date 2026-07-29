@@ -36,8 +36,27 @@ exports.handler = async (event) => {
 
   const base = `https://discord.com/api/v10/guilds/${plan.guild_id}/members/${plan.discord_id}`;
   const H = { Authorization: `Bot ${BOT}`, 'Content-Type': 'application/json' };
-  const out = { synced: true, tier: plan.tier, removed: [] };
+  const out = { synced: true, tier: plan.tier, removed: [], restored: [] };
   if (plan.add_role_id) { const r = await fetch(`${base}/roles/${plan.add_role_id}`, { method: 'PUT', headers: H }); out.added = r.ok ? plan.add_role_id : `err_${r.status}`; }
+
+  // Same lockdown restore as the self-serve path, marked done only on a clean sweep.
+  const restore = plan.restore_role_ids || [];
+  let allRestored = true;
+  for (const rid of restore) {
+    const r = await fetch(`${base}/roles/${rid}`, { method: 'PUT', headers: H });
+    if (r.ok) out.restored.push(rid); else allRestored = false;
+  }
+  if (restore.length && allRestored) {
+    await fetch(`${SUPABASE_URL}/rest/v1/discord_role_snapshot?discord_id=eq.${plan.discord_id}&restored_at=is.null`, {
+      method: 'PATCH',
+      headers: {
+        apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, 'Content-Type': 'application/json',
+        'Content-Profile': 'wagesociety', Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({ restored_at: new Date().toISOString(), restored_to: userId }),
+    }).catch(() => {});
+  }
+
   for (const rid of plan.remove_role_ids || []) { const r = await fetch(`${base}/roles/${rid}`, { method: 'DELETE', headers: H }); if (r.ok) out.removed.push(rid); }
   return json(200, out);
 };

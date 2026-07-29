@@ -40,6 +40,14 @@ export type JoinResult =
   | { ok: true; joined: boolean; username?: string }
   | { ok: false; detail: string };
 
+/**
+ * Apply the caller's Discord roles from their website tier, and hand back anything the
+ * verification lockdown removed. Only meaningful once they are actually in the server.
+ */
+export async function syncDiscordRoles(): Promise<void> {
+  await apiFetch('discord-sync', { method: 'POST' }).catch(() => {});
+}
+
 /** Add the signed-in user to the official server. Safe to call when already a member. */
 export async function joinOfficialServer(): Promise<JoinResult> {
   const token = sessionStorage.getItem(TOKEN_KEY);

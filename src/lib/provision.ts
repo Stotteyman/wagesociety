@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { apiFetch } from './api';
+import { joinOfficialServer } from './discord';
 
 export type Provision = {
   linked: boolean;
@@ -8,9 +9,20 @@ export type Provision = {
   role?: string;
   trial_ends_at?: string;
   is_new_grant?: boolean;
+  /** Whether we got them into the Discord server on this pass. */
+  joined?: boolean;
+  joinProblem?: string;
 };
 
-const PRICE: Record<string, string> = { creator: '$29/mo', pro: '$79/mo', elite: 'custom', unlimited: 'custom' };
+// Mirrors wagesociety.membership_plans.price_cents. This is shown to someone on a trial
+// as what they will be charged, so a stale number here is a misquoted price — keep it in
+// step with the table (and with TIER_AMOUNTS in netlify/functions/_stripe-config.js).
+const PRICE: Record<string, string> = {
+  creator: '$9.99/mo',
+  pro: '$24.99/mo',
+  elite: '$49.99/mo',
+  unlimited: '$99.99/mo',
+};
 
 // Run once after login: apply a captured referral, provision tier/trial from the
 // Discord import, then sync the Discord role. Returns welcome info if granted.
@@ -27,7 +39,17 @@ export async function runProvisioning(): Promise<Provision | null> {
   const { data, error } = await supabase.rpc('ws_link_discord');
   if (error) return null;
   const p = data as Provision;
-  if (p?.linked) apiFetch('discord-sync', { method: 'POST' }).catch(() => {});
+  if (!p?.linked) return p;
+
+  // Order matters and is not interchangeable: Discord refuses a role write for someone
+  // who is not a member of the guild yet. Syncing before joining left brand-new members
+  // in the server with no roles at all — and with the server locked down, no roles means
+  // no visible channels. Join first, then sync.
+  const join = await joinOfficialServer();
+  p.joined = join.ok;
+  if (!join.ok) p.joinProblem = join.detail;
+
+  await apiFetch('discord-sync', { method: 'POST' }).catch(() => {});
   return p;
 }
 

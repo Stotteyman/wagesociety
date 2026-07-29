@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSession } from '../hooks/useSession';
-import { captureDiscordToken, joinOfficialServer, linkDiscord, signInWithDiscord } from '../lib/discord';
+import { captureDiscordToken, joinOfficialServer, linkDiscord, signInWithDiscord, syncDiscordRoles } from '../lib/discord';
 import { runProvisioning } from '../lib/provision';
 
 type StepState = 'todo' | 'doing' | 'done';
@@ -36,8 +36,12 @@ export default function Verify() {
       setUsername((profile as { username?: string } | null)?.username ?? null);
 
       if (providers.includes('discord')) {
-        await runProvisioning();
-        await attemptJoin();
+        // runProvisioning joins the server and then syncs roles, in that order.
+        setJoining(true);
+        const p = await runProvisioning();
+        setJoining(false);
+        setJoined(Boolean(p?.joined));
+        if (p && !p.joined && p.joinProblem) setProblem(p.joinProblem);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -46,8 +50,14 @@ export default function Verify() {
   async function attemptJoin() {
     setJoining(true); setProblem(null);
     const r = await joinOfficialServer();
+    if (r.ok) {
+      // Roles can only be written once they are a member, so this has to follow the join.
+      await syncDiscordRoles();
+      setJoining(false);
+      setJoined(true);
+      return;
+    }
     setJoining(false);
-    if (r.ok) { setJoined(true); return; }
     setJoined(false);
     setProblem(r.detail);
   }
