@@ -67,6 +67,18 @@ async function applyPlan(plan) {
     if (r.ok) out.removed.push(rid);
     await sleep(900);
   }
+
+  // A clean resync also closes an open snapshot, so a bulk pass clears the awaiting
+  // list rather than leaving rows for someone to tidy by hand.
+  if (plan.pending_restore && !out.errors.length) {
+    const svc = getServiceClient();
+    await svc.from('discord_role_snapshot')
+      .update({ restored_at: new Date().toISOString() })
+      .eq('discord_id', plan.discord_id)
+      .is('restored_at', null)
+      .then(() => {}, () => {});
+    out.restore_cleared = true;
+  }
   return out;
 }
 

@@ -37,16 +37,23 @@ exports.handler = async (event) => {
   const base = `https://discord.com/api/v10/guilds/${plan.guild_id}/members/${plan.discord_id}`;
   const H = { Authorization: `Bot ${BOT}`, 'Content-Type': 'application/json' };
   const out = { synced: true, tier: plan.tier, removed: [], restored: [] };
-  if (plan.add_role_id) { const r = await fetch(`${base}/roles/${plan.add_role_id}`, { method: 'PUT', headers: H }); out.added = r.ok ? plan.add_role_id : `err_${r.status}`; }
+  let clean = true;
+  if (plan.add_role_id) {
+    const r = await fetch(`${base}/roles/${plan.add_role_id}`, { method: 'PUT', headers: H });
+    out.added = r.ok ? plan.add_role_id : `err_${r.status}`;
+    if (!r.ok) clean = false;
+  }
 
-  // Same lockdown restore as the self-serve path, marked done only on a clean sweep.
+  // Same lockdown restore as the self-serve path, and cleared on the same condition:
+  // pending_restore, not a non-empty restore list. Tier roles are excluded from that
+  // list but are exactly what most people get back, so keying on it left members marked
+  // as awaiting forever.
   const restore = plan.restore_role_ids || [];
-  let allRestored = true;
   for (const rid of restore) {
     const r = await fetch(`${base}/roles/${rid}`, { method: 'PUT', headers: H });
-    if (r.ok) out.restored.push(rid); else allRestored = false;
+    if (r.ok) out.restored.push(rid); else clean = false;
   }
-  if (restore.length && allRestored) {
+  if (plan.pending_restore && clean) {
     await fetch(`${SUPABASE_URL}/rest/v1/discord_role_snapshot?discord_id=eq.${plan.discord_id}&restored_at=is.null`, {
       method: 'PATCH',
       headers: {

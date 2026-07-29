@@ -30,27 +30,39 @@ exports.handler = async (event) => {
   const H = { Authorization: `Bot ${BOT}`, 'Content-Type': 'application/json' };
   const out = { synced: true, tier: plan.tier, added: null, removed: [], restored: [] };
 
+  let clean = true;
   if (plan.add_role_id) {
     const r = await fetch(`${base}/roles/${plan.add_role_id}`, { method: 'PUT', headers: H });
     out.added = r.ok ? plan.add_role_id : `err_${r.status}`;
+    if (!r.ok) clean = false;
   }
 
-  // Hand back anything the verification lockdown took away. Confirmed to the database
-  // only if every write landed — a partial failure leaves the snapshot unrestored so
-  // the next sync tries again, rather than marking it done and losing the roles.
+  // Hand back anything the verification lockdown took away.
   const restore = plan.restore_role_ids || [];
-  let allRestored = true;
   for (const rid of restore) {
     const r = await fetch(`${base}/roles/${rid}`, { method: 'PUT', headers: H });
     if (r.ok) out.restored.push(rid);
-    else allRestored = false;
+    else clean = false;
   }
-  if (restore.length && allRestored) {
+
+  // Close the snapshot as soon as this person's roles are actually back, so they drop
+  // off the "awaiting" list without anyone pressing a button.
+  //
+  // This is keyed on pending_restore rather than on restore_role_ids being non-empty.
+  // Tier roles are deliberately excluded from restore_role_ids — the website tier owns
+  // them — and for nearly everyone the stripped roles WERE tier roles, so that list is
+  // empty even though the restore genuinely happened via add_role_id above. Keying on
+  // the list left people marked as awaiting forever.
+  //
+  // Confirmed only on a clean pass: a partial failure leaves the snapshot open so the
+  // next sync retries, rather than marking it done and losing the roles.
+  if (plan.pending_restore && clean) {
     await fetch(`${SUPABASE_URL}/rest/v1/rpc/ws_confirm_discord_restore`, {
       method: 'POST',
       headers: { apikey: ANON, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: '{}',
     }).catch(() => {});
+    out.restore_cleared = true;
   }
 
   for (const rid of plan.remove_role_ids || []) {
