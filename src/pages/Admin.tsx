@@ -564,7 +564,14 @@ function SubsAdmin() {
       {rows.map((s, i) => (
         <Row key={i}>
           <div className="flex min-w-0 flex-wrap items-center gap-2.5">
-            <span className="truncate font-semibold">{s.email}</span>
+            {/* Handle first: it is how members are actually known, and an email-less
+                account (Discord does not always supply one) would otherwise show blank. */}
+            <span className="truncate font-semibold">
+              {s.username ? `@${s.username}` : s.email || '(no account)'}
+            </span>
+            {s.username && s.email && (
+              <span className="truncate font-mono text-[11.5px] text-wage-muted-2">{s.email}</span>
+            )}
             <span className="wage-chip">{s.plan}</span>
             <span className={`wage-chip ${s.status === 'active' ? 'border-wage-success/50 text-wage-success' : ''}`}>
               {s.status}
