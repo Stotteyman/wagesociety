@@ -4,11 +4,9 @@
 // Queries all users with Discord connected, compares expected vs actual roles,
 // and fixes any drift. Syncs via syncRoles() from lib/discord-sync.js.
 //
-// Declare in polsia.toml:
-// [[crons]]
-//   name = "discord-role-sync"
-//   schedule = "*/15 * * * *"
-//   command = "node jobs/discord-role-sync.js"
+// Schedule: */15 * * * *  →  node jobs/discord-role-sync.js
+// Nothing currently runs it — see docs/CRON_SCHEDULES.md for where the schedule lived
+// and what a new host has to wire up.
 
 'use strict';
 

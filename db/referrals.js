@@ -200,8 +200,8 @@ module.exports = {
   // Hook 2 — 30-day retention bonus: cron job calls checkReferralRetention(userId)
   //           after referred user account is 30+ days old and still active (not banned).
   //           Reward: +300 points to referrer, type: 'referral_retained'.
-  //           Declare in polsia.toml: [[crons]] name = "referral-retention-check"
-  //           schedule = "0 8 * * *" command = "node scripts/check-referral-retention.js"
+  //           Suggested schedule: "0 8 * * *" running scripts/check-referral-retention.js
+  //           — neither the job nor that script exists yet. See docs/CRON_SCHEDULES.md.
   // ───────────────────────────────────────────────────────────────────────────
 
   recalcReferralTier: async (userId) => {

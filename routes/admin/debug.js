@@ -1,5 +1,5 @@
 // routes/admin/debug.js — Internal diagnostic / admin panel at /admin/debug.
-// Guards with DEBUG_PASSWORD env var (from FOR_POLSIA.txt or Render env vars).
+// Guards with the DEBUG_PASSWORD env var, set on the host.
 // Owns: all diagnostic checks, table browsing, SQL runner, admin action logging.
 // Does NOT own: user session logic (session-based auth bypassed here).
 const express = require('express');
