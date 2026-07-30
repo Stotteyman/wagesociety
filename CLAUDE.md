@@ -114,11 +114,11 @@ scripts/                      — build-brand-assets.mjs, backfill-referral-code
 
 Legacy footguns, if you ever do touch this tree:
 
-- `routes/pages.js:968` is a `/:username` catch-all. A new top-level page route that is not
-  in its `RESERVED` array renders `profile-not-found` instead of the page.
-- That guard renders `pages/404`, and **`views/pages/404.ejs` does not exist** — every
-  reserved-path 404 throws instead of rendering.
-- `routes/pages.js:992` is a dangling `// GET /play` comment with no handler; `/play` and
+- `routes/pages.js:971` is a `/:username` catch-all. A new top-level page route that is not
+  in its `RESERVED` array (`:972-975`) renders `profile-not-found` instead of the page.
+- That guard renders `pages/404` (`:977`), and **`views/pages/404.ejs` does not exist** —
+  every reserved-path 404 throws instead of rendering.
+- `routes/pages.js:995` is a dangling `// GET /play` comment with no handler; `/play` and
   `/wageworld` are dead (see `reports/DIAGNOSTIC_2026-07-17.md` §2).
 - `db/index.js` throws at require-time when `DATABASE_URL` is unset, so requiring anything
   in this tree without env fails immediately.
