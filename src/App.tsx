@@ -25,6 +25,7 @@ import Tools from './pages/Tools';
 import Watch from './pages/Watch';
 import Terms from './pages/Terms';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import Invite from './pages/Invite';
 import JoinTheTeam from './pages/JoinTheTeam';
 import NotFound from './pages/NotFound';
 
@@ -44,6 +45,9 @@ export default function App() {
         <Route path="/streams" element={<Streams />} />
         <Route path="/merch" element={<Merch />} />
         <Route path="/login" element={<Login />} />
+        {/* Where a referral link lands. Public, and it has to be: the whole point is
+            that the visitor does not have an account yet. */}
+        <Route path="/join/:handle" element={<Invite />} />
         {/* Public on purpose: /verify is the front door, signed in or not. */}
         <Route path="/verify" element={<Verify />} />
         <Route path="/link" element={<LinkDevice />} />

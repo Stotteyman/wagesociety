@@ -7,7 +7,8 @@ import EmptyState from '../components/ui/EmptyState';
 import { referralUrl } from '../lib/site';
 
 type Data = {
-  code: string; points: number; total: number; tier: string;
+  code: string; handle: string | null; points: number; total: number; tier: string;
+  reward_referrer: number; reward_joiner: number;
   referrals: { name: string | null; username: string | null; status: string; at: string }[];
   transactions: { amount: number; type: string; description: string; at: string }[];
 };
@@ -26,7 +27,8 @@ export default function Referrals() {
     );
   }
 
-  const link = referralUrl(d.code);
+  // ws_my_referrals returns the handle now; the code stays as the fallback.
+  const link = referralUrl(d.handle || '', d.code);
 
   return (
     <section className="mx-auto max-w-3xl px-5 py-14">

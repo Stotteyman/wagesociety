@@ -57,8 +57,22 @@ export function priceFor(tier?: string): string {
   return (tier && PRICE[tier]) || '';
 }
 
-// Capture ?ref=WAGE-XXXX into localStorage for later application at signup.
+/**
+ * Remember who invited someone until they have an account to attach it to.
+ *
+ * Kept as typed rather than upper-cased: it may now be a handle, and handles are
+ * lower-case. ws_apply_referral matches a handle case-insensitively and a code
+ * case-insensitively too, so either form survives the round trip.
+ */
+export function rememberRef(ref: string) {
+  if (/^(WAGE-[A-Za-z0-9]{4,20}|[A-Za-z0-9_]{3,30})$/.test(ref)) {
+    localStorage.setItem('wage_ref', ref);
+  }
+}
+
+// Capture ?ref=... from any page into localStorage, for application at signup.
+// /join/:handle stores its own; this covers links already out in the world.
 export function captureRef() {
   const ref = new URLSearchParams(window.location.search).get('ref');
-  if (ref && /^WAGE-/i.test(ref)) localStorage.setItem('wage_ref', ref.toUpperCase());
+  if (ref) rememberRef(ref);
 }

@@ -10,6 +10,12 @@ export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}
 
   const res = await fetch(`/api/${path.replace(/^\//, '')}`, { ...init, headers });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((body as { error?: string }).error || `Request failed (${res.status})`);
+  if (!res.ok) {
+    // Functions return a machine-readable `error` plus a human `detail`. Throwing only
+    // the code put strings like "stripe_account_failed" in front of members, with the
+    // sentence that explains it sitting unused in the payload. Prefer the sentence.
+    const { error, detail } = body as { error?: string; detail?: string };
+    throw new Error(detail || error || `Request failed (${res.status})`);
+  }
   return body as T;
 }

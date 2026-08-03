@@ -8,6 +8,7 @@ import PageHeader from '../components/ui/PageHeader';
 import ReturnNotice from '../components/ui/ReturnNotice';
 import AvatarUpload from '../components/ui/AvatarUpload';
 import SocialLinksEditor from '../components/SocialLinksEditor';
+import CreatorOnly from '../components/CreatorOnly';
 import HandleEditor from '../components/HandleEditor';
 import DeviceList from '../components/DeviceList';
 import AddEmail from '../components/AddEmail';
@@ -133,8 +134,27 @@ export default function Settings() {
         <ConnectAccounts primaryPlatform={platform} onPrimaryPlatformChange={setPlatform} />
       </div>
 
-      <div className="mt-5"><VideoStudio /></div>
-      <div className="mt-5"><SocialLinksEditor /></div>
+      {/* Both of these are what a paid membership buys. The RPCs behind them enforce it
+          too; this is so a free member is offered the upgrade instead of a form that
+          silently refuses to save. */}
+      <div className="mt-5">
+        <CreatorOnly
+          tier={tier}
+          title="Paid video"
+          blurb="Sell videos one at a time or bundle them into a monthly subscription, with Stripe paying you directly. Available from Creator up."
+        >
+          <VideoStudio />
+        </CreatorOnly>
+      </div>
+      <div className="mt-5">
+        <CreatorOnly
+          tier={tier}
+          title="Where to find you"
+          blurb="Put your X, Instagram, TikTok, Discord and website on your public profile so people can follow you everywhere. Available from Creator up."
+        >
+          <SocialLinksEditor />
+        </CreatorOnly>
+      </div>
       <DeviceList />
       <div className="mt-5"><Membership currentTier={tier} /></div>
 

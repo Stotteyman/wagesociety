@@ -52,7 +52,32 @@ exports.handler = async (event) => {
       'metadata[wage_user_id]': user.id,
     });
     if (!created.ok) {
-      return json(400, { error: 'stripe_account_failed', detail: created.body?.error?.message });
+      const detail = created.body?.error?.message || '';
+      /*
+       * The one failure that is ours, not the creator's.
+       *
+       * Stripe refuses to create ANY connected account until the platform account has
+       * signed up for Connect and accepted its agreement — a dashboard step, with no API
+       * to do it. Until then every creator who clicks "Set up payouts" gets a hard stop,
+       * and the old response said only `stripe_account_failed`, which reads like the
+       * creator did something wrong and gives nobody a next step.
+       *
+       * Matched on the text because Stripe returns a plain `invalid_request_error` with
+       * no distinguishing code. If they ever reword it, the generic branch below still
+       * carries the real message through.
+       */
+      if (/signed up for Connect/i.test(detail)) {
+        return json(503, {
+          error: 'connect_not_enabled',
+          detail:
+            'Payouts are not switched on yet. W.A.G.E. has to enable Stripe Connect on the '
+            + 'platform account before any creator can be paid — this is on us, not you. '
+            + 'It is being sorted; nothing you do here will fix it in the meantime.',
+          admin_action: 'Enable Connect at https://dashboard.stripe.com/connect/overview, '
+            + 'then creators can onboard immediately — no code change needed.',
+        });
+      }
+      return json(400, { error: 'stripe_account_failed', detail });
     }
     accountId = created.body.id;
 

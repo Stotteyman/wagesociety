@@ -12,6 +12,7 @@ import DashboardTools from '../components/DashboardTools';
 type Profile = {
   username: string | null; display_name: string | null; tier: string; role: string;
   referral_code: string | null; referral_points: number; total_referrals: number; referral_tier: string;
+  reward_referrer?: number; reward_joiner?: number;
 };
 
 export default function Dashboard() {
@@ -40,7 +41,8 @@ export default function Dashboard() {
 
   // Always the public domain — a link copied from localhost or a preview deploy
   // would be useless to whoever it's shared with.
-  const refUrl = p?.referral_code ? referralUrl(p.referral_code) : '';
+  // Handle first, code as the fallback for an account that has not claimed one yet.
+  const refUrl = p?.username || p?.referral_code ? referralUrl(p?.username || '', p?.referral_code ?? undefined) : '';
   const showWelcome = prov?.imported && prov.tier && prov.tier !== 'free';
 
   // Setup steps drive the checklist — profiles that finish all of them convert better.
@@ -149,7 +151,10 @@ export default function Dashboard() {
                     </span>
                   </div>
                   <p className="mt-1.5 text-sm text-wage-muted">
-                    You get 150 points when someone joins through it. They get 200.
+                    {/* The numbers come from the same settings ws_apply_referral reads,
+                        so the promise here cannot drift from the points awarded. */}
+                    You get <b className="text-wage-amber-2">{p.reward_referrer ?? 150}</b> points when
+                    someone joins through it. They get <b className="text-wage-amber-2">{p.reward_joiner ?? 200}</b>.
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2.5">
                     <code className="min-w-0 flex-1 truncate rounded-[10px] border border-wage-line-hi bg-wage-ink-2 px-4 py-3 font-mono text-sm text-wage-amber-2">
