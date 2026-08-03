@@ -3,6 +3,85 @@ import { supabase } from '../../lib/supabase';
 import ProfileBadges, { SHAPES, type Badge } from '../../components/ui/ProfileBadges';
 
 /**
+ * Launch day, and what it costs.
+ *
+ * While this is unset every early member pays nothing on any tier. Setting it starts
+ * the clock: from that moment an OG keeps Creator free and pays the difference on
+ * anything above it. Leaving it blank is the safe state, which is why it ships blank —
+ * nobody starts being charged because a date was forgotten.
+ */
+function LaunchDate() {
+  const [info, setInfo] = useState<{ launch_at: string | null; launched: boolean } | null>(null);
+  const [draft, setDraft] = useState('');
+  const [msg, setMsg] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    const { data } = await supabase.rpc('ws_launch_info');
+    const i = data as { launch_at: string | null; launched: boolean };
+    setInfo(i);
+    setDraft(i?.launch_at ? String(i.launch_at).slice(0, 10) : '');
+  }
+  useEffect(() => { load(); }, []);
+
+  async function save(value: string | null) {
+    setBusy(true); setMsg(null);
+    const { data, error } = await supabase.rpc('ws_admin_set_launch_date', {
+      p_launch_at: value ? new Date(value + 'T00:00:00').toISOString() : null,
+    });
+    setBusy(false);
+    if (error) return setMsg({ tone: 'error', text: error.message });
+    if (data?.ok === false) return setMsg({ tone: 'error', text: String(data.reason) });
+    setMsg({
+      tone: 'ok',
+      text: value
+        ? 'Launch set. Early members keep Creator free and pay the difference above it from then on.'
+        : 'Launch cleared. Early members are free on every tier again.',
+    });
+    load();
+  }
+
+  return (
+    <div className="wage-card mb-6 p-5">
+      <div className="wage-eyebrow-mute font-mono text-[10.5px] uppercase tracking-[0.16em]">Launch day</div>
+      <p className="mt-2 max-w-[74ch] text-[13.5px] text-wage-muted">
+        {info?.launch_at
+          ? info.launched
+            ? 'Launched. Early members now pay the tier price minus a Creator membership; Creator itself stays free for them.'
+            : 'Set. Until this date every early member pays nothing on any tier.'
+          : 'Not set. Every early member is free on every tier, indefinitely, until you set a date.'}
+      </p>
+      {msg && (
+        <p role="status" className={
+          'mt-3 border px-4 py-2.5 text-sm ' + (msg.tone === 'error'
+            ? 'border-wage-error/40 bg-wage-error/[0.08] text-wage-error'
+            : 'border-wage-success/40 bg-wage-success/[0.08] text-wage-success')
+        }>{msg.text}</p>
+      )}
+      <div className="mt-3.5 flex flex-wrap items-end gap-2.5">
+        <label className="grid gap-1.5">
+          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-wage-muted-2">Date</span>
+          <input
+            type="date"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            className="input !w-auto !py-1.5 text-sm"
+          />
+        </label>
+        <button disabled={busy || !draft} onClick={() => save(draft)} className="wage-btn wage-btn-primary !px-3.5 !py-1.5 text-sm">
+          {busy ? 'Saving...' : 'Set launch day'}
+        </button>
+        {info?.launch_at && (
+          <button disabled={busy} onClick={() => save(null)} className="wage-btn wage-btn-ghost !px-3.5 !py-1.5 text-sm">
+            Clear
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
  * The badge catalog.
  *
  * A badge is colour plus silhouette, both stored on the row, so one invented here
@@ -16,6 +95,7 @@ import ProfileBadges, { SHAPES, type Badge } from '../../components/ui/ProfileBa
 
 type Row = Badge & {
   description: string; sort_order: number; is_active: boolean; is_builtin: boolean; holders: number;
+  floor_tier: string | null; discount_tier: string | null; discord_role_id: string | null;
 };
 
 const SHAPE_KEYS = Object.keys(SHAPES);
@@ -91,6 +171,8 @@ export function BadgesTab() {
         attach one to a Discord role in <span className="text-wage-paper">Staff</span> so it is handed
         out automatically.
       </p>
+
+      <LaunchDate />
 
       <button className="wage-btn wage-btn-primary mb-5" onClick={() => setF({ ...EMPTY })}>New badge</button>
 
@@ -224,6 +306,18 @@ export function BadgesTab() {
                   <span className="font-mono text-[11px] text-wage-muted-2">{b.slug}</span>
                   {b.is_builtin && <span className="wage-chip !text-[10.5px]">built in</span>}
                   {!b.is_active && <span className="wage-chip !text-[10.5px] text-wage-muted-2">hidden</span>}
+                  {/* What the badge is worth, not just what it looks like. */}
+                  {b.floor_tier && (
+                    <span className="wage-chip !text-[10.5px] border-wage-success/50 text-wage-success">
+                      {b.floor_tier} free
+                    </span>
+                  )}
+                  {b.discount_tier && (
+                    <span className="wage-chip !text-[10.5px] border-wage-success/50 text-wage-success">
+                      {b.discount_tier} credit
+                    </span>
+                  )}
+                  {b.discord_role_id && <span className="wage-chip !text-[10.5px]">discord role</span>}
                 </div>
                 <p className="mt-0.5 max-w-[68ch] truncate text-[12.5px] text-wage-muted">{b.description}</p>
               </div>

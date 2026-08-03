@@ -361,9 +361,12 @@ function UserDetail({
                     </span>
                     <button
                       disabled={busy === `revoke:${b.slug}`}
-                      onClick={() => run(`revoke:${b.slug}`,
-                        () => supabase.rpc('ws_admin_revoke_badge', { p_user_id: d.id, p_slug: b.slug }),
-                        `${b.label} revoked.`)}
+                      onClick={async () => {
+                        const res = await run(`revoke:${b.slug}`,
+                          () => supabase.rpc('ws_admin_revoke_badge', { p_user_id: d.id, p_slug: b.slug }),
+                          `${b.label} revoked.`);
+                        if (res?.ok && res.discord_role_id) pushBadgeRole(res.discord_role_id, false, b.label);
+                      }}
                       className="font-mono text-[11px] uppercase tracking-[0.12em] text-wage-muted-2 underline hover:text-wage-error"
                     >
                       Revoke
@@ -399,7 +402,12 @@ function UserDetail({
                   const ok = await run('grant',
                     () => supabase.rpc('ws_admin_grant_badge', { p_user_id: d.id, p_slug: slug, p_note: grantNote || null }),
                     'Badge granted.');
-                  if (ok?.ok) { setGrantSlug(''); setGrantNote(''); }
+                  if (ok?.ok) {
+                    setGrantSlug(''); setGrantNote('');
+                    // The badge is the record and the Discord role only reflects it, so a
+                    // failed push reports itself and never reverts the grant.
+                    if (ok.discord_role_id) pushBadgeRole(ok.discord_role_id, true, ok.label);
+                  }
                 }}
                 className="wage-btn wage-btn-primary !px-3.5 !py-1.5 text-sm"
               >
@@ -586,6 +594,24 @@ function UserDetail({
       apiFetch('discord-sync-user', { method: 'POST', body: JSON.stringify({ user_id: d!.id }) })
         .then(() => setMsg({ tone: 'ok', text: `Tier set to ${tier}. Discord role synced.` }))
         .catch(() => setMsg({ tone: 'error', text: `Tier set to ${tier}, but the Discord role did not sync.` }));
+    }
+  }
+
+  /**
+   * Mirror a badge onto its Discord role. Best effort on purpose: the website holds the
+   * badge, so a Discord hiccup must not make the grant look like it failed.
+   */
+  async function pushBadgeRole(roleId: string, add: boolean, label: string) {
+    try {
+      await apiFetch('discord-staff-sync', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'badge_role', user_id: d!.id, role_id: roleId, add }),
+      });
+    } catch {
+      setMsg({
+        tone: 'error',
+        text: `${label} ${add ? 'granted' : 'revoked'} on the website, but the Discord role did not change.`,
+      });
     }
   }
 

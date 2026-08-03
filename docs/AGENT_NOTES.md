@@ -163,6 +163,35 @@ The general rule: **a security check with no key available must refuse, not perm
 you find yourself writing "accept when unconfigured", the comment is telling you it is
 wrong.
 
+## An account with no email is still an account
+
+Discord does not always release an email address. The privacy policy says so, the login
+page says so, Kick sign-in has the same problem, and at least one member here has none.
+
+Four functions written on 2026-08-03 decided existence like this:
+
+```sql
+select lower(p.email) into v_email from profiles p where p.id = p_user_id;
+if v_email is null then return 'unknown_user'; end if;
+```
+
+which conflates *no such person* with *person has no email*. Those accounts could not be
+given a role, could not be suspended, and were skipped by the Discord staff sync entirely —
+reported as `unknown_user`, which reads exactly like a stale id rather than a live member
+being quietly passed over.
+
+Decide existence by the primary key. Use the email only for the audit record and the
+protected-owner check, both of which cope with null:
+
+```sql
+select true, lower(p.email) into v_exists, v_email from profiles p where p.id = p_user_id;
+if not coalesce(v_exists, false) then return 'unknown_user'; end if;
+```
+
+The same applies to `user_memberships`, whose unique key is `(email, plan_slug)`: with a
+null email Postgres treats every row as distinct, so an upsert inserts a fresh duplicate
+every run. Skip the row rather than writing one.
+
 ## Critical DOs and DON'Ts
 
 **DO:**
@@ -177,6 +206,8 @@ wrong.
 - Add an auth system outside Supabase Auth
 - Show a placeholder metric in the admin UI
 - Let a missing secret or key turn a check into a pass — refuse instead
+- Treat a null email as a missing account, or as a usable unique key
+- Point a badge or staff mapping at a subscription tier role — the tier sync strips it
 - Assume `revoke ... from public` covered `anon`; it does not
 - Write a `false` because a check failed — "not verified" and "not checked" are different
   states, and so are "offline" and "status unknown"

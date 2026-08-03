@@ -170,6 +170,66 @@ Where a control is hidden or disabled in `AdminUsers.tsx`, the same rule is also
 in the RPC. `ws_admin_user_detail` returns `can_manage` so the ladder is worked out in one
 place rather than re-derived, slightly differently, in the browser.
 
+## Three axes, kept apart
+
+Three different things about a member, deliberately separate, each with its own set of
+Discord roles:
+
+| | Where it lives | What it decides | Discord roles |
+|---|---|---|---|
+| **Website role** | `user_roles` | what you may **do** | Director, Admin, Staff, Moderator, Helper |
+| **Tier** | `profiles.tier` | what you **get** | member, Creator, Pro, Elite, Unlimited |
+| **Badge** | `user_badges` | who you **are**, and what that is worth | Founder, Staff, OG |
+
+**The sets must not overlap, and a trigger enforces it.** Not for tidiness: the tier sync
+in `ws_svc_discord_sync` actively *removes* every tier role a member does not currently
+qualify for. Point a badge or a staff mapping at a tier role and the next tier sync strips
+it back off, silently, on a schedule. `wagesociety.assert_not_a_tier_role()` fires on
+`badges.discord_role_id` and `discord_role_map.role_id` and refuses with an explanation.
+
+Staff appears under both role and badge on purpose — holding the Discord Staff role both
+grants website access and earns the staff badge. Both directions are **additive** and
+never remove, so they converge rather than fight. A tier role in either list would not.
+
+The bot sits at position 14 in the hierarchy, below Director (18) and Admin (17). It can
+read those roles but can never assign them. That is fine, because staff sync only reads.
+
+## Entitlements: what a badge is worth
+
+Two columns on `wagesociety.badges` carry real money:
+
+- `floor_tier` — a tier this badge guarantees, free, for as long as it is held.
+  `founder → unlimited`, `og → creator`.
+- `discount_tier` — every paid plan costs its price minus this tier's price.
+  `og → creator`.
+
+Plus `app_settings.launch_at`, set in **/admin → Badges**. **Null means the grace period
+is still running**, and that is the shipped default so nobody starts being charged because
+a date was forgotten.
+
+```
+                    before launch      after launch
+founder (any tier)  free               free            (never expires)
+og  creator         free               free
+og  pro   $24.99    free               $15.00
+og  elite $49.99    free               $40.00
+og  unlimited       free               $90.00
+```
+
+**`ws_svc_price_for(user, plan, cycle)` is the only place a price is decided.**
+`checkout.js` charges what it returns and the plans page renders what it returns, so the
+figure on screen and the figure charged cannot drift. Never compute a price in the browser
+or trust one from a request body.
+
+When the price is zero, checkout does **not** create a $0 Stripe subscription — it calls
+`ws_svc_grant_free_membership`, which re-prices the plan itself before granting anything.
+That second check matters: without it, it is an endpoint that hands Unlimited to anyone who
+calls it.
+
+`user_memberships.never_expires` marks a membership no Stripe subscription backs. Nothing
+lapses memberships today (expiry is driven entirely by Stripe webhooks), so this is
+intent-recording for the day something does.
+
 ## Staff: recruiting, access, onboarding
 
 `/join-the-team` (aliases `/careers`, `/staff`) lists `wagesociety.staff_positions` and takes

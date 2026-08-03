@@ -27,6 +27,25 @@ const CATEGORY_LABEL: Record<string, string> = {
 
 const CATEGORY_ORDER = ['build', 'community', 'management', 'coaching', 'design', 'production', 'strategy'];
 
+/** What ws_svc_price_for answers with, per plan. */
+type Quote = {
+  ok: boolean;
+  base_cents: number;
+  discount_cents: number;
+  amount_cents: number;
+  free: boolean;
+  reason: string;
+  launch_at: string | null;
+};
+
+/** Say why it is cheaper. A silent discount reads as a pricing bug. */
+const REASON_LABEL: Record<string, string> = {
+  founder: 'Founder — included',
+  launch_grace: 'Free until launch',
+  included: 'Included with your OG membership',
+  early_member: 'OG price — Creator credit applied',
+};
+
 export default function Plans() {
   const { session } = useSession();
   const nav = useNavigate();
@@ -35,6 +54,9 @@ export default function Plans() {
   const [cycle, setCycle] = useState<'monthly' | 'annual'>('monthly');
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // What THIS member pays, per plan, straight from the same function checkout charges
+  // from. Signed-out visitors see list prices; there is nobody to price for yet.
+  const [quotes, setQuotes] = useState<Record<string, Quote>>({});
 
   useEffect(() => {
     supabase.from('wagesociety_plans').select('*').order('sort_order')
@@ -42,6 +64,14 @@ export default function Plans() {
     supabase.from('wagesociety_addons').select('*').order('sort_order')
       .then(({ data }) => setAddons((data as Addon[]) ?? []));
   }, []);
+
+  // Re-quoted when the cycle flips, because the discount is a whole Creator
+  // membership and that is ten times larger on the annual plan.
+  useEffect(() => {
+    if (!session) { setQuotes({}); return; }
+    supabase.rpc('ws_my_pricing', { p_cycle: cycle })
+      .then(({ data }) => setQuotes((data as Record<string, Quote>) ?? {}));
+  }, [session, cycle]);
 
   async function order(slug: string) {
     if (!session) { nav('/login'); return; }
@@ -66,6 +96,8 @@ export default function Plans() {
         method: 'POST',
         body: JSON.stringify({ planSlug, cycle }),
       });
+      // When the price is zero the function activates the plan outright and hands back
+      // a dashboard URL rather than a Stripe one — no card, no $0 subscription.
       window.location.href = redirectUrl;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not start checkout.');
@@ -141,6 +173,7 @@ export default function Plans() {
         {plans.map((p) => {
           const free = p.price_cents === 0;
           const features = (p.features as string[] | null) ?? [];
+          const q = quotes[p.slug];
           return (
             <div key={p.slug} className="wage-card flex flex-col p-6">
               <div className="flex items-baseline justify-between gap-3">
@@ -149,15 +182,27 @@ export default function Plans() {
               </div>
 
               <div className="mt-3 flex items-baseline gap-1.5">
+                {/* A discounted price is shown with the list price struck through beside
+                    it, so nobody has to wonder whether the number is a mistake. */}
+                {q && q.amount_cents !== q.base_cents && (
+                  <span className="wage-num text-[17px] leading-none text-wage-muted-2 line-through">
+                    {planPrice(p, cycle)}
+                  </span>
+                )}
                 <span className="wage-num text-[30px] leading-none text-wage-amber-2">
-                  {free ? 'Free' : planPrice(p, cycle)}
+                  {free ? 'Free' : q ? (q.amount_cents === 0 ? 'Free' : price(q.amount_cents)) : planPrice(p, cycle)}
                 </span>
-                {!free && (
+                {!free && !(q && q.amount_cents === 0) && (
                   <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-wage-muted-2">
                     /{cycle === 'annual' ? 'yr' : 'mo'}
                   </span>
                 )}
               </div>
+              {q && q.amount_cents !== q.base_cents && (
+                <p className="mt-1.5 font-mono text-[10.5px] uppercase tracking-[0.12em] text-wage-success">
+                  {REASON_LABEL[q.reason] ?? 'Your price'}
+                </p>
+              )}
 
               <ul className="mt-5 grid flex-1 gap-2.5">
                 {features.map((f) => (

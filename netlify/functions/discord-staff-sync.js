@@ -10,6 +10,9 @@
 //   preview   work out every change without writing anything
 //   apply     the same pass, committed
 //   user      one person, by user_id — used right after a role is changed by hand
+//   badges    push badge roles OUT to Discord: a Founder on the website is a Founder
+//             in the server. Additive only — see below.
+//   badge_role  add or remove one badge role for one member; used by grant/revoke
 //
 // The mapping lives in wagesociety.discord_role_map and is edited in /admin → Staff.
 // The rules about what may be overwritten live in ws_svc_apply_staff_role, not here:
@@ -47,6 +50,10 @@ const rpc = (name, body) =>
   }).then((r) => r.json());
 
 const RANK = { staff: 2, manager: 3, admin: 4 };
+
+const BASE = (guild, member) => '/guilds/' + guild + '/members/' + member;
+const PATH_ROLES = '/roles/';
+const PATH_SEP = ':';
 
 /** The highest website role this member's Discord roles earn them, or null for none. */
 function desiredRole(memberRoleIds, byRoleId) {
@@ -103,7 +110,55 @@ exports.handler = async (event) => {
   let body = {};
   try { body = JSON.parse(event.body || '{}'); } catch { return json(400, { error: 'bad body' }); }
   const action = body.action || 'preview';
-  if (!['preview', 'apply', 'user'].includes(action)) return json(400, { error: 'unknown action' });
+  if (!['preview', 'apply', 'user', 'badges', 'badge_role'].includes(action)) {
+    return json(400, { error: 'unknown action' });
+  }
+
+  /*
+   * Badge roles run the opposite way to everything below: the website is the authority
+   * and Discord follows.
+   *
+   * Additive by design. Nothing here removes a badge role from someone who no longer
+   * qualifies, because badges are permanent honours and a reconciliation pass that gets
+   * its input wrong once quietly strips Founder from the founders. Removal happens only
+   * through 'badge_role' with add:false — one person, one role, and a decision somebody
+   * just made in the console.
+   */
+  if (action === 'badges' || action === 'badge_role') {
+    const sctx = await rpc('ws_svc_staff_sync_context');
+    const guild = sctx?.guild_id;
+    if (!guild) return json(400, { error: 'No Discord server is connected' });
+
+    if (action === 'badge_role') {
+      const { user_id, role_id, add } = body;
+      if (!user_id || !role_id) return json(400, { error: 'user_id and role_id required' });
+      // No Discord link is not a failure; there is simply nowhere to put the role.
+      const discordId = (sctx.links || []).find((l) => l.user_id === user_id)?.discord_id;
+      if (!discordId) return json(200, { ok: true, skipped: 'not_linked' });
+
+      const path = BASE(guild, discordId) + PATH_ROLES + role_id;
+      const r = await discord(path, { method: add === false ? 'DELETE' : 'PUT' });
+      return json(200, { ok: r.ok, status: r.status, role_id, added: add !== false });
+    }
+
+    const targets = await rpc('ws_svc_badge_role_targets');
+    if (!Array.isArray(targets)) {
+      return json(500, { error: 'Could not read badge targets', detail: targets });
+    }
+    const out = [];
+    for (const t of targets) {
+      const row = { username: t.username, badges: t.badges, granted: [], failed: [] };
+      for (const roleId of t.role_ids || []) {
+        const path = BASE(guild, t.discord_id) + PATH_ROLES + roleId;
+        const r = await discord(path, { method: 'PUT' });
+        if (r.ok) row.granted.push(roleId);
+        else row.failed.push(roleId + PATH_SEP + r.status);
+        await sleep(350);
+      }
+      out.push(row);
+    }
+    return json(200, { ok: true, action, members: out.length, results: out });
+  }
 
   const ctxRes = await rpc('ws_svc_staff_sync_context');
   // PostgREST answers a failed RPC with {code, message, hint} rather than throwing, and

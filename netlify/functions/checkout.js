@@ -70,8 +70,43 @@ exports.handler = async (event) => {
   }
 
   const annual = cycle === 'annual';
-  const amount = annual ? plan.price_cents * ANNUAL_MULTIPLIER : plan.price_cents;
   const email = user.email.toLowerCase();
+
+  // What this person actually pays, after founder and early-member entitlements.
+  //
+  // Priced in the database, never here and never from the request body: ws_svc_price_for
+  // is the single source of truth, and the plans page renders the same function's answer,
+  // so the figure on screen and the figure charged cannot drift apart.
+  const { data: quote, error: quoteErr } = await svc.rpc('ws_svc_price_for', {
+    p_user_id: user.id, p_plan_slug: planSlug, p_cycle: cycle,
+  });
+  if (quoteErr) return json(500, { error: quoteErr.message });
+  if (!quote?.ok) return json(400, { error: `Invalid plan slug: ${planSlug}` });
+
+  const amount = Number(quote.amount_cents);
+  const listPrice = annual ? plan.price_cents * ANNUAL_MULTIPLIER : plan.price_cents;
+
+  /*
+   * Free means free — no card, no Stripe, no $0 subscription that still needs a payment
+   * method and can still "fail". A founder, and every early member before launch, gets
+   * the tier granted outright and lands back on the dashboard with it already active.
+   *
+   * ws_svc_apply_badge_entitlements only ever RAISES a tier, so it cannot be used to
+   * grant something above what the entitlement covers; the tier is set here from the plan
+   * the price was quoted for, which is the plan the caller asked for and was told cost
+   * nothing.
+   */
+  if (amount === 0) {
+    const { error: grantErr } = await svc.rpc('ws_svc_grant_free_membership', {
+      p_user_id: user.id, p_plan_slug: planSlug, p_cycle: cycle, p_reason: quote.reason,
+    });
+    if (grantErr) return json(500, { error: grantErr.message });
+    return json(200, {
+      free: true,
+      reason: quote.reason,
+      redirectUrl: `${returnBase(event)}/dashboard?upgraded=${encodeURIComponent(plan.slug)}&free=${encodeURIComponent(quote.reason)}`,
+    });
+  }
 
   const session = await stripe('checkout/sessions', {
     mode: 'subscription',
@@ -83,8 +118,14 @@ exports.handler = async (event) => {
     'line_items[0][price_data][unit_amount]': String(amount),
     'line_items[0][price_data][recurring][interval]': annual ? 'year' : 'month',
     'line_items[0][price_data][product_data][name]': `W.A.G.E. Society — ${plan.name}`,
+    // Say why it is cheaper on the Stripe page itself. A member who sees $15.00 where the
+    // site advertises $24.99 should not have to work out whether something is wrong.
     'line_items[0][price_data][product_data][description]':
-      `${plan.name} membership, billed ${annual ? 'yearly' : 'monthly'}. Cancel anytime.`,
+      amount < listPrice
+        ? `${plan.name} membership, billed ${annual ? 'yearly' : 'monthly'}. `
+          + `Early member price: $${(listPrice / 100).toFixed(2)} less $${(Number(quote.discount_cents) / 100).toFixed(2)} `
+          + `for the Creator membership you already have. Cancel anytime.`
+        : `${plan.name} membership, billed ${annual ? 'yearly' : 'monthly'}. Cancel anytime.`,
     'line_items[0][quantity]': '1',
     'subscription_data[trial_period_days]': String(TRIAL_DAYS),
     // Repeated onto the subscription so later customer.subscription.* events can
