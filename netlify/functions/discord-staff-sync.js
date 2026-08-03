@@ -13,6 +13,8 @@
 //   badges    push badge roles OUT to Discord: a Founder on the website is a Founder
 //             in the server. Additive only — see below.
 //   badge_role  add or remove one badge role for one member; used by grant/revoke
+//   colors    pull every role colour FROM Discord onto the website. Discord is where
+//             these are designed, so it is the source of truth for how they look.
 //
 // The mapping lives in wagesociety.discord_role_map and is edited in /admin → Staff.
 // The rules about what may be overwritten live in ws_svc_apply_staff_role, not here:
@@ -110,8 +112,33 @@ exports.handler = async (event) => {
   let body = {};
   try { body = JSON.parse(event.body || '{}'); } catch { return json(400, { error: 'bad body' }); }
   const action = body.action || 'preview';
-  if (!['preview', 'apply', 'user', 'badges', 'badge_role'].includes(action)) {
+  if (!['preview', 'apply', 'user', 'badges', 'badge_role', 'colors'].includes(action)) {
     return json(400, { error: 'unknown action' });
+  }
+
+  /*
+   * Colour flows the other way to everything else: Discord is where roles are designed,
+   * so the website matches it rather than keeping a second opinion.
+   *
+   * The RPC drops anything too dark to survive the page ink and reports it, because a
+   * badge is FILLED with its colour — a near-black role produces an emblem that is
+   * simply not there, which reads as a broken render rather than a design choice.
+   */
+  if (action === 'colors') {
+    const sctx = await rpc('ws_svc_staff_sync_context');
+    const guild = sctx?.guild_id;
+    if (!guild) return json(400, { error: 'No Discord server is connected' });
+
+    const res = await discord('/guilds/' + guild + '/roles');
+    if (!res.ok) return json(502, { error: 'Could not read roles: HTTP ' + res.status });
+    const roles = await res.json();
+    const payload = (roles || []).map((r) => ({
+      role_id: r.id,
+      name: r.name,
+      color: '#' + (r.color >>> 0).toString(16).padStart(6, '0').toUpperCase(),
+    }));
+    const out = await rpc('ws_svc_apply_discord_colors', { p_roles: payload });
+    return json(200, { ok: true, action, roles: payload.length, ...out });
   }
 
   /*

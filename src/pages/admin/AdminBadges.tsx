@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import ProfileBadges, { SHAPES, type Badge } from '../../components/ui/ProfileBadges';
+import ProfileBadges, { Emblem, SHAPES, GLYPHS, type Badge } from '../../components/ui/ProfileBadges';
 
 /**
  * Launch day, and what it costs.
@@ -95,13 +95,24 @@ function LaunchDate() {
 
 type Row = Badge & {
   description: string; sort_order: number; is_active: boolean; is_builtin: boolean; holders: number;
+  glyph: string;
   floor_tier: string | null; discount_tier: string | null; discord_role_id: string | null;
 };
 
 const SHAPE_KEYS = Object.keys(SHAPES);
+const GLYPH_KEYS = Object.keys(GLYPHS);
 
-/** House colours first — a badge in an off-brand hue is worse than one that looks alike. */
-const PRESETS = ['#FFAA33', '#FC9000', '#E43000', '#E4E4E8', '#4FB477', '#5B8DEF', '#B478E4', '#D8C25A'];
+/**
+ * House colours first, then a broad spread so a new badge can be told apart at a
+ * glance. The picker below also takes any hex, so this is a starting point rather
+ * than a limit — but reaching for a swatch keeps the set looking related.
+ */
+const PRESETS = [
+  '#FFAA33', '#FC9000', '#E43000', '#E4E4E8', '#06090B',
+  '#4FB477', '#2E9E6B', '#5B8DEF', '#3A6BD6', '#B478E4',
+  '#8B5CF6', '#D8C25A', '#E86AA6', '#FF5C7A', '#20C3C3',
+  '#12A2A2', '#A0AEC0', '#7A8794', '#C97B3C', '#8B5E34',
+];
 
 function Notice({ tone, children }: { tone: 'error' | 'ok'; children: React.ReactNode }) {
   const skin = tone === 'error'
@@ -112,7 +123,7 @@ function Notice({ tone, children }: { tone: 'error' | 'ok'; children: React.Reac
 
 const EMPTY = {
   slug: '', label: '', description: '', color: '#FFAA33', shape: 'shield',
-  sort_order: 100, is_active: true,
+  glyph: 'star', sort_order: 100, is_active: true,
 };
 
 export function BadgesTab() {
@@ -138,7 +149,7 @@ export function BadgesTab() {
     setBusy(true); setErr(null); setMsg(null);
     const { data, error } = await supabase.rpc('ws_admin_save_badge', {
       p_slug: f.slug, p_label: f.label, p_description: f.description,
-      p_color: f.color, p_shape: f.shape,
+      p_color: f.color, p_shape: f.shape, p_glyph: f.glyph,
       p_sort_order: f.sort_order, p_is_active: f.is_active,
     });
     setBusy(false);
@@ -184,10 +195,18 @@ export function BadgesTab() {
           <div className="flex items-center gap-4">
             {/* The preview is the point of the form: colour and silhouette are the whole
                 design decision, and neither reads from a hex code in a text field. */}
-            <ProfileBadges badges={[{ slug: f.slug || 'preview', label: f.label || 'Preview', color: f.color, shape: f.shape }]} size={44} />
+            {/* Shown at the three sizes it actually renders at, because a mark that
+                reads at 44px can turn to mud at 15px next to a name. */}
+            <div className="flex items-end gap-3">
+              <Emblem badge={{ slug: f.slug || 'preview', label: f.label || 'Preview', color: f.color, shape: f.shape, glyph: f.glyph }} size={44} />
+              <Emblem badge={{ slug: f.slug || 'preview', label: f.label || 'Preview', color: f.color, shape: f.shape, glyph: f.glyph }} size={24} />
+              <Emblem badge={{ slug: f.slug || 'preview', label: f.label || 'Preview', color: f.color, shape: f.shape, glyph: f.glyph }} size={15} />
+            </div>
             <div className="text-[13px] text-wage-muted">
               {f.label || 'Preview'}
-              <div className="font-mono text-[11.5px] text-wage-muted-2">{f.color} · {f.shape}</div>
+              <div className="font-mono text-[11.5px] text-wage-muted-2">
+                {f.color} · {f.shape} · {f.glyph}
+              </div>
             </div>
           </div>
 
@@ -228,12 +247,15 @@ export function BadgesTab() {
 
           <div className="grid gap-3.5 sm:grid-cols-2">
             <div className="grid gap-1.5">
-              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-wage-muted-2">Shape</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-wage-muted-2">
+                Shape — {SHAPE_KEYS.length} to choose from
+              </span>
               <div className="flex flex-wrap gap-2">
                 {SHAPE_KEYS.map((s) => (
                   <button
                     key={s}
                     type="button"
+                    title={s}
                     aria-label={s}
                     aria-pressed={f.shape === s}
                     onClick={() => setF({ ...f, shape: s })}
@@ -241,7 +263,31 @@ export function BadgesTab() {
                       f.shape === s ? 'border-wage-amber' : 'border-wage-line-hi hover:border-wage-amber/60'
                     }`}
                   >
-                    <ProfileBadges badges={[{ slug: s, label: s, color: f.color, shape: s }]} size={26} />
+                    <Emblem badge={{ slug: s, label: s, color: f.color, shape: s, glyph: f.glyph }} size={26} />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Independent of shape — every mark works inside every silhouette. */}
+            <div className="grid gap-1.5">
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-wage-muted-2">
+                Inner mark — {GLYPH_KEYS.length} to choose from
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {GLYPH_KEYS.map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    title={g}
+                    aria-label={g}
+                    aria-pressed={f.glyph === g}
+                    onClick={() => setF({ ...f, glyph: g })}
+                    className={`grid h-11 w-11 place-items-center border ${
+                      f.glyph === g ? 'border-wage-amber' : 'border-wage-line-hi hover:border-wage-amber/60'
+                    }`}
+                  >
+                    <Emblem badge={{ slug: g, label: g, color: f.color, shape: f.shape, glyph: g }} size={26} />
                   </button>
                 ))}
               </div>
@@ -263,9 +309,18 @@ export function BadgesTab() {
                     }`}
                   />
                 ))}
+                {/* Any colour, not just the swatches — the native picker is the only
+                    way to match a Discord role exactly. */}
+                <input
+                  type="color"
+                  aria-label="Pick any colour"
+                  value={/^#[0-9a-f]{6}$/i.test(f.color) ? f.color : '#FFAA33'}
+                  onChange={(e) => setF({ ...f, color: e.target.value.toUpperCase() })}
+                  className="h-8 w-10 cursor-pointer border border-wage-line-hi bg-transparent p-0"
+                />
                 <input
                   value={f.color}
-                  onChange={(e) => setF({ ...f, color: e.target.value })}
+                  onChange={(e) => setF({ ...f, color: e.target.value.toUpperCase() })}
                   spellCheck={false}
                   className="input !w-28 !py-1.5 font-mono text-sm"
                 />
@@ -331,7 +386,8 @@ export function BadgesTab() {
                 className="wage-btn wage-btn-ghost !px-3 !py-1 text-sm"
                 onClick={() => setF({
                   slug: b.slug, label: b.label, description: b.description || '',
-                  color: b.color, shape: b.shape, sort_order: b.sort_order, is_active: b.is_active,
+                  color: b.color, shape: b.shape, glyph: b.glyph || 'none',
+                  sort_order: b.sort_order, is_active: b.is_active,
                 })}
               >
                 Edit

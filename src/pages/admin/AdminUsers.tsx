@@ -165,6 +165,8 @@ function UserDetail({
 }) {
   const [d, setD] = useState<Detail | null>(null);
   const [catalog, setCatalog] = useState<Badge[]>([]);
+  /** Discord role name -> its Discord colour, filled by the colour sync. */
+  const [roleColors, setRoleColors] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [grantSlug, setGrantSlug] = useState('');
@@ -184,6 +186,17 @@ function UserDetail({
   useEffect(() => { load(); }, [userId]);
   useEffect(() => {
     supabase.rpc('ws_admin_list_badges').then(({ data }) => setCatalog((data as Badge[]) ?? []));
+    supabase.rpc('ws_admin_discord_role_map').then(({ data }) => {
+      const m = data as {
+        mappings?: { role_name: string | null; color: string | null }[];
+        tiers?: { role_name: string | null; color: string | null }[];
+      } | null;
+      const out: Record<string, string> = {};
+      for (const row of [...(m?.mappings ?? []), ...(m?.tiers ?? [])]) {
+        if (row.role_name && row.color) out[row.role_name] = row.color;
+      }
+      setRoleColors(out);
+    });
   }, []);
 
   /** Every mutation lands here so the panel, the list behind it and the notice agree. */
@@ -443,7 +456,18 @@ function UserDetail({
               <Field label="Server roles">
                 {d.discord.roles?.length
                   ? <span className="flex flex-wrap gap-1.5">
-                      {d.discord.roles.map((r) => <span key={r} className="wage-chip !text-[10.5px]">{r}</span>)}
+                      {d.discord.roles.map((r) => (
+                        // In the colour Discord gives the role, so this reads like the
+                        // member list it is describing. Uncoloured roles fall back to
+                        // the ordinary chip.
+                        <span
+                          key={r}
+                          className="wage-chip !text-[10.5px]"
+                          style={roleColors[r] ? { color: roleColors[r], borderColor: roleColors[r] + "66" } : undefined}
+                        >
+                          {r}
+                        </span>
+                      ))}
                     </span>
                   : <span className="text-wage-muted">none recorded</span>}
               </Field>

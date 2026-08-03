@@ -369,7 +369,8 @@ function Checklist({ userId, onChanged }: { userId: string; onChanged: () => voi
 
 type RoleMap = {
   guild_id: string | null;
-  mappings: { guild_id: string; role_id: string; role_name: string | null; website_role: string; badge_slug: string | null; updated_at: string }[];
+  mappings: { guild_id: string; role_id: string; role_name: string | null; website_role: string; badge_slug: string | null; color: string | null; updated_at: string }[];
+  tiers?: { tier_slug: string; role_id: string; role_name: string | null; color: string | null }[];
   seen_roles: { role_id: string; role_name: string }[];
 };
 
@@ -414,6 +415,37 @@ function DiscordRoles({ onSynced, canEdit }: { onSynced: () => void; canEdit: bo
     reload();
   }
 
+  /**
+   * Colour flows Discord -> website: the server is where these roles are designed, so
+   * the site matches it rather than keeping a second opinion.
+   *
+   * Anything too dark to read on the page is skipped and named. A badge is FILLED with
+   * its colour, so a near-black role produces an emblem that is simply not there —
+   * which reads as a broken render rather than a design choice.
+   */
+  async function pullColors() {
+    setSyncing('colors'); setMsg(null); setResult(null);
+    try {
+      const r = await apiFetch<{
+        role_map: number; tier_map: number; badges: number;
+        skipped: { role: string; color: string }[];
+      }>('discord-staff-sync', { method: 'POST', body: JSON.stringify({ action: 'colors' }) });
+      // #000000 just means "no colour set" in Discord, which is not worth reporting.
+      const bad = (r.skipped ?? []).filter((x) => x.color !== '#000000');
+      setMsg({
+        tone: bad.length ? 'warn' : 'ok',
+        text: `Colours pulled from Discord: ${r.badges} badge(s), ${r.role_map} staff role(s), ${r.tier_map} tier role(s).`
+          + (bad.length ? ` Too dark to show on the site, so left alone: ${bad.map((x) => x.role + " " + x.color).join(", ")}. Give them a lighter colour in Discord.` : ''),
+      });
+      reload();
+      onSynced();
+    } catch (e) {
+      setMsg({ tone: 'error', text: (e as Error).message });
+    } finally {
+      setSyncing(null);
+    }
+  }
+
   async function sync(action: 'preview' | 'apply') {
     setSyncing(action); setMsg(null); setResult(null);
     try {
@@ -453,6 +485,9 @@ function DiscordRoles({ onSynced, canEdit }: { onSynced: () => void; canEdit: bo
           <button disabled={!!syncing} onClick={() => sync('apply')} className="wage-btn wage-btn-primary !px-3 !py-1.5 text-sm">
             {syncing === 'apply' ? 'Syncing...' : 'Sync now'}
           </button>
+          <button disabled={!!syncing} onClick={pullColors} className="wage-btn wage-btn-ghost !px-3 !py-1.5 text-sm">
+            {syncing === 'colors' ? 'Pulling...' : 'Pull colours'}
+          </button>
         </div>
       }
     >
@@ -469,7 +504,14 @@ function DiscordRoles({ onSynced, canEdit }: { onSynced: () => void; canEdit: bo
           {data!.mappings.map((m) => (
             <li key={m.role_id} className="flex flex-wrap items-center justify-between gap-3 border border-wage-line px-3.5 py-2.5">
               <div className="flex flex-wrap items-center gap-2.5">
-                <span className="text-[13.5px] font-semibold">{m.role_name || m.role_id}</span>
+                {/* In the colour Discord gives it, so this screen looks like the member
+                    list it mirrors. */}
+                <span
+                  className="text-[13.5px] font-semibold"
+                  style={m.color ? { color: m.color } : undefined}
+                >
+                  {m.role_name || m.role_id}
+                </span>
                 <span className="text-wage-muted-2">→</span>
                 <span className="wage-chip">{m.website_role}</span>
                 {m.badge_slug && (
