@@ -15,7 +15,7 @@ export default function Terms() {
       eyebrow="Legal"
       title="Terms of service"
       lede="What you can expect from W.A.G.E. Society, and what we expect from you."
-      updated="29 July 2026"
+      updated="2 August 2026"
     >
       <Clause n={1} title="Who we are">
         <p>
@@ -113,7 +113,23 @@ export default function Terms() {
         </p>
       </Clause>
 
-      <Clause n={8} title="What you may not do">
+      <Clause n={8} title="Connected platforms">
+        <p>
+          Where you connect YouTube, Kick or X, those platforms&rsquo; own terms govern your use
+          of them. In particular, this site uses <b>YouTube API Services</b>, and by connecting a
+          YouTube channel you agree to be bound by the{' '}
+          <a href="https://www.youtube.com/t/terms" target="_blank" rel="noreferrer">YouTube terms of service</a>.
+        </p>
+        <p>
+          We use that access only to list the channels you own so you can feature one. What we
+          read and what we keep is set out in our <Link to="/privacy-policy">privacy policy</Link>,
+          and you can revoke it at any time from your{' '}
+          <a href="https://myaccount.google.com/permissions" target="_blank" rel="noreferrer">Google account permissions</a>{' '}
+          page.
+        </p>
+      </Clause>
+
+      <Clause n={9} title="What you may not do">
         <Bullets
           items={[
             'Break the law, or use the service to harm, harass or impersonate someone.',
@@ -125,7 +141,7 @@ export default function Terms() {
         />
       </Clause>
 
-      <Clause n={9} title="Suspension and closing your account">
+      <Clause n={10} title="Suspension and closing your account">
         <p>
           You can stop using the service at any time and ask us to delete your account. We may
           suspend or close an account that breaks these terms, that we are legally required to act
@@ -138,7 +154,7 @@ export default function Terms() {
         </p>
       </Clause>
 
-      <Clause n={10} title="Availability and liability">
+      <Clause n={11} title="Availability and liability">
         <p>
           We work to keep the service running, but we do not promise it will be uninterrupted or
           error-free. Features change and some are withdrawn.
@@ -155,7 +171,7 @@ export default function Terms() {
         </p>
       </Clause>
 
-      <Clause n={11} title="Changes">
+      <Clause n={12} title="Changes">
         <p>
           We will update these terms as the platform changes. If a change materially affects you,
           we will say so on the site or by email before it takes effect. Continuing to use the
@@ -163,7 +179,7 @@ export default function Terms() {
         </p>
       </Clause>
 
-      <Clause n={12} title="Contact">
+      <Clause n={13} title="Contact">
         <p>
           Questions about these terms: <b>contact@wagesociety.com</b>. See also our{' '}
           <Link to="/privacy-policy">privacy policy</Link>.

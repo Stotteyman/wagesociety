@@ -74,7 +74,11 @@ src/
                                 Watch, Tools, Dashboard, Onboarding, Settings, Referrals,
                                 PointShop, Plans, WhyTenPercent, Terms, PrivacyPolicy,
                                 Admin, NotFound
-  pages/admin/AdminOps.tsx    — operational tabs of the admin control center
+  pages/admin/                — the admin control center, one file per area:
+                                AdminOps (metrics, roles, monitors, Discord, audit),
+                                AdminUsers (people + the management panel),
+                                AdminStaff (applications, roster, Discord role map, positions),
+                                AdminBadges, AdminChannels, AdminFunding
 netlify/functions/
   _auth.js                    — shared: service/user Supabase clients, role ladder, json()
   _platform.js, _stripe-config.js — shared helpers (not endpoints)
@@ -83,6 +87,7 @@ netlify/functions/
   connect-onboard.js, connect-status.js          — Stripe Connect for creators
   video-playback.js, tool-download.js            — entitlement-gated signed URLs
   discord-join.js, discord-sync.js, discord-sync-user.js
+  discord-staff-sync.js                          — Discord staff roles → website roles
   youtube-channels.js, youtube-live.js
   app-auth.js, app-entitlement.js                — desktop app device authorization
   admin-health.js, admin-discord-ops.js          — admin monitors + Discord ops
@@ -134,10 +139,12 @@ Legacy footguns, if you ever do touch this tree:
 - Business logic lives in Postgres **RPCs named `ws_*`** in the `public` schema, reading and
   writing `wagesociety.*`: `ws_current_role()`, `ws_is_staff(role)`, `ws_has_permission(key)`,
   `ws_admin_metrics()`, `ws_admin_rbac()`, `ws_admin_audit_log()`, `ws_audit()`, …
-- **There is no `migrations/` folder and no schema file in this repo.** `migrate.js`'s
-  `runFolderMigrations()` silently returns when the folder is absent (`migrate.js:54`), so
-  the schema exists only in the live Supabase database. This is a real
-  disaster-recovery gap — see backlog item W2.
+- **`supabase/migrations/` exists as of 2026-08-02 and is the way to change the schema.**
+  Everything before that date lives only in the live database, so the folder is a partial
+  record, not a rebuild — backlog item W2 is narrowed, not closed. Anything new goes in a
+  migration file *and* is applied; the two must not drift.
+- `migrate.js` is the retired Express migrator and does not read this folder
+  (`runFolderMigrations()` looks elsewhere and silently returns). Ignore it.
 
 ## Permissions
 
@@ -146,6 +153,97 @@ Role ladder (`netlify/functions/_auth.js:13`):
 `stotteyman@gmail.com` and `gggiddings@yahoo.com` are hardcoded superadmin so the owner
 cannot be locked out. Every admin action must be gated **server-side** in the function or
 the RPC; hiding UI is presentation, never the security boundary.
+
+Since 2026-08-03 `ws_admin_set_role` is **manager and up**, not superadmin only, bounded by
+three rules it enforces itself — you may not grant a role at or above your own, may not
+touch someone who already outranks you, and may not touch the two hardcoded owner
+accounts. In practice a manager can create staff and nothing higher. That is what makes
+recruiting a helper possible without going through the owner.
+
+`wagesociety.user_roles` carries `source` and `locked`, and both change behaviour:
+
+- `source = 'discord'` — set by the Discord role sync, and the sync may move it again.
+- `source = 'manual'` — granted by a person. **The sync never undoes it.**
+- `locked = true` — nothing moves it but a superadmin. Set from the user panel.
+
+Where a control is hidden or disabled in `AdminUsers.tsx`, the same rule is also enforced
+in the RPC. `ws_admin_user_detail` returns `can_manage` so the ladder is worked out in one
+place rather than re-derived, slightly differently, in the browser.
+
+## Staff: recruiting, access, onboarding
+
+`/join-the-team` (aliases `/careers`, `/staff`) lists `wagesociety.staff_positions` and takes
+applications. `/admin` → Staff works them.
+
+**Hiring is one call.** `ws_admin_staff_decide(id, 'hired')` grants the position's website
+role, hands over its badge, and seeds that person's onboarding checklist together. Doing
+those three separately is how somebody ends up with moderator access and no onboarding.
+It reuses `ws_admin_set_role`, so the ladder applies to hiring too; if the role grant is
+refused the status change is rolled back rather than leaving a hire with no access.
+
+Tables: `staff_positions`, `staff_applications` (one open application per person, enforced
+by a partial unique index; 60-day cooldown after a rejection), `staff_onboarding_tasks`,
+`staff_onboarding_progress`.
+
+## Discord ↔ website roles
+
+Two syncs, opposite directions. Do not confuse them:
+
+- **tier, website → Discord** — `discord-sync.js` / `discord-sync-user.js`, driven by
+  `discord_tier_role_map`. This is the original one.
+- **staff, Discord → website** — `discord-staff-sync.js`, driven by `discord_role_map`
+  (edited in `/admin` → Staff). Discord is where staff are actually appointed, so it is
+  treated as the source of truth for the roles listed there.
+
+The staff sync only decides *what Discord says*. `ws_svc_apply_staff_role` decides what that
+is allowed to do, in this order: locked → never; owner account → never; role granted by
+hand → left alone; otherwise set, and marked `source = 'discord'`. Someone who is not in
+the guild is skipped, never demoted — an absence can mean a paging boundary, not a
+departure. Run `preview` before `apply`; it computes every change and writes nothing.
+
+Listing guild members needs the **SERVER MEMBERS INTENT** enabled on the bot. Without it
+Discord returns a bare 403 that says nothing about what is missing, so the function
+translates it into a hint.
+
+## Badges
+
+`wagesociety.badges` is a catalog, not a fixed set of four. A badge carries its own
+`color` and `shape`, so one created in `/admin` → Badges renders on profiles immediately.
+
+**The `shape` values in `badges_shape_check` mirror the `SHAPES` map in
+`src/components/ui/ProfileBadges.tsx`.** Adding a shape means adding it in both places. The
+constraint exists so the database can never hold a silhouette the component cannot draw,
+which would render as nothing at all.
+
+`public.wagesociety_creators.badges` is an **array of objects** (`slug, label, description,
+color, shape`), not the array of slugs it used to be — that is what lets the browser draw
+a badge it has never heard of. `ProfileBadges` still accepts bare slugs for the four
+built-ins so a stale cache does not blank someone's profile.
+
+`founder`, `staff`, `verified` and `og` are `is_builtin` and cannot be deleted: `staff` is
+written by the Discord role sync and `og` by the `profiles_grant_og` trigger, so dropping
+the row would break a writer that never checks whether it still exists.
+
+Granting needs the `manage_badges` permission (manager and admin by default), and every
+grant and revoke is audited.
+
+## Platform verification on stream listings
+
+`member_livestreams.is_verified` drives the tick on `/streams`. It is **three-state** and
+the third matters: `true` verified, `false` checked and not verified, `null` never
+successfully checked. Nothing renders for `null`.
+
+Kick's official API carries no verification field at all — `/public/v1/channels` returns
+slug, stream, category and counts; `/public/v1/users` returns four fields. The only source
+is kick.com's own `/api/v2/channels/{slug}`, which is behind Cloudflare: it answers from
+the Supabase Edge runtime and refuses a plain curl. On that endpoint `verified` is a
+**boolean**, not the object-or-null shape Kick uses elsewhere — reading it as
+`verified != null` marks every channel verified, which is exactly the bug that shipped for
+about ten minutes on 2026-08-03.
+
+The `kick-live` edge function re-checks at most daily, writes nothing at all when the
+request is blocked, and never overwrites `verified_source = 'manual'`. Managers set it by
+hand in `/admin` → Channels.
 
 ## External integrations
 
@@ -163,6 +261,11 @@ the RPC; hiding UI is presentation, never the security boundary.
 From `git log` on `crest-brand-rebuild` (newest first). Older numbered entries that used to
 live here described the retired Express app and have been dropped as misleading.
 
+- 2026-08-03 — Every Netlify Function was 502ing on Node 20 for want of a WebSocket;
+  badges became a catalog that can be created and granted; the Users tab became a
+  management panel; staff recruiting and onboarding built end to end; Discord staff roles
+  now sync **into** the website; Kick sign-in; Kick channel verification detected and shown
+  on stream listings.
 - 2026-07-29 — Live status on a schedule instead of a YouTube API key; YouTube scope only on
   opt-in; X account connect; terms + privacy pages and X sign-in; X/TikTok brand asset sizes;
   real icon/social set generated from the crest; two signup failure modes fixed.

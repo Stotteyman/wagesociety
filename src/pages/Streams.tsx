@@ -9,8 +9,43 @@ import { LiveChip } from '../components/ui/TierChip';
 type Stream = {
   platform: string; title: string | null; url: string | null; thumbnail_url: string | null;
   viewer_count: number; username: string; display_name: string | null; avatar_url: string | null;
-  is_live: boolean; live_checked_at: string | null;
+  is_live: boolean; live_checked_at: string | null; is_verified: boolean | null;
 };
+
+/**
+ * The platform's own verification tick, not ours.
+ *
+ * Deliberately not a ProfileBadges emblem: those are things W.A.G.E. Society says about
+ * a member, and this is a fact about their channel on somebody else's platform. Giving
+ * them the same shape would imply we vouched for it. It reads in the platform's own
+ * colour — Kick green — for the same reason.
+ */
+const VERIFIED_TINT: Record<string, string> = {
+  kick: '#53FC18',
+  youtube: '#FF0033',
+};
+
+function PlatformVerified({ platform }: { platform: string }) {
+  const tint = VERIFIED_TINT[platform.toLowerCase()] ?? '#B7C2CC';
+  const label = `Verified on ${platform}`;
+  return (
+    <svg role="img" aria-label={label} width={15} height={15} viewBox="0 0 24 24" className="shrink-0">
+      <title>{label}</title>
+      <path
+        d="M12 2 14.76 5.35 19.07 4.93 18.65 9.24 22 12 18.65 14.76 19.07 19.07 14.76 18.65 12 22 9.24 18.65 4.93 19.07 5.35 14.76 2 12 5.35 9.24 4.93 4.93 9.24 5.35 Z"
+        fill={tint}
+      />
+      <path
+        d="M8 12.2 11 15.2 16.2 9.4"
+        fill="none"
+        stroke="#06090B"
+        strokeWidth={2.4}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 export default function Streams() {
   const [streams, setStreams] = useState<Stream[]>([]);
@@ -27,10 +62,26 @@ export default function Streams() {
   }
 
   // Status is kept current by scheduled jobs in the database — Kick through its API,
-  // YouTube by reading the channel's own /live page. Neither needs an API key, so
-  // there is nothing to trigger from here and no quota to conserve; the page just
-  // reads what the last check wrote.
-  useEffect(() => { fetchChannels(); }, []);
+  // YouTube by reading the channel's own /live page. Neither needs an API key.
+  //
+  // Show what we have first, then ask Kick to re-check and repaint. Someone who has
+  // just gone live shouldn't wait out the cron interval to appear here. kick-live
+  // ignores channels it checked seconds ago, so this stays cheap however many people
+  // open the page; a failed nudge just leaves the cron's data on screen.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      await fetchChannels();
+      await supabase.functions.invoke('kick-live').catch(() => {});
+      if (!cancelled) fetchChannels();
+    }
+
+    load();
+    // Keep a page left open honest rather than frozen at whatever it loaded with.
+    const timer = window.setInterval(load, 60_000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, []);
 
   const liveCount = streams.filter((s) => s.is_live).length;
 
@@ -99,6 +150,9 @@ export default function Streams() {
                 <div className="mt-3 flex items-center gap-2.5 border-t border-wage-line pt-3">
                   <Avatar name={s.display_name || s.username} src={s.avatar_url} size={26} />
                   <span className="truncate text-sm text-wage-muted">{s.display_name || s.username}</span>
+                  {/* Only ever rendered for a true. null means the check has not landed,
+                      and an absent tick is the honest way to show that. */}
+                  {s.is_verified && <PlatformVerified platform={s.platform} />}
                 </div>
               </div>
             </a>

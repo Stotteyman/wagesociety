@@ -4,11 +4,16 @@ import { apiFetch } from '../lib/api';
 import { useRole } from '../hooks/useRole';
 import PageHeader from '../components/ui/PageHeader';
 import { MetricsTab, RolesTab, MonitorsTab, DiscordTab, AuditTab } from './admin/AdminOps';
+import { FundingTab } from './admin/AdminFunding';
+import { UsersTab } from './admin/AdminUsers';
+import { StaffTab } from './admin/AdminStaff';
+import { BadgesTab } from './admin/AdminBadges';
+import { ChannelsTab } from './admin/AdminChannels';
 import { HANDLE_MIN, handleMessage, normaliseHandle } from '../lib/handles';
 
 type Tab =
   | 'overview' | 'monitors' | 'discord' | 'roles' | 'audit'
-  | 'users' | 'subs' | 'store' | 'blog' | 'merch' | 'faq';
+  | 'users' | 'staff' | 'badges' | 'channels' | 'subs' | 'funding' | 'store' | 'blog' | 'merch' | 'faq';
 
 /** Operations first, then people, then the content editors. */
 const TABS: [Tab, string][] = [
@@ -16,8 +21,12 @@ const TABS: [Tab, string][] = [
   ['monitors', 'Monitors'],
   ['discord', 'Discord'],
   ['users', 'Users'],
+  ['staff', 'Staff'],
   ['roles', 'Roles'],
+  ['badges', 'Badges'],
+  ['channels', 'Channels'],
   ['subs', 'Subscriptions'],
+  ['funding', 'Funding'],
   ['audit', 'Audit'],
   ['store', 'Point Store'],
   ['blog', 'Blog'],
@@ -25,9 +34,32 @@ const TABS: [Tab, string][] = [
   ['faq', 'FAQ'],
 ];
 
-/** Tabs that expose access control or destructive operations. */
-const ADMIN_ONLY: Tab[] = ['roles'];
-const MANAGER_ONLY: Tab[] = ['discord'];
+/**
+ * Which tabs each rank may see.
+ *
+ * These lists must agree with the gate inside each tab's RPCs. Where they did not, a
+ * staff account got a tab full of `forbidden` — latent until now only because nobody
+ * actually held the staff role. Hiring a Helper grants exactly that, so it would have
+ * been the first thing a new helper saw.
+ *
+ * Anything not listed is visible to staff, which is the floor for this page.
+ */
+const ADMIN_ONLY: Tab[] = [
+  'roles',     // ws_admin_rbac / ws_admin_set_role_permission
+  'funding',   // ws_admin_funding_* — the cash position and runway
+  'badges',    // ws_admin_save_badge / ws_admin_delete_badge
+  'subs',      // ws_admin_list_subscriptions
+];
+/**
+ * Manager work. Users and Staff sit here because recruiting a helper should not need the
+ * owner — the RPCs bound what a manager can actually hand out (staff and no higher).
+ * The four content editors are here because every save and delete RPC behind them
+ * requires manager.
+ */
+const MANAGER_ONLY: Tab[] = [
+  'discord', 'users', 'staff', 'channels',
+  'store', 'blog', 'merch', 'faq',
+];
 
 /* ── shared bits ─────────────────────────────────────────────────────────── */
 
@@ -88,7 +120,9 @@ function fmtDate(v?: string | null): string {
 /* ── page ────────────────────────────────────────────────────────────────── */
 
 export default function Admin() {
-  const { loading, atLeast } = useRole();
+  // The Users panel needs the viewer's own rank to know which roles it may offer, so it
+  // is read here rather than fetched a second time inside the tab.
+  const { role, loading, atLeast } = useRole();
   const [tab, setTab] = useState<Tab>('overview');
 
   // Hide what the account cannot use, rather than showing a tab that only errors.
@@ -133,8 +167,12 @@ export default function Admin() {
         {tab === 'discord' && <DiscordTab />}
         {tab === 'roles' && <RolesTab />}
         {tab === 'audit' && <AuditTab />}
-        {tab === 'users' && <UsersAdmin />}
+        {tab === 'users' && <UsersTab viewerRole={role} />}
+        {tab === 'staff' && <StaffTab />}
+        {tab === 'badges' && <BadgesTab />}
+        {tab === 'channels' && <ChannelsTab />}
         {tab === 'subs' && <SubsAdmin />}
+        {tab === 'funding' && <FundingTab />}
         {tab === 'store' && <ShopAdmin />}
         {tab === 'blog' && <BlogAdmin />}
         {tab === 'merch' && <MerchAdmin />}
@@ -383,162 +421,11 @@ function ShopAdmin() {
   );
 }
 
-/* ── users ───────────────────────────────────────────────────────────────── */
+/* ── users ────────────────────────────────────────────────────────────────── */
 
-const TIERS = ['free', 'creator', 'pro', 'elite', 'unlimited'];
-
-/**
- * Inline handle editor for one member. Starts read-only so a stray click cannot
- * rename someone — changing a handle breaks every link to their profile.
- */
-function HandleField({ user, onSave }: { user: any; onSave: (u: any, handle: string) => Promise<boolean> }) {
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(user.username || '');
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => { setValue(user.username || ''); }, [user.username]);
-
-  if (!editing) {
-    return (
-      <div className="mt-1 flex items-center gap-2">
-        <span className="font-mono text-[12px] text-wage-amber-2">@{user.username || '—'}</span>
-        <button
-          onClick={() => setEditing(true)}
-          className="font-mono text-[11px] uppercase tracking-[0.12em] text-wage-muted-2 underline hover:text-wage-paper"
-        >
-          Edit handle
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-2">
-      <span className="font-mono text-[12px] text-wage-muted-2">@</span>
-      <input
-        value={value}
-        onChange={(e) => setValue(normaliseHandle(e.target.value))}
-        autoFocus
-        spellCheck={false}
-        maxLength={30}
-        className="input !w-44 !py-1 font-mono text-sm"
-      />
-      <button
-        disabled={busy || value === user.username || value.length < HANDLE_MIN}
-        onClick={async () => {
-          setBusy(true);
-          const ok = await onSave(user, value);
-          setBusy(false);
-          if (ok) setEditing(false);
-        }}
-        className="wage-btn wage-btn-primary !px-3 !py-1 text-sm"
-      >
-        {busy ? 'Saving...' : 'Save'}
-      </button>
-      <button
-        onClick={() => { setValue(user.username || ''); setEditing(false); }}
-        className="wage-btn wage-btn-ghost !px-3 !py-1 text-sm"
-      >
-        Cancel
-      </button>
-    </div>
-  );
-}
-
-function UsersAdmin() {
-  const [rows, setRows] = useState<any[]>([]);
-  const [q, setQ] = useState('');
-  const [err, setErr] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
-
-  async function load() {
-    const { data, error } = await supabase.rpc('ws_admin_list_users', { p_search: q || null });
-    setReady(true);
-    if (error) setErr(error.message);
-    else { setErr(null); setRows((data as any[]) ?? []); }
-  }
-  useEffect(() => { load(); }, []);
-
-  async function setTier(u: any, tier: string) {
-    const who = u.username || u.email;
-    const { data, error } = await supabase.rpc('ws_admin_set_tier', { p_user_id: u.id, p_tier: tier });
-    if (error) return setErr(error.message);
-    setNote(`${who} set to ${tier}.`);
-    // Only worth calling the bot if this person actually has Discord linked.
-    if ((data as any)?.discord_id) {
-      apiFetch('discord-sync-user', { method: 'POST', body: JSON.stringify({ user_id: u.id }) })
-        .then(() => setNote(`${who} set to ${tier}. Discord role synced.`))
-        .catch(() => setNote(`${who} set to ${tier}, but the Discord role did not sync.`));
-    }
-    load();
-  }
-
-  async function suspend(u: any) {
-    const { error } = await supabase.rpc('ws_admin_suspend', { p_user_id: u.id, p_suspended: !u.suspended });
-    if (error) return setErr(error.message);
-    setNote(`${u.username || u.email} ${u.suspended ? 'reinstated' : 'suspended'}.`);
-    load();
-  }
-
-  async function saveHandle(u: any, handle: string) {
-    setErr(null); setNote(null);
-    const { data, error } = await supabase.rpc('ws_admin_set_username', { p_user_id: u.id, p_username: handle });
-    if (error) { setErr(error.message); return false; }
-    const r = data as { ok: boolean; reason?: string; username?: string; previous?: string };
-    if (!r.ok) { setErr(handleMessage(r.reason)); return false; }
-    setNote(`@${r.previous} is now @${r.username}.`);
-    load();
-    return true;
-  }
-
-  return (
-    <div>
-      <div className="mb-5 flex gap-2">
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && load()}
-          placeholder="Search email or username"
-          className="input max-w-sm"
-        />
-        <button className="wage-btn wage-btn-ghost" onClick={load}>Search</button>
-      </div>
-
-      {err && <Notice tone="error">{err}</Notice>}
-      {note && <Notice tone="ok">{note}</Notice>}
-
-      <div className="space-y-2.5">
-        {rows.map((u) => (
-          <div key={u.id} className="wage-card wage-card-sm flex flex-wrap items-center gap-3 p-4">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2.5">
-                <span className="truncate font-semibold">{u.display_name || u.username || u.email}</span>
-                {u.suspended && <span className="wage-chip border-wage-error/50 text-wage-error">suspended</span>}
-                {u.discord_linked && <span className="wage-chip">discord</span>}
-              </div>
-              <div className="mt-1 truncate font-mono text-[11.5px] text-wage-muted-2">
-                {u.email} / {u.role} / <span className="wage-num">{u.points}</span> pts
-                {u.membership ? ` / ${u.membership}` : ''}
-                {u.trial_ends_at ? ` / trial ends ${fmtDate(u.trial_ends_at)}` : ''}
-              </div>
-              <HandleField user={u} onSave={saveHandle} />
-            </div>
-            <select value={u.tier} onChange={(e) => setTier(u, e.target.value)} className="input !w-auto !py-1.5 text-sm">
-              {TIERS.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-            <button className="wage-btn wage-btn-ghost !px-3 !py-1.5 text-sm" onClick={() => suspend(u)}>
-              {u.suspended ? 'Unsuspend' : 'Suspend'}
-            </button>
-          </div>
-        ))}
-        {ready && rows.length === 0 && !err && (
-          <EmptyState>{q ? `Nobody matches "${q}".` : 'No members yet.'}</EmptyState>
-        )}
-      </div>
-    </div>
-  );
-}
+// The Users panel moved to ./admin/AdminUsers. It stopped being a list with two
+// controls on it the moment roles, badges and onboarding all had to be reachable from
+// the same place, and it was the largest thing in this file by some way.
 
 /* ── subscriptions ───────────────────────────────────────────────────────── */
 

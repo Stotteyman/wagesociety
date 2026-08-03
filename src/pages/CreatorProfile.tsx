@@ -5,6 +5,7 @@ import TierChip, { LiveChip } from '../components/ui/TierChip';
 import Avatar from '../components/ui/Avatar';
 import EmptyState from '../components/ui/EmptyState';
 import SocialIcon, { SOCIAL_PLATFORMS, socialHref, type SocialKey } from '../components/SocialIcon';
+import ProfileBadges, { BadgeLegend, type Badge } from '../components/ui/ProfileBadges';
 
 type Creator = {
   username: string; display_name: string | null; avatar_url: string | null; bio: string | null;
@@ -12,7 +13,7 @@ type Creator = {
   youtube_channel_name: string | null; youtube_channel_avatar: string | null;
   featured_youtube_channel_id: string | null;
   social_links: Partial<Record<SocialKey, string>> | null;
-  is_live: boolean;
+  is_live: boolean; badges: Badge[] | null;
 };
 
 export default function CreatorProfile() {
@@ -91,7 +92,10 @@ export default function CreatorProfile() {
               <TierChip tier={c.tier} />
               {c.is_live && <LiveChip label={c.primary_platform ? `Live on ${c.primary_platform}` : 'Live'} />}
             </div>
-            <h1 className="text-[clamp(28px,4vw,38px)] normal-case">{name}</h1>
+            <h1 className="flex flex-wrap items-center gap-2.5 text-[clamp(28px,4vw,38px)] normal-case">
+              {name}
+              <ProfileBadges badges={c.badges} size={24} />
+            </h1>
             <p className="mt-1 font-mono text-[13.5px] text-wage-muted-2">@{c.username}</p>
           </div>
           <div className="flex gap-2.5 pb-2.5">
@@ -200,6 +204,11 @@ export default function CreatorProfile() {
                   <dd className="wage-num text-[15px] capitalize text-wage-amber-2">{c.referral_tier || '—'}</dd>
                 </div>
               </dl>
+              {c.badges && c.badges.length > 0 && (
+                <div className="mt-4 border-t border-wage-line pt-4">
+                  <BadgeLegend badges={c.badges} />
+                </div>
+              )}
             </div>
           </aside>
         </div>

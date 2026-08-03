@@ -92,6 +92,77 @@ in a locked server with no roles and therefore no visible channels. `runProvisio
 response body; a fixed delay silently drops writes and leaves the database claiming work
 that never happened.
 
+## Netlify Functions die on Node 20 without a WebSocket
+
+Netlify bundles Functions for **nodejs20.x**, and `globalThis.WebSocket` only arrived in
+Node 22. `createClient()` always builds a RealtimeClient, and realtime-js **throws** from
+that constructor when it finds none rather than degrading — so every function in
+`netlify/functions/` dies before running a line of its own logic, even though none of them
+use realtime.
+
+It never reproduces locally, because dev runs Node 22+. It surfaces as a **502** with
+"Node.js detected but native WebSocket not found", attributed to whatever the caller
+happened to be doing — it was found by posting a correctly-signed event to the live Stripe
+webhook, which meant no subscription event could ever have been recorded.
+
+`_auth.js` now passes `realtime: { transport }` on every `createClient` call, falling back to
+the `ws` package. Keep it that way, and keep every function's Supabase client coming from
+`_auth.js` — a `createClient` anywhere else reintroduces this. Passing the transport is
+preferred over pinning the runtime: it works on every Node version and does not depend on
+a host default that can change under us.
+
+To reproduce or re-test, `delete globalThis.WebSocket` before requiring the bundle.
+
+## Kick
+
+- Kick is a **custom** Supabase provider, `custom:kick` — not a built-in one. Both sign-in
+  and account linking go through `src/lib/kick.ts` so there is one description of how it
+  works. Never send a `redirect_uri` of our own; the address registered on the Kick app is
+  Supabase's callback.
+- Kick may not release an email address, so a Kick-only account can have none. Nothing
+  downstream may assume one.
+- **Verification is not in the official API.** See CLAUDE.md → "Platform verification on
+  stream listings". The short version: only kick.com's v2 endpoint knows, it is behind
+  Cloudflare, it answers from Supabase Edge, and its `verified` field is a **boolean** —
+  testing it with `!= null` marks every channel verified.
+
+## Migrations exist now
+
+`supabase/migrations/` was created 2026-08-02. Schema changes go in a file there **and**
+get applied; the two must not drift. Everything older than that date still lives only in
+the live database, so the folder is a partial record, not a rebuild. `migrate.js` is the
+retired Express migrator and does not read this folder.
+
+## Two ways this codebase has failed open
+
+Both found on 2026-08-03 while auditing before a deploy. Neither was exploitable at the
+time; both were one environment variable or one missing word away from being so.
+
+**`revoke ... from public` does not revoke from `anon`.** Supabase grants EXECUTE to the
+`anon` role *explicitly*, and revoking the PUBLIC pseudo-role leaves that grant untouched.
+Every `ws_admin_*` function was therefore callable with the anon key — the one that ships
+inside the browser bundle — with nothing but the in-function gate behind it. Name `anon`
+in the revoke. There is a loop in `20260803060000_harden_admin_grants.sql` that does this
+for the whole prefix; re-run its shape after adding privileged functions, and check with:
+
+```sql
+select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname = 'public' and p.proname like 'ws\_admin\_%'
+   and has_function_privilege('anon', p.oid, 'execute');   -- must return nothing
+```
+
+**The Stripe webhook accepted unsigned events when its secret was missing.**
+`verifySignature` opened with `if (!SIGNING_SECRET) return true`, commented "dev/staging
+only" — but it is the same code in production and the difference is one variable. Lose it
+and the endpoint activates memberships, sets tiers and pushes Discord roles for whatever
+email a forged body names, with nothing erroring anywhere. It now returns 500 when the
+secret is absent (a 500 makes Stripe retry, so nothing is lost once it is restored) and
+400 when a signature is wrong.
+
+The general rule: **a security check with no key available must refuse, not permit.** If
+you find yourself writing "accept when unconfigured", the comment is telling you it is
+wrong.
+
 ## Critical DOs and DON'Ts
 
 **DO:**
@@ -105,5 +176,10 @@ that never happened.
 - Build against Express, EJS, Neon, or bcrypt auth — all retired
 - Add an auth system outside Supabase Auth
 - Show a placeholder metric in the admin UI
+- Let a missing secret or key turn a check into a pass — refuse instead
+- Assume `revoke ... from public` covered `anon`; it does not
+- Write a `false` because a check failed — "not verified" and "not checked" are different
+  states, and so are "offline" and "status unknown"
+- Let the Discord role sync overwrite a role a person granted by hand
 - Bulk-edit source with PowerShell `Get-Content`/`Set-Content` (it corrupts UTF-8; use Node)
 - Assume a push deploys anything — it does not

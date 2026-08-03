@@ -14,7 +14,7 @@ export default function PrivacyPolicy() {
       eyebrow="Legal"
       title="Privacy policy"
       lede="What we collect, why we have it, and who else can see it."
-      updated="29 July 2026"
+      updated="2 August 2026"
     >
       <Clause n={1} title="The short version">
         <p>
@@ -94,7 +94,33 @@ export default function PrivacyPolicy() {
         </p>
       </Clause>
 
-      <Clause n={5} title="What is public">
+      <Clause n={5} title="YouTube">
+        <p>
+          Connecting a channel uses <b>YouTube API Services</b>. When you grant the permission we
+          make a single request for the list of channels you own, so you can choose one to
+          feature. We read the channel ID, name, handle, thumbnail and public subscriber count,
+          and we keep only the public ID of the channel you pick. We do not read your watch
+          history, subscriptions, comments, private videos or analytics, and we never post to or
+          change anything on your channel.
+        </p>
+        <p>
+          The live status shown on the site afterwards comes from public YouTube data, not from
+          your account.
+        </p>
+        <Bullets
+          items={[
+            <>Google&rsquo;s own handling of your information is covered by the{' '}
+              <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Google privacy policy</a>.</>,
+            <>Using YouTube through this site also means agreeing to the{' '}
+              <a href="https://www.youtube.com/t/terms" target="_blank" rel="noreferrer">YouTube terms of service</a>.</>,
+            <>You can revoke our access at any time from your{' '}
+              <a href="https://myaccount.google.com/permissions" target="_blank" rel="noreferrer">Google account permissions</a>{' '}
+              page, or by unlinking Google in <Link to="/settings">Settings</Link>.</>,
+          ]}
+        />
+      </Clause>
+
+      <Clause n={6} title="What is public">
         <p>
           Your handle, display name, avatar, bio, skills, links, connected channels and
           leaderboard position are visible to anyone, including search engines. Your email
@@ -103,7 +129,7 @@ export default function PrivacyPolicy() {
         </p>
       </Clause>
 
-      <Clause n={6} title="How long we keep it">
+      <Clause n={7} title="How long we keep it">
         <Bullets
           items={[
             'Account and profile data: until you delete your account.',
@@ -114,7 +140,7 @@ export default function PrivacyPolicy() {
         />
       </Clause>
 
-      <Clause n={7} title="Your choices">
+      <Clause n={8} title="Your choices">
         <Bullets
           items={[
             <><b>See and change your data</b> — most of it is editable in <Link to="/settings">Settings</Link>.</>,
@@ -130,7 +156,7 @@ export default function PrivacyPolicy() {
         </p>
       </Clause>
 
-      <Clause n={8} title="Security">
+      <Clause n={9} title="Security">
         <p>
           Access to the database is restricted by row-level security, secrets stay on the server
           and never reach your browser, and tokens for member tools are stored only as hashes, so
@@ -139,14 +165,14 @@ export default function PrivacyPolicy() {
         </p>
       </Clause>
 
-      <Clause n={9} title="Children">
+      <Clause n={10} title="Children">
         <p>
           The service is not for under-13s, and selling requires you to be 18 or over. If we learn
           we hold data on a child under 13, we delete it.
         </p>
       </Clause>
 
-      <Clause n={10} title="Where your data lives">
+      <Clause n={11} title="Where your data lives">
         <p>
           Our providers operate internationally, so your information may be processed outside your
           country, including in the United States. They are bound to protect it under their own
@@ -154,7 +180,7 @@ export default function PrivacyPolicy() {
         </p>
       </Clause>
 
-      <Clause n={11} title="Changes and contact">
+      <Clause n={12} title="Changes and contact">
         <p>
           We will update this policy as the platform changes, and the date at the top will change
           with it. For anything privacy-related, email <b>contact@wagesociety.com</b>. See also our{' '}

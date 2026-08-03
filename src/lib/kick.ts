@@ -23,6 +23,25 @@ export function isKickIdentity(provider: string): boolean {
  * Send the user to Kick to link their channel.
  * Resolves to an error message, or null when the redirect is under way.
  */
+/**
+ * Sign in — or sign up — with Kick.
+ *
+ * The same custom provider as linkKick, through signInWithOAuth rather than
+ * linkIdentity, so it works with no session. Supabase creates the account on first
+ * return, which is why there is no separate "sign up with Kick" path.
+ *
+ * Kick does not always release an email address. Supabase handles that (the account is
+ * created either way), but it does mean a Kick-only account can have no email, so
+ * nothing downstream may assume one — see how Subscriptions renders `@handle` first.
+ */
+export async function signInWithKick(redirectTo: string): Promise<string | null> {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: KICK_PROVIDER as never,
+    options: { redirectTo },
+  });
+  return error ? error.message : null;
+}
+
 export async function linkKick(): Promise<string | null> {
   const { error } = await supabase.auth.linkIdentity({
     // Supabase's typings only enumerate the built-in providers; custom ones are

@@ -25,6 +25,7 @@ import Tools from './pages/Tools';
 import Watch from './pages/Watch';
 import Terms from './pages/Terms';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import JoinTheTeam from './pages/JoinTheTeam';
 import NotFound from './pages/NotFound';
 
 export default function App() {
@@ -58,11 +59,15 @@ export default function App() {
         <Route path="/referrals" element={<RequireAuth><Referrals /></RequireAuth>} />
         <Route path="/shop" element={<PointShop />} />
         <Route path="/admin" element={<RequireAuth><Admin /></RequireAuth>} />
+        {/* Public: the openings list is readable signed out, applying is not. */}
+        <Route path="/join-the-team" element={<JoinTheTeam />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         {/* People type these; send them to the real pages rather than a 404. */}
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms-of-service" element={<Terms />} />
+        <Route path="/careers" element={<JoinTheTeam />} />
+        <Route path="/staff" element={<JoinTheTeam />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

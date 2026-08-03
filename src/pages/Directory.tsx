@@ -5,6 +5,7 @@ import TierChip, { LiveChip } from '../components/ui/TierChip';
 import EmptyState from '../components/ui/EmptyState';
 import Avatar from '../components/ui/Avatar';
 import PageHeader from '../components/ui/PageHeader';
+import ProfileBadges, { type Badge } from '../components/ui/ProfileBadges';
 
 type Creator = {
   username: string;
@@ -13,6 +14,7 @@ type Creator = {
   bio: string | null;
   tier: string;
   is_live: boolean;
+  badges: Badge[] | null;
 };
 
 const tiers = ['all', 'free', 'creator', 'pro', 'elite'] as const;
@@ -116,7 +118,10 @@ export default function Directory() {
                 <div className="flex items-center gap-3">
                   <Avatar name={c.display_name || c.username} src={c.avatar_url} />
                   <div className="min-w-0">
-                    <div className="truncate text-[15px] font-bold">{c.display_name || c.username}</div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate text-[15px] font-bold">{c.display_name || c.username}</span>
+                      <ProfileBadges badges={c.badges} size={15} />
+                    </div>
                     <div className="truncate font-mono text-[12px] text-wage-muted-2">@{c.username}</div>
                   </div>
                 </div>

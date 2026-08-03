@@ -54,6 +54,9 @@ const FOOTER: { heading: string; links: { to: string; label: string }[] }[] = [
       { to: '/blog', label: 'Blog' },
       { to: '/faq', label: 'FAQ' },
       { to: '/why-10-percent', label: 'Why we take 10%' },
+      // Staff are recruited from the community, so the way in has to be findable
+      // without someone happening to see the right Discord message.
+      { to: '/join-the-team', label: 'Join the team' },
     ],
   },
   {

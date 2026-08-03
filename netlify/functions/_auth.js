@@ -7,6 +7,29 @@ const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
+// Netlify bundles Functions for nodejs20.x, and `globalThis.WebSocket` only arrived in
+// Node 22. createClient() always builds a RealtimeClient, and realtime-js THROWS from
+// that constructor when it finds no WebSocket rather than degrading — so every function
+// in this directory dies before running a line of its own logic, even though none of
+// them use realtime.
+//
+// It never reproduces locally (dev runs Node 22+), and the failure surfaces as whatever
+// the caller happens to be doing. It was found here by posting a correctly-signed event
+// to the live Stripe webhook: signature verification passed, then the handler returned
+// 502 "Node.js detected but native WebSocket not found" — meaning no subscription event
+// could ever have been recorded.
+//
+// Passing the transport explicitly is preferred over pinning the runtime: it works on
+// every Node version and doesn't depend on a host default that can change under us.
+const REALTIME_TRANSPORT =
+  typeof globalThis.WebSocket !== 'undefined' ? globalThis.WebSocket : require('ws');
+
+/** Shared client options. Spread into every createClient call in this file. */
+const CLIENT_BASE = {
+  auth: { persistSession: false, autoRefreshToken: false },
+  realtime: { transport: REALTIME_TRANSPORT },
+};
+
 // CEO allowlist — always superadmin regardless of DB rows.
 const SUPERADMIN_EMAILS = new Set(['stotteyman@gmail.com', 'gggiddings@yahoo.com']);
 
@@ -20,7 +43,7 @@ function isConfigured() {
 // public views still work, but privileged writes will fail against RLS.
 function getServiceClient() {
   return createClient(SUPABASE_URL, SERVICE_KEY || ANON_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
+    ...CLIENT_BASE,
     db: { schema: SCHEMA },
   });
 }
@@ -30,7 +53,7 @@ function getServiceClient() {
 // checks in particular, which the service-role client would happily bypass.
 function getUserClient(token) {
   return createClient(SUPABASE_URL, ANON_KEY || SERVICE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
+    ...CLIENT_BASE,
     global: { headers: { Authorization: `Bearer ${token}` } },
     db: { schema: SCHEMA },
   });
@@ -42,9 +65,7 @@ async function getAuthContext(event) {
   const token = authz.replace(/^Bearer\s+/i, '').trim();
   if (!token) return { user: null, role: 'guest', token: null };
 
-  const client = createClient(SUPABASE_URL, ANON_KEY || SERVICE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const client = createClient(SUPABASE_URL, ANON_KEY || SERVICE_KEY, { ...CLIENT_BASE });
   const { data, error } = await client.auth.getUser(token);
   if (error || !data?.user) return { user: null, role: 'guest', token: null };
 

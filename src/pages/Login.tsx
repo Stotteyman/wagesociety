@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase, supabaseConfigured } from '../lib/supabase';
+import { signInWithKick } from '../lib/kick';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -36,9 +37,18 @@ export default function Login() {
 
   // 'x' is Supabase's OAuth 2.0 X provider (the legacy 'twitter' one is OAuth 1.0a and
   // is being deprecated). supabase-js types have not caught up, hence the cast.
-  async function oauth(provider: 'google' | 'discord' | 'x') {
+  //
+  // Kick is a *custom* provider ('custom:kick'), not a built-in one, so it goes through
+  // src/lib/kick.ts — the same place the account-linking flow lives, so there is one
+  // description of how Kick auth works rather than two that can drift.
+  async function oauth(provider: 'google' | 'discord' | 'x' | 'kick') {
     if (!supabaseConfigured) {
       setMsg({ tone: 'error', text: 'Sign-in is not configured on this deploy yet.' });
+      return;
+    }
+    if (provider === 'kick') {
+      const err = await signInWithKick(redirectTo);
+      if (err) setMsg({ tone: 'error', text: err });
       return;
     }
     await supabase.auth.signInWithOAuth({
@@ -81,6 +91,9 @@ export default function Login() {
             </button>
             <button className="wage-btn wage-btn-ghost w-full" onClick={() => oauth('discord')}>
               Continue with Discord
+            </button>
+            <button className="wage-btn wage-btn-ghost w-full" onClick={() => oauth('kick')}>
+              Continue with Kick
             </button>
             <button className="wage-btn wage-btn-ghost w-full" onClick={() => oauth('x')}>
               Continue with X

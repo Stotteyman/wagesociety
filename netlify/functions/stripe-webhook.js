@@ -11,8 +11,21 @@ const DISCORD_BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
+/**
+ * Returns true only when Stripe actually signed this.
+ *
+ * This used to open with `if (!SIGNING_SECRET) return true` — accept everything when the
+ * secret is missing, commented as dev-only. It is not dev-only: it is the same code in
+ * production, and the difference is one environment variable. Lose it, rename it, or
+ * deploy to a context where it was never set, and this endpoint accepts any unsigned POST
+ * and will activate a membership, set a tier and push Discord roles for whatever email
+ * the body names — while every dashboard still looks healthy, because nothing errors.
+ *
+ * A payment webhook has to fail closed. The caller now refuses to run at all without a
+ * secret, which turns a silent forgery hole into a loud misconfiguration.
+ */
 function verifySignature(rawBody, sigHeader) {
-  if (!SIGNING_SECRET) return true; // not configured yet — accept (dev/staging only)
+  if (!SIGNING_SECRET) return false;
   if (!sigHeader) return false;
   const parts = sigHeader.split(',');
   const tp = parts.find((p) => p.startsWith('t='));
@@ -102,6 +115,13 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return json(204, {});
   if (event.httpMethod !== 'POST') return json(405, { error: 'Method not allowed' });
   if (!isConfigured()) return json(500, { error: 'Supabase not configured' });
+  // Distinct from the 400 below on purpose: a missing secret is our fault, not the
+  // caller's, and a 500 makes Stripe retry rather than mark the event delivered — so
+  // nothing is lost once the variable is put back.
+  if (!SIGNING_SECRET) {
+    console.error('[stripe-webhook] STRIPE_SIGNING_SECRET is not set — refusing to process events');
+    return json(500, { error: 'Webhook not configured' });
+  }
 
   const rawBody = event.isBase64Encoded ? Buffer.from(event.body || '', 'base64').toString('utf8') : (event.body || '');
   const sigHeader = event.headers['stripe-signature'] || event.headers['Stripe-Signature'];
